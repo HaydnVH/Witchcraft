@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ALL_BUILD", "ALL_BUILD.vcxproj", "{DF3D3829-5399-3BE7-BE77-A51C2E3F863B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{89F4BC02-2A46-3990-B2B3-5FCF1A5C589F} = {89F4BC02-2A46-3990-B2B3-5FCF1A5C589F}
+		{C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91} = {C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Witchcraft", "Witchcraft.vcxproj", "{89F4BC02-2A46-3990-B2B3-5FCF1A5C589F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91} = {C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZERO_CHECK", "ZERO_CHECK.vcxproj", "{C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DF3D3829-5399-3BE7-BE77-A51C2E3F863B}.Debug|x64.ActiveCfg = Debug|x64
+		{89F4BC02-2A46-3990-B2B3-5FCF1A5C589F}.Debug|x64.ActiveCfg = Debug|x64
+		{89F4BC02-2A46-3990-B2B3-5FCF1A5C589F}.Debug|x64.Build.0 = Debug|x64
+		{C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91}.Debug|x64.ActiveCfg = Debug|x64
+		{C1BF25D0-D50B-3B51-8F67-A8B3DBA4EF91}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {600750B5-EEB7-3436-AB5F-F51E80D5042A}
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

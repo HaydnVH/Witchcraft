@@ -1,0 +1,3 @@
+C:/Users/Haydn/source/repos/Witchcraft/out/build/x64-Debug/CMakeFiles/Witchcraft.dir
+C:/Users/Haydn/source/repos/Witchcraft/out/build/x64-Debug/CMakeFiles/ALL_BUILD.dir
+C:/Users/Haydn/source/repos/Witchcraft/out/build/x64-Debug/CMakeFiles/ZERO_CHECK.dir
