@@ -1,15 +1,16 @@
-/* structofarrays.hpp
+/* soa.hpp
  * Struct-Of-Arrays template class
  * by Haydn V. Harach
- * October 2019
+ * Created October 2019
+ * Modified March 2021
  *
  * Implements a Struct-Of-Arrays container class to store and manage a series
  * of contiguous arrays which are stored back-to-back in memory.
  * The interface is designed to be similar to that of std::vector.
  */
 
-#ifndef HVH_TOOLKIT_STRUCTOFARRAYS_H
-#define HVH_TOOLKIT_STRUCTOFARRAYS_H
+#ifndef HVH_TOOLS_STRUCTOFARRAYS_H
+#define HVH_TOOLS_STRUCTOFARRAYS_H
 
 
 #include <cstdint>
@@ -44,7 +45,7 @@
 namespace hvh {
 
 	template <typename... Ts>
-	class _structofarrays_base {
+	class _soa_base {
 	public:
 		inline size_t constexpr size_per_entry() const { return 0; }
 		inline void nullify() {}
@@ -60,18 +61,18 @@ namespace hvh {
 		inline void emplace_default(size_t) {}
 		inline void erase_swap(size_t) {}
 		inline void erase_shift(size_t) {}
-		friend inline void swap(_structofarrays_base<Ts...>& lhs, _structofarrays_base<Ts...>& rhs) { std::swap(lhs.mysize, rhs.mysize); std::swap(lhs.mycapacity, rhs.mycapacity); }
-		inline void copy(const _structofarrays_base<Ts...>& other) { mysize = other.mysize; }
+		friend inline void swap(_soa_base<Ts...>& lhs, _soa_base<Ts...>& rhs) { std::swap(lhs.mysize, rhs.mysize); std::swap(lhs.mycapacity, rhs.mycapacity); }
+		inline void copy(const _soa_base<Ts...>& other) { mysize = other.mysize; }
 		inline void swap_entries(size_t, size_t) {}
 
 	protected:
-		_structofarrays_base() {}
+		_soa_base() {}
 		size_t mysize = 0;
 		size_t mycapacity = 0;
 	};
 
 	template <typename FT, typename... RTs>
-	class _structofarrays_base<FT, RTs...> : public _structofarrays_base<RTs...> {
+	class _soa_base<FT, RTs...> : public _soa_base<RTs...> {
 
 		// This stuff is neccesary to hold the list of types.
 		// I'm not entirely sure exactly how this works, tbh.
@@ -79,13 +80,13 @@ namespace hvh {
 		template <size_t, typename> struct elem_type_holder;
 
 		template <typename T, typename... Ts>
-		struct elem_type_holder<0, _structofarrays_base<T, Ts...>> {
+		struct elem_type_holder<0, _soa_base<T, Ts...>> {
 			typedef T type;
 		};
 
 		template <size_t K, typename T, typename... Ts>
-		struct elem_type_holder<K, _structofarrays_base<T, Ts...>> {
-			typedef typename elem_type_holder<K - 1, _structofarrays_base<Ts...>>::type type;
+		struct elem_type_holder<K, _soa_base<T, Ts...>> {
+			typedef typename elem_type_holder<K - 1, _soa_base<Ts...>>::type type;
 		};
 
 	public:
@@ -103,8 +104,8 @@ namespace hvh {
 		// Elements of the array may be modified, but the array itself cannot.
 		// As a reference to the internal array, the result will remain valid even after a reallocation.
 		template <size_t K>
-		typename std::enable_if<K != 0, typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type* const&>::type
-			inline data() { _structofarrays_base<RTs...>& base = *this; return base.data<K - 1>(); }
+		typename std::enable_if<K != 0, typename elem_type_holder<K, _soa_base<FT, RTs...>>::type* const&>::type
+			inline data() { _soa_base<RTs...>& base = *this; return base.data<K - 1>(); }
 
 		// data<K>() const
 		// Gets a constant reference to a constant pointer to the Kth array.
@@ -119,8 +120,8 @@ namespace hvh {
 		// Neither the array nor its elements can be modified.
 		// As a reference to the internal array, the result will remain valid even after a reallocation.
 		template <size_t K>
-		typename std::enable_if<K != 0, const typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type* const&>::type
-			inline data() const { _structofarrays_base<RTs...>& base = *this; return base.data<K - 1>(); }
+		typename std::enable_if<K != 0, const typename elem_type_holder<K, _soa_base<FT, RTs...>>::type* const&>::type
+			inline data() const { _soa_base<RTs...>& base = *this; return base.data<K - 1>(); }
 
 		// at<K>(i)
 		// Gets a reference to the ith item of the Kth array.
@@ -133,8 +134,8 @@ namespace hvh {
 		// Gets a reference to the ith item of the Kth array.
 		// Does not perform bounds checking; do not use with an out-of-bounds index!
 		template <size_t K>
-		typename std::enable_if<K != 0, typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type&>::type
-			inline at(size_t index) { _structofarrays_base<RTs...>& base = *this; return base.at<K - 1>(index); }
+		typename std::enable_if<K != 0, typename elem_type_holder<K, _soa_base<FT, RTs...>>::type&>::type
+			inline at(size_t index) { _soa_base<RTs...>& base = *this; return base.at<K - 1>(index); }
 
 		// at<K>(i) const
 		// Gets a constant reference to the ith item of the Kth array.
@@ -147,8 +148,8 @@ namespace hvh {
 		// Gets a constant reference to the ith item of the Kth array.
 		// Does not perform bounds checking; do not use with an out-of-bounds index!
 		template <size_t K>
-		typename std::enable_if<K != 0, const typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type&>::type
-			inline at(size_t index) const { _structofarrays_base<RTs...>& base = *this; return base.at<K - 1>(index); }
+		typename std::enable_if<K != 0, const typename elem_type_holder<K, _soa_base<FT, RTs...>>::type&>::type
+			inline at(size_t index) const { _soa_base<RTs...>& base = *this; return base.at<K - 1>(index); }
 
 		// front<K>()
 		// Gets a reference to the item at the front of the Kth array.
@@ -161,8 +162,8 @@ namespace hvh {
 		// Gets a reference to the item at the front of the Kth array.
 		// Does not perform bounds checking; do not call on an empty container!
 		template <size_t K>
-		typename std::enable_if<K != 0, typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type&>::type
-			inline front() { _structofarrays_base<RTs...>& base = *this; return base.front<K - 1>(); }
+		typename std::enable_if<K != 0, typename elem_type_holder<K, _soa_base<FT, RTs...>>::type&>::type
+			inline front() { _soa_base<RTs...>& base = *this; return base.front<K - 1>(); }
 
 		// front<K>() const
 		// Gets a const reference to the item at the front of the Kth array.
@@ -175,8 +176,8 @@ namespace hvh {
 		// Gets a constant reference to the item at the front of the Kth array.
 		// Does not perform bounds checking; do not call on an empty container!
 		template <size_t K>
-		typename std::enable_if<K != 0, const typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type&>::type
-			inline front() const { _structofarrays_base<RTs...>& base = *this; return base.front<K - 1>(); }
+		typename std::enable_if<K != 0, const typename elem_type_holder<K, _soa_base<FT, RTs...>>::type&>::type
+			inline front() const { _soa_base<RTs...>& base = *this; return base.front<K - 1>(); }
 
 		// back<K>()
 		// Gets a reference to the item at the back of the Kth array.
@@ -189,8 +190,8 @@ namespace hvh {
 		// Gets a reference to the item at the back of the Kth array.
 		// Does not perform bounds checking; do not call on an empty container!
 		template <size_t K>
-		typename std::enable_if<K != 0, typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type&>::type
-			inline back() { _structofarrays_base<RTs...>& base = *this; return base.back<K - 1>(); }
+		typename std::enable_if<K != 0, typename elem_type_holder<K, _soa_base<FT, RTs...>>::type&>::type
+			inline back() { _soa_base<RTs...>& base = *this; return base.back<K - 1>(); }
 
 		// back<K>() const
 		// Gets a constant reference to the item at the back of the Kth array.
@@ -203,8 +204,8 @@ namespace hvh {
 		// Gets a constant reference to the item at the back of the Kth array.
 		// Does not perform bounds checking; do not call on an empty container!
 		template <size_t K>
-		typename std::enable_if<K != 0, const typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type&>::type
-			inline back() const { _structofarrays_base<RTs...>& base = *this; return base.back<K - 1>(); }
+		typename std::enable_if<K != 0, const typename elem_type_holder<K, _soa_base<FT, RTs...>>::type&>::type
+			inline back() const { _soa_base<RTs...>& base = *this; return base.back<K - 1>(); }
 
 		// lower_bound<K>(goal)
 		// Performs a binary search looking for 'goal' in sorted array 'K'.
@@ -251,8 +252,8 @@ namespace hvh {
 		// Complexity: O(logn).
 		template <size_t K>
 		typename std::enable_if<K != 0, size_t>::type
-			inline lower_bound(const typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type & goal) {
-			_structofarrays_base<RTs...>& base = *this; return base.lower_bound<K - 1>(goal);
+			inline lower_bound(const typename elem_type_holder<K, _soa_base<FT, RTs...>>::type & goal) {
+			_soa_base<RTs...>& base = *this; return base.lower_bound<K - 1>(goal);
 		}
 		// lower_bound_row<K>(goal_row)
 		// Performs a binary search looking for the Kth entry in 'goal_row' in sorted array 'K'.
@@ -262,7 +263,7 @@ namespace hvh {
 		template<size_t K>
 		typename std::enable_if<K != 0, size_t>::type
 			inline lower_bound_row(const FT& first, const RTs&... rest) {
-			_structofarrays_base<RTs...>& base = *this; return base.lower_bound<K - 1>(rest...);
+			_soa_base<RTs...>& base = *this; return base.lower_bound<K - 1>(rest...);
 		}
 
 		// upper_bound<K>(goal)
@@ -293,8 +294,8 @@ namespace hvh {
 		// Complexity: O(logn).
 		template <size_t K>
 		typename std::enable_if<K != 0, size_t>::type
-			inline upper_bound(const typename elem_type_holder<K, _structofarrays_base<FT, RTs...>>::type & goal) {
-			_structofarrays_base<RTs...>& base = *this; return base.upper_bound<K - 1>(goal);
+			inline upper_bound(const typename elem_type_holder<K, _soa_base<FT, RTs...>>::type & goal) {
+			_soa_base<RTs...>& base = *this; return base.upper_bound<K - 1>(goal);
 		}
 
 		///////////////////////////////////////////////////////////////////////////
@@ -306,13 +307,13 @@ namespace hvh {
 
 		// size_per_entry gives the total sizeof() of an entire row of data.
 		inline constexpr size_t size_per_entry() const {
-			const _structofarrays_base<RTs...>& base = *this;
+			const _soa_base<RTs...>& base = *this;
 			return sizeof(FT) + base.size_per_entry();
 		}
 
 		// nullify sets the data pointer of every column to nullptr.
 		inline void nullify() {
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			mydata = nullptr; base.nullify();
 		}
 
@@ -321,7 +322,7 @@ namespace hvh {
 			for (size_t i = begin; i < end; ++i) {
 				new (&mydata[i]) FT();
 			}
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.construct_range(begin, end);
 		}
 
@@ -330,7 +331,7 @@ namespace hvh {
 			for (size_t i = begin; i < end; ++i) {
 				new (&mydata[i]) FT(initval);
 			}
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.construct_range(begin, end, restvals...);
 		}
 
@@ -339,7 +340,7 @@ namespace hvh {
 			for (size_t i = begin; i < end; ++i) {
 				mydata[i].~FT();
 			}
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.destruct_range(begin, end);
 		}
 
@@ -348,7 +349,7 @@ namespace hvh {
 		inline void divy_buffer(void* newmem) {
 			if (mydata) { memcpy(newmem, mydata, sizeof(FT) * std::min(this->mysize, this->mycapacity)); }
 			mydata = (FT*)newmem;
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.divy_buffer(((FT*)newmem) + this->mycapacity);
 		}
 
@@ -356,7 +357,7 @@ namespace hvh {
 		template <typename FirstType = FT, typename... RestTypes>
 		typename std::enable_if<std::is_copy_constructible<FirstType>::value, void>::type inline push_back(const FirstType& first, RestTypes&&... rest) {
 			new (&mydata[this->mysize]) FT(first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.push_back(rest...);
 		}
 
@@ -364,7 +365,7 @@ namespace hvh {
 		template <typename FirstType = FT, typename... RestTypes>
 		typename std::enable_if<std::is_move_constructible<FirstType>::value, void>::type inline push_back(FirstType&& first, RestTypes&&... rest) {
 			new (&mydata[this->mysize]) FT(std::move(first));
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.push_back(rest...);
 		}
 
@@ -372,7 +373,7 @@ namespace hvh {
 		template <typename FirstType, typename... RestTypes>
 		typename std::enable_if<std::is_copy_constructible<FirstType>::value, void>::type inline emplace_back(const FirstType& first, RestTypes&& ... rest) {
 			new (&mydata[this->mysize]) FT(first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(rest...);
 		}
 
@@ -380,7 +381,7 @@ namespace hvh {
 		template <typename FirstType, typename... RestTypes>
 		typename std::enable_if<std::is_move_constructible<FirstType>::value, void>::type inline emplace_back(FirstType&& first, RestTypes&&... rest) {
 			new (&mydata[this->mysize]) FT(std::move(first));
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(rest...);
 		}
 
@@ -388,7 +389,7 @@ namespace hvh {
 		template <typename... RestTypes>
 		inline void emplace_back(decltype(std::ignore), const RestTypes& ... rest) {
 			new (&mydata[this->mysize]) FT();
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(rest...);
 		}
 
@@ -396,14 +397,14 @@ namespace hvh {
 		template <typename... FirstTypes, typename... RestTypes>
 		inline void emplace_back(const std::tuple<FirstTypes...>& first, const RestTypes& ... rest) {
 			std::apply([=](const FirstTypes& ... args) {new (&mydata[this->mysize]) FT(args...); }, first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(rest...);
 		}
 
 		// emplace_back using all default constructors.
 		inline void emplace_back_default() {
 			new (&mydata[this->mysize]) FT();
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back_default();
 		}
 
@@ -412,7 +413,7 @@ namespace hvh {
 		typename std::enable_if<std::is_copy_constructible<FirstType>::value, void>::type inline insert(size_t location, const FirstType& first, RestTypes&& ... rest) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			new (&mydata[location]) FT(first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.insert(location, rest...);
 		}
 
@@ -421,7 +422,7 @@ namespace hvh {
 		typename std::enable_if<std::is_move_constructible<FirstType>::value, void>::type inline insert(size_t location, FirstType&& first, RestTypes&& ... rest) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			new (&mydata[location]) FT(std::move(first));
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.insert(location, rest...);
 		}
 
@@ -430,7 +431,7 @@ namespace hvh {
 		typename std::enable_if<std::is_copy_constructible<FirstType>::value, void>::type inline emplace(size_t location, const FirstType& first, RestTypes&& ... rest) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			new (&mydata[location]) FT(first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(location, rest...);
 		}
 
@@ -439,7 +440,7 @@ namespace hvh {
 		typename std::enable_if<std::is_move_constructible<FirstType>::value, void>::type inline emplace(size_t location, FirstType&& first, RestTypes&& ... rest) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			new (&mydata[location]) FT(first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(location, rest...);
 		}
 
@@ -448,7 +449,7 @@ namespace hvh {
 		inline void emplace(size_t location, decltype(std::ignore), RestTypes&& ... rest) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			new (&mydata[location]) FT();
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(location, rest...);
 		}
 
@@ -457,7 +458,7 @@ namespace hvh {
 		inline void emplace(size_t location, const std::tuple<FirstTypes...>& first, RestTypes&& ... rest) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			std::apply([=](const FirstTypes& ... args) {new (&mydata[location]) FT(args...); }, first);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(location, rest...);
 		}
 
@@ -465,14 +466,14 @@ namespace hvh {
 		inline void emplace_default(size_t location) {
 			memmove(mydata + (location + 1), mydata + location, sizeof(FT) * (this->mysize - location));
 			new (&mydata[location]) FT();
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.emplace_back(location);
 		}
 
 		// pop_back removes the last row in the container.
 		inline void pop_back() {
 			mydata[this->mysize - 1].~FT();
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.pop_back();
 		}
 
@@ -481,7 +482,7 @@ namespace hvh {
 			using std::swap;
 			swap(mydata[location], mydata[this->mysize - 1]);
 			mydata[this->mysize - 1].~FT();
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.erase_swap(location);
 		}
 
@@ -489,24 +490,24 @@ namespace hvh {
 		inline void erase_shift(size_t location) {
 			mydata[location].~FT();
 			memmove(mydata + location, mydata + (location + 1), sizeof(FT) * (this->mysize - location));
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.erase_shift(location);
 		}
 
 		// swaps two containers.
-		friend inline void swap(_structofarrays_base<FT, RTs...>& lhs, _structofarrays_base<FT, RTs...>& rhs) {
+		friend inline void swap(_soa_base<FT, RTs...>& lhs, _soa_base<FT, RTs...>& rhs) {
 			using std::swap;
 			swap(lhs.mydata, rhs.mydata);
-			_structofarrays_base<RTs...>& lhsbase = lhs;
-			_structofarrays_base<RTs...>& rhsbase = rhs;
+			_soa_base<RTs...>& lhsbase = lhs;
+			_soa_base<RTs...>& rhsbase = rhs;
 			swap(lhsbase, rhsbase);
 		}
 
 		// performs a deep copy.
-		inline void copy(const _structofarrays_base<FT, RTs...>& other) {
+		inline void copy(const _soa_base<FT, RTs...>& other) {
 			memcpy(mydata, other.mydata, sizeof(FT) * other.mysize);
-			_structofarrays_base<RTs...>& lhs = *this;
-			const _structofarrays_base<RTs...>& rhs = other;
+			_soa_base<RTs...>& lhs = *this;
+			const _soa_base<RTs...>& rhs = other;
 			lhs.copy(rhs);
 		}
 
@@ -514,79 +515,79 @@ namespace hvh {
 		inline void swap_entries(size_t first, size_t second) {
 			using std::swap;
 			swap(mydata[first], mydata[second]);
-			_structofarrays_base<RTs...>& base = *this;
+			_soa_base<RTs...>& base = *this;
 			base.swap_entries(first, second);
 		}
 
 	protected:
-		_structofarrays_base() {}
+		_soa_base() {}
 		FT* mydata = nullptr;
 	};
 
 	template <typename... Ts>
-	class structofarrays : public _structofarrays_base<Ts...> {
+	class soa : public _soa_base<Ts...> {
 	public:
 
-		// structofarrays()
+		// soa()
 		// Default constructor for a Struct-Of-Arrays object.
 		// Initial size and capacity will be 0.
 		// Complexity: O(1).
-		structofarrays() {}
-		// structofarrays(initsize)
+		soa() {}
+		// soa(initsize)
 		// Constructs a Struct-Of-Arrays object.
 		// Initial size is set to the input,
 		// and initial capacity will be enough to hold that many items.
 		// Calls default constructors for each new item.
 		// Complexity: O(n).
-		structofarrays(size_t initsize) { resize(initsize); }
-		// structofarrays(initsize, args...)
+		soa(size_t initsize) { resize(initsize); }
+		// soa(initsize, args...)
 		// Constructs a Struct-Of-Arrays object.
 		// Initial size is set to the input,
 		// and initial capacity will be enough to hold that many items.
 		// Calls copy-constructors for each new item using 'args...'.
 		// Complexity: O(n).
-		structofarrays(size_t initsize, const Ts& ... initvals) { resize(initsize, initvals...); }
-		// structofarrays({...})
+		soa(size_t initsize, const Ts& ... initvals) { resize(initsize, initvals...); }
+		// soa({...})
 		// Constructs a Struct-Of-Arrays using a list of tuples.
 		// Copies the items from the initializer list into ourselves.
 		// Complexity: O(n).
-		structofarrays(const std::initializer_list<std::tuple<Ts...>>& initlist) {
+		soa(const std::initializer_list<std::tuple<Ts...>>& initlist) {
 			reserve(initlist.size());
 			for (auto& entry : initlist) {
 				std::apply([=](const Ts& ... args) {this->push_back(args...); }, entry);
 			}
 		}
-		// structofarrays(&& rhs)
+		// soa(&& rhs)
 		// Move constructor for Struct-Of-Arrays.
 		// Moves the contents from the rhs struct-of-arrays into ourselves.
 		// Complexity: O(1).
-		structofarrays(structofarrays<Ts...>&& other) { swap(other); }
-		// structofarrays(const& rhs)
+		soa(soa<Ts...>&& other) { swap(other); }
+		// soa(const& rhs)
 		// Copy constructor for Struct-Of-Arrays.
 		// Copies the contents from the rhs struct-of-arrays into ourselves.
 		// Complexity: O(n).
-		structofarrays(const structofarrays<Ts...>& other) {
+		soa(const soa<Ts...>& other) {
 			reserve(other.size());
-			_structofarrays_base<Ts...>& base = *this;
-			_structofarrays_base<Ts...>& otherbase = other;
+			_soa_base<Ts...>& base = *this;
+			_soa_base<Ts...>& otherbase = other;
 			base.copy(otherbase);
 		}
 		// operator = (&& rhs)
 		// Move-assignment operator for Struct-Of-Arrays.
 		// Moves the contents from the rhs struct-of-arrays into ourselves.
 		// Complexity: O(1).
-		structofarrays<Ts...>& operator = (structofarrays<Ts...>&& other) { swap(other); return *this; }
+		soa<Ts...>& operator = (soa<Ts...>&& other) { swap(other); return *this; }
 		// operator = (const& rhs)
 		// Copy-assignment operator for Struct-Of-Arrays.
 		// Copies the contents from the rhs struct-of-arrays into ourselves.
 		// Complexity: O(n).
-		structofarrays<Ts...>& operator = (structofarrays<Ts...> other) { swap(other); return *this; }
-		// ~structofarrays()
+		soa<Ts...>& operator = (soa<Ts...> other) { swap(other); return *this; }
+		// ~soa()
 		// Destructor for Struct-Of-Arrays.
 		// Destructs all stored elements and frees held memory.
 		// Complexity: O(n).
-		~structofarrays() {
-			_structofarrays_base<Ts...>& base = *this;
+		~soa() {
+			_soa_base<Ts...>& base = *this;
 			base.destruct_range(0, this->mysize);
 			void* oldmem = this->data<0>();
 			if (oldmem) _soa_aligned_free(oldmem);
@@ -595,9 +596,9 @@ namespace hvh {
 		// swap(& rhs)
 		// Swaps the contents of this container with the other container.
 		// Complexity: O(1).
-		friend inline void swap(structofarrays<Ts...>& lhs, structofarrays<Ts...>& rhs) {
-			_structofarrays_base<Ts...>& lhsbase = lhs;
-			_structofarrays_base<Ts...>& rhsbase = rhs;
+		friend inline void swap(soa<Ts...>& lhs, soa<Ts...>& rhs) {
+			_soa_base<Ts...>& lhsbase = lhs;
+			_soa_base<Ts...>& rhsbase = rhs;
 			swap(lhsbase, rhsbase);
 		}
 
@@ -606,7 +607,7 @@ namespace hvh {
 		// Does not change capacity.
 		// Complexity: O(n).
 		inline void clear() {
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.destruct_range(0, this->mysize);
 			this->mysize = 0;
 		}
@@ -628,7 +629,7 @@ namespace hvh {
 			if (newsize <= this->mycapacity) return true;
 
 			// Remember the old memory so we can free it.
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			void* oldmem = this->data<0>();
 
 			// Allocate new memory.
@@ -659,7 +660,7 @@ namespace hvh {
 			if (newsize == this->mycapacity) return true;
 
 			// Remember the old memory so we can free it.
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			void* oldmem = this->data<0>();
 
 			if (newsize > 0) {
@@ -689,7 +690,7 @@ namespace hvh {
 		// Returns false if a memory allocation failure occurs in reserve, true otherwise.
 		// Complexity: O(n).
 		inline bool resize(size_t newsize) {
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			if (newsize > this->mysize) {
 				if (newsize > this->mycapacity) {
 					if (!reserve(newsize)) return false;
@@ -712,7 +713,7 @@ namespace hvh {
 		// Returns false if a memory allocation failure occurs in reserve, true otherwise.
 		// Complexity: O(n).
 		inline bool resize(size_t newsize, const Ts& ... initvals) {
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			if (newsize > this->mysize) {
 				if (newsize > this->mycapacity) {
 					if (!reserve(newsize)) return false;
@@ -736,7 +737,7 @@ namespace hvh {
 			if (this->mysize == this->mycapacity) {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.push_back(args...);
 			++this->mysize;
 			return true;
@@ -754,7 +755,7 @@ namespace hvh {
 			if (this->mysize == this->mycapacity) {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.emplace_back(args...);
 			++this->mysize;
 			return true;
@@ -769,7 +770,7 @@ namespace hvh {
 			if (this->mysize == this->mycapacity) {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.emplace_back_default();
 			++this->mysize;
 			return true;
@@ -786,7 +787,7 @@ namespace hvh {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
 			if (where > this->mysize) return false;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.insert(where, args...);
 			++this->mysize;
 			return true;
@@ -805,7 +806,7 @@ namespace hvh {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
 			if (where > this->mysize) return false;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.emplace(where, args...);
 			++this->mysize;
 			return true;
@@ -821,7 +822,7 @@ namespace hvh {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
 			if (where > this->mysize) return false;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.emplace_default(where);
 			++this->mysize;
 			return true;
@@ -832,7 +833,7 @@ namespace hvh {
 		// Complexity: O(1).
 		inline void pop_back() {
 			if (this->mysize == 0) return;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.pop_back();
 			--this->mysize;
 		}
@@ -843,7 +844,7 @@ namespace hvh {
 		// Complexity: O(1).
 		inline void erase_swap(size_t where) {
 			if (where >= this->mysize) return;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.erase_swap(where);
 			--this->mysize;
 		}
@@ -854,7 +855,7 @@ namespace hvh {
 		// Complexity: O(n).
 		inline void erase_shift(size_t where) {
 			if (where >= this->mysize) return;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.erase_shift(where);
 			--this->mysize;
 		}
@@ -864,7 +865,7 @@ namespace hvh {
 		// Complexity: O(1).
 		inline void swap_entries(size_t first, size_t second) {
 			if (first >= this->mysize || second >= this->mysize) return;
-			_structofarrays_base<Ts...>& base = *this;
+			_soa_base<Ts...>& base = *this;
 			base.swap_entries(first, second);
 		}
 
@@ -924,13 +925,13 @@ namespace hvh {
 
 	protected:
 		// Ban access to certain parent methods.
-		using _structofarrays_base<Ts...>::nullify;
-		using _structofarrays_base<Ts...>::divy_buffer;
-		using _structofarrays_base<Ts...>::construct_range;
-		using _structofarrays_base<Ts...>::destruct_range;
-		using _structofarrays_base<Ts...>::copy;
-		using _structofarrays_base<Ts...>::emplace_back_default;
-		using _structofarrays_base<Ts...>::emplace_default;
+		using _soa_base<Ts...>::nullify;
+		using _soa_base<Ts...>::divy_buffer;
+		using _soa_base<Ts...>::construct_range;
+		using _soa_base<Ts...>::destruct_range;
+		using _soa_base<Ts...>::copy;
+		using _soa_base<Ts...>::emplace_back_default;
+		using _soa_base<Ts...>::emplace_default;
 
 		template <typename T>
 		size_t quicksort(T* arr, size_t low, size_t high) {

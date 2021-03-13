@@ -1,70 +1,71 @@
-/* hashtable.hpp
+/* htable.hpp
  * A Hash Table implementation utilizing a Struct-Of-Arrays
  * by Haydn V. Harach
- * October 2019
+ * Created October 2019
+ * Modified March 2021
  *
  * By storing a lightweight hashmap alongside a struct-of-arrays, memory
  * efficiency is improved compared to a traditional hash table.
  * In addition, this table can store more than 1 item types.
  */
-#ifndef HVH_TOOLKIT_HASHTABLESOA_H
-#define HVH_TOOLKIT_HASHTABLESOA_H
+#ifndef HVH_TOOLS_HASHTABLESOA_H
+#define HVH_TOOLS_HASHTABLESOA_H
 
-#include "structofarrays.hpp"
+#include "soa.hpp"
 
 namespace hvh {
 
 	template <typename KeyT, typename... ItemTs>
-	class hashtable : public structofarrays<KeyT, ItemTs...> {
+	class htable : public soa<KeyT, ItemTs...> {
 	public:
 
-		// hashtable()
+		// htable()
 		// Default constructor for a hash table.
 		// Initial size, capacity, and hashmap size are 0.
 		// Complexity: O(1).
-		hashtable() {}
-		// hashtable(...)
+		htable() {}
+		// htable(...)
 		// Constructs a hash table using a list of tuples.
 		// Initializes the table with the entries from the list; the leftmost item is the key.
 		// Complexity: O(n).
-		hashtable(const std::initializer_list<std::tuple<KeyT, ItemTs...>>& initlist) {
+		htable(const std::initializer_list<std::tuple<KeyT, ItemTs...>>& initlist) {
 			reserve(initlist.size());
 			for (auto& entry : initlist) {
 				std::apply([=](const KeyT& key, const ItemTs& ... items) {this->insert(key, items...); }, entry);
 			}
 		}
-		// hashtable(&& rhs)
+		// htable(&& rhs)
 		// Move constructor for a hash table.
 		// Moves the entries from the rhs hash table into ourselves.
 		// Complexity: O(1).
-		hashtable(hashtable<KeyT, ItemTs...>&& other) { swap(*this, other); }
-		// hashtable(const& rhs)
+		htable(htable<KeyT, ItemTs...>&& other) { swap(*this, other); }
+		// htable(const& rhs)
 		// Copy constructor for a hash table.
 		// Initializes the hash table as a copy of rhs.
 		// Complexity: O(n).
-		hashtable(const hashtable<KeyT, ItemTs...>& other) {
+		htable(const htable<KeyT, ItemTs...>& other) {
 			reserve(other.capacity());
 			memcpy(hashmap, other.hashmap, sizeof(uint32_t) * hashcapacity);
-			_structofarrays_base<KeyT, ItemTs...>& base = *this;
-			const _structofarrays_base<KeyT, ItemTs...>& otherbase = other;
+			_soa_base<KeyT, ItemTs...>& base = *this;
+			const _soa_base<KeyT, ItemTs...>& otherbase = other;
 			base.copy(otherbase);
 		}
 		// operator = (&& rhs)
 		// Move-assignment operator for a hash table.
 		// Moves the entries from the rhs hash table into ourselves, replacing old contents.
 		// Complexity: O(1).
-		hashtable<KeyT, ItemTs...>& operator = (hashtable&& other) { swap(*this, other); return *this; }
+		htable<KeyT, ItemTs...>& operator = (htable&& other) { swap(*this, other); return *this; }
 		// operator = (& rhs)
 		// Copy-assignment operator for a hash table.
 		// Copies the entries from the rhs hash table into ourselves, replacing old contents.
 		// Complexity: O(n).
-		hashtable<KeyT, ItemTs...>& operator = (hashtable other) { swap(*this, other); return *this; }
-		// ~hashtable()
+		htable<KeyT, ItemTs...>& operator = (htable other) { swap(*this, other); return *this; }
+		// ~htable()
 		// Destructor for a hash table.
 		// Calls the destructor for all contained keys and items, then frees held memory.
 		// Complexity: O(n).
-		~hashtable() {
-			_structofarrays_base<KeyT, ItemTs...>& base = *this;
+		~htable() {
+			_soa_base<KeyT, ItemTs...>& base = *this;
 			base.destruct_range(0, this->mysize);
 			base.nullify();
 			this->mysize = 0;
@@ -73,24 +74,24 @@ namespace hvh {
 		}
 
 		// swap(lhs, rhs)
-		// swaps the contents of two hashtables.
+		// swaps the contents of two htables.
 		// Complexity: O(1).
-		friend inline void swap(hashtable<KeyT, ItemTs...>& lhs, hashtable<KeyT, ItemTs...>& rhs) {
+		friend inline void swap(htable<KeyT, ItemTs...>& lhs, htable<KeyT, ItemTs...>& rhs) {
 			std::swap(lhs.hashmap, rhs.hashmap);
 			std::swap(lhs.hashcapacity, rhs.hashcapacity);
 			std::swap(lhs.hashcursor, rhs.hashcursor);
-			structofarrays<KeyT, ItemTs...>& lhsbase = lhs;
-			structofarrays<KeyT, ItemTs...>& rhsbase = rhs;
+			soa<KeyT, ItemTs...>& lhsbase = lhs;
+			soa<KeyT, ItemTs...>& rhsbase = rhs;
 			swap(lhsbase, rhsbase);
 		}
 
 		// clear()
-		// Erases all entries from the hashtable, destructing all keys and items.
+		// Erases all entries from the htable, destructing all keys and items.
 		// The capacity of the hash table is unchanged.
 		// Complexity: O(n).
 		inline void clear() {
 			memset(hashmap, INDEXNUL, sizeof(uint32_t) * hashcapacity);
-			structofarrays<KeyT, ItemTs...>& base = *this;
+			soa<KeyT, ItemTs...>& base = *this;
 			base.clear();
 			hashcursor = SIZE_MAX;
 		}
@@ -138,22 +139,22 @@ namespace hvh {
 			// Hash capacity needs to be odd and just greater than double the list capacity,
 			// but it also needs to conform to 16-byte alignment.
 			hashcapacity = newsize + newsize + 4;
-			size_t hashtable_size = hashcapacity * sizeof(uint32_t);
+			size_t htable_size = hashcapacity * sizeof(uint32_t);
 			--hashcapacity;
 
 			// Remember the old memory so we can free it.
 			void* oldmem = hashmap;
 
 			// Allocate new memory.
-			_structofarrays_base<KeyT, ItemTs...>& base = *this;
-			void* alloc_result = _soa_aligned_malloc(16, (base.size_per_entry() * newsize) + hashtable_size);
+			_soa_base<KeyT, ItemTs...>& base = *this;
+			void* alloc_result = _soa_aligned_malloc(16, (base.size_per_entry() * newsize) + htable_size);
 			if (!alloc_result) return false;
 
 			hashmap = (uint32_t*)alloc_result;
 
 			// Copy the old data into the new memory.
 			this->mycapacity = newsize;
-			base.divy_buffer(((char*)alloc_result) + hashtable_size);
+			base.divy_buffer(((char*)alloc_result) + htable_size);
 
 			// Free the old memory.
 			if (oldmem) _soa_aligned_free(oldmem);
@@ -175,25 +176,25 @@ namespace hvh {
 			if (newsize == this->mycapacity) return true;
 
 			// Remember the old memory so we can free it.
-			_structofarrays_base<KeyT, ItemTs...>& base = *this;
+			_soa_base<KeyT, ItemTs...>& base = *this;
 			void* oldmem = hashmap;
 
 			if (newsize > 0) {
 				// Hash capacity needs to be odd and just greater than double the list capacity,
 				// but it also needs to conform to 16-byte memory alignment.
 				hashcapacity = newsize + newsize + 4;
-				size_t hashtable_size = hashcapacity * sizeof(uint32_t);
+				size_t htable_size = hashcapacity * sizeof(uint32_t);
 				--hashcapacity;
 
 				// Allocate new memory.
-				void* alloc_result = _soa_aligned_malloc(16, (base.size_per_entry() * newsize) + hashtable_size);
+				void* alloc_result = _soa_aligned_malloc(16, (base.size_per_entry() * newsize) + htable_size);
 				if (!alloc_result) return false;
 
 				hashmap = (uint32_t*)alloc_result;
 
 				// Copy the old data into the new memory.
 				this->mycapacity = newsize;
-				base.divy_buffer(((char*)alloc_result) + hashtable_size);
+				base.divy_buffer(((char*)alloc_result) + htable_size);
 			}
 			else {
 				base.nullify();
@@ -226,7 +227,7 @@ namespace hvh {
 				uint32_t index = hashmap[hash];
 				if (index == INDEXNUL || index == INDEXDEL) {
 					index = (uint32_t)this->mysize;
-					structofarrays<KeyT, ItemTs...>& base = *this;
+					soa<KeyT, ItemTs...>& base = *this;
 					base.push_back(key, std::forward<Ts>(items)...);
 					hashmap[hash] = index;
 					break;
@@ -254,7 +255,7 @@ namespace hvh {
 				uint32_t index = hashmap[hash];
 				if (index == INDEXNUL || index == INDEXDEL) {
 					index = (uint32_t)this->mysize;
-					structofarrays<KeyT, ItemTs...>& base = *this;
+					soa<KeyT, ItemTs...>& base = *this;
 					base.emplace_back(key, std::forward<CTypes>(cargs)...);
 					hashmap[hash] = index;
 					break;
@@ -275,7 +276,7 @@ namespace hvh {
 			if (this->mysize == this->mycapacity) {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
-			structofarrays<KeyT, ItemTs...>& base = *this;
+			soa<KeyT, ItemTs...>& base = *this;
 			size_t where = base.lower_bound_row<K>(key, items...);
 			base.insert(where, key, items...);
 			rehash();
@@ -362,7 +363,7 @@ namespace hvh {
 		// Complexity: O(1) amortized.
 		void swap_entries(size_t first, size_t second) {
 			// Swap the two entries.
-			structofarrays<KeyT, ItemTs...>& base = *this;
+			soa<KeyT, ItemTs...>& base = *this;
 			base.swap_entries(first, second);
 
 			// Find the hash position for the first entry.
@@ -411,7 +412,7 @@ namespace hvh {
 			if (hashcursor >= hashcapacity) return 0;
 			uint32_t index = hashmap[hashcursor];
 			if (index == INDEXNUL || index == INDEXDEL) return 0;
-			structofarrays<KeyT, ItemTs...>& base = *this;
+			soa<KeyT, ItemTs...>& base = *this;
 			base.erase_swap(index);
 			hashmap[hashcursor] = INDEXDEL;
 
@@ -465,7 +466,7 @@ namespace hvh {
 			if (hashcursor >= hashcapacity) return 0;
 			uint32_t index = hashmap[hashcursor];
 			if (index == INDEXNUL || index == INDEXDEL) return 0;
-			structofarrays<KeyT, ItemTs...>& base = *this;
+			soa<KeyT, ItemTs...>& base = *this;
 			base.erase_shift(index);
 			hashmap[hashcursor] = INDEXDEL;
 			rehash();
@@ -541,20 +542,20 @@ namespace hvh {
 		size_t hashcursor = SIZE_MAX;
 
 		// Ban certain inherited methods.
-	//	using structofarrays<KeyT, ItemTs...>::clear;
-	//	using structofarrays<KeyT, ItemTs...>::reserve;
-	//	using structofarrays<KeyT, ItemTs...>::shrink_to_fit;
-		using structofarrays<KeyT, ItemTs...>::resize;
-		using structofarrays<KeyT, ItemTs...>::push_back;
-		using structofarrays<KeyT, ItemTs...>::emplace_back;
-		using structofarrays<KeyT, ItemTs...>::pop_back;
-	//	using structofarrays<KeyT, ItemTs...>::insert;
-		using structofarrays<KeyT, ItemTs...>::erase_swap;
-		using structofarrays<KeyT, ItemTs...>::erase_shift;
-	//	using structofarrays<KeyT, ItemTs...>::swap;
-	//	using structofarrays<KeyT, ItemTs...>::swap_entries;
+	//	using soa<KeyT, ItemTs...>::clear;
+	//	using soa<KeyT, ItemTs...>::reserve;
+	//	using soa<KeyT, ItemTs...>::shrink_to_fit;
+		using soa<KeyT, ItemTs...>::resize;
+		using soa<KeyT, ItemTs...>::push_back;
+		using soa<KeyT, ItemTs...>::emplace_back;
+		using soa<KeyT, ItemTs...>::pop_back;
+	//	using soa<KeyT, ItemTs...>::insert;
+		using soa<KeyT, ItemTs...>::erase_swap;
+		using soa<KeyT, ItemTs...>::erase_shift;
+	//	using soa<KeyT, ItemTs...>::swap;
+	//	using soa<KeyT, ItemTs...>::swap_entries;
 	};
 
 } // namespace hvh
 
-#endif
+#endif // HVH_TOOLS_HASHTABLESOA_H

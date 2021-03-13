@@ -2,7 +2,6 @@
 
 #include <chrono>
 
-#include "tools/hashtable.hpp"
 #include "tools/rng.h"
 
 namespace {

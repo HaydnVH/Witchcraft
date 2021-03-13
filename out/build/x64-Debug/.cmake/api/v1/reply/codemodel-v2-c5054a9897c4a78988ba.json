@@ -42,14 +42,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-Debug-36981e2b7f6db32892b2.json",
+					"jsonFile" : "target-ALL_BUILD-Debug-38bcffa8d0d8e2eb52b8.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "Witchcraft::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Witchcraft-Debug-2e56d31793f524adb45d.json",
+					"jsonFile" : "target-Witchcraft-Debug-a05c4b6cdc81e052fc4b.json",
 					"name" : "Witchcraft",
 					"projectIndex" : 0
 				},

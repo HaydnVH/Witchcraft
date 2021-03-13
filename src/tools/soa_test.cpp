@@ -1,4 +1,4 @@
-#include "structofarrays.hpp"
+#include "soa.hpp"
 #include <string>
 using namespace std;
 
@@ -11,7 +11,7 @@ bool structofarrays_test() {
 	printf("Testing structofarrays...\n");
 
 	bool success = true;
-	hvh::structofarrays<int, string, short, double> soa;
+	hvh::soa<int, string, short, double> soa;
 	int* const& ints = soa.data<0>();
 	string* const& strings = soa.data<1>();
 	short* const& shorts = soa.data<2>();

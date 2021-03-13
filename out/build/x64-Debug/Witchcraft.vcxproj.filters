@@ -13,10 +13,10 @@
     <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\tools\hashtable_test.cpp">
+    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\tools\htable_test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\tools\structofarrays_test.cpp">
+    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\tools\soa_test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\tools\tests.cpp">
