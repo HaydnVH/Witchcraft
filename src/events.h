@@ -14,10 +14,10 @@ public:
 	~Event() = default;
 
 	// Subscribe to the event.
-	// Returns an ID which can be used to unsubscribe to the event.
+	// Returns an ID which can be used to unsubscribe from the event.
 	int Subscribe(std::function<void(Args...)> func) {
 		int my_id = next_id++;
-		subscribers.inserts(my_id, func);
+		subscribers.insert(my_id, func);
 		return my_id;
 	}
 
