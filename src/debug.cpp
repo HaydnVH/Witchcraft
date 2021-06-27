@@ -1,13 +1,9 @@
-#include "console.h"
+#include "debug.h"
 
 #ifdef _WIN32
 #include <Windows.h>
 #else
-#pragma error("console.cpp contains Win32 code which may need to be rewritten.")
-#endif
-
-#ifdef PLATFORM_SDL2
-#include <SDL.h>
+#pragma error("debug.cpp contains Win32 code which may need to be rewritten.")
 #endif
 
 #include "appconfig.h"
@@ -75,7 +71,7 @@ namespace {
 	constexpr const char* WAKEUP = "\x1b[6n";
 
 	// The main function for the console input thread.
-	void consoleInputThread() {
+	void terminalInputThread() {
 
 		// 'memory_buffer' remember all of the lines that we've previously input.
 		// It includes the line we're currently on, so it starts with 1 entry.
@@ -201,7 +197,7 @@ namespace {
 			//cout << "\n\x1b[u\x1b[1A\x1b[s";
 			// Print the user input.
 			if (myconfig.colorful) {
-				cout << _Console::USERCOLR << "$> " << _Console::CLEAR << echostr.c_str();
+				cout << debug::USERCOLR << "$> " << debug::CLEAR << echostr.c_str();
 			}
 			else {
 				cout << "$> " << echostr.c_str();
@@ -264,9 +260,9 @@ namespace {
 
 } // namespace <anon>
 
-_Console::_Console() {
+bool debug::Init() {
 	// Open the log file.
-	std::filesystem::path logpath = appconfig().user_path / LOG_FILENAME;
+	std::filesystem::path logpath = appconfig::getUserPath() / LOG_FILENAME;
 	logfile = fopen_w(logpath.c_str());
 
 #ifdef _WIN32
@@ -276,7 +272,7 @@ _Console::_Console() {
 	//	freopen("CONOUT$", "w", stdout);
 	//	freopen("CONOUT$", "w", stderr);
 
-		// We want both input and output to be UTF8.
+	// We want both input and output to be UTF8.
 	SetConsoleOutputCP(CP_UTF8);
 	SetConsoleCP(CP_UTF8);
 	// Get the handle for stdout and stdin.
@@ -306,7 +302,7 @@ _Console::_Console() {
 	cout << DECSC;
 
 	// Create the input thread, then wake it up.
-	console_input_thread = thread(consoleInputThread);
+	console_input_thread = thread(terminalInputThread);
 	cout << WAKEUP;
 
 	// If we tried to send messages before the console was initialized,
@@ -319,13 +315,14 @@ _Console::_Console() {
 
 	// Initialize lua hooks for the console.
 	initLua();
+	return true;
 }
 
-_Console::~_Console() {
+void debug::Shutdown() {
 	if (!logfile) return;
 	// Indicate that the input thread should stop looping.
 	inthread_running = false;
-	// Forces an input to be placed on the console input stream.
+	// Forces an input to be placed on the terminal input stream.
 	// This will wake up the thread which is waiting on stdin.
 	cout << WAKEUP;
 	// Wait until the thread is finished before continuing.
@@ -337,7 +334,7 @@ _Console::~_Console() {
 #endif
 }
 
-void _Console::_print(int severity, string_view color, string_view msg) {
+void debug::_print(int severity, string_view color, string_view msg) {
 
 	// If the console hasn't been initialized yet,
 	// we put this call on the preinit queue.
@@ -377,7 +374,7 @@ void _Console::_print(int severity, string_view color, string_view msg) {
 	}
 }
 
-bool _Console::popInput(string& result) {
+bool debug::popInput(string& result) {
 	queue_mutex.lock();
 	if (console_queue.empty()) {
 		queue_mutex.unlock();
@@ -391,12 +388,12 @@ bool _Console::popInput(string& result) {
 	}
 }
 
-void _Console::pushCrashReport(string_view msg) {
+void debug::pushCrashReport(string_view msg) {
 	crash_reports.push_back(msg.data());
 }
 
 #ifdef _WIN32
-bool _Console::showCrashReports() {
+bool debug::showCrashReports() {
 	for (auto& str : crash_reports) {
 		MessageBox(NULL, utf8_to_utf16(str).c_str(), L"Fatal Error", MB_ICONEXCLAMATION | MB_OK);
 	}

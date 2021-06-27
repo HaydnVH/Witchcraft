@@ -1,13 +1,12 @@
-///////////////////////////////////////////////////////////////////////////////
-// dxmathhelper.h
-// DirectXMath Helper
-// by Haydn V. Harach
-// October 2019
-//
-// This file provides a handful of types and functions which make using
-// the DirectX math library more convenient.  Using inline functions
-// and defines, any performance impact is minimized.
-///////////////////////////////////////////////////////////////////////////////
+/* dxmathhelper.h
+ * DirectXMath Helper
+ * by Haydn V. Harach
+ * Created October 2019
+ *
+ * This file provides a handful of types and functions which make using
+ * the DirectX math library more convenient.  Using inline functions
+ * and defines, any performance impact is minimized.
+ */
 #ifndef HVH_TOOLKIT_DXMATHHELPER_H
 #define HVH_TOOLKIT_DXMATHHELPER_H
 
@@ -17,9 +16,9 @@
 #include <cmath>
 #include <algorithm>
 
-///////////////////////////////////////////////////////////////////////////////
-// Packed floats
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Packed floats
+ *****************************************************************************/
 
 // Two floats packed together.
 typedef DirectX::XMFLOAT2 float2;
@@ -28,9 +27,9 @@ typedef DirectX::XMFLOAT3 float3;
 // Four floats packed together.
 typedef DirectX::XMFLOAT4 float4;
 
-///////////////////////////////////////////////////////////////////////////////
-// Half-float
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Half-float
+ *****************************************************************************/
 
 // 16-bit floating point value (half precision).
 typedef DirectX::PackedVector::HALF half;
@@ -39,9 +38,9 @@ typedef DirectX::PackedVector::HALF half;
 // Convert half to float.
 #define htof(h) DirectX::PackedVector::XMConvertHalfToFloat(h)
 
-///////////////////////////////////////////////////////////////////////////////
-// Vector
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Vector
+ *****************************************************************************/
 
 // SIMD vector type storing 4 floats.
 typedef DirectX::XMVECTOR vec4;
@@ -90,9 +89,9 @@ inline vec4 operator /= (vec4& l, float r) { l = DirectX::XMVectorDivide(l, vec4
 
 inline vec4 operator - (vec4 v) { return DirectX::XMVectorNegate(v); }
 
-///////////////////////////////////////////////////////////////////////////////
-// Quaternion
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Quaternion
+ *****************************************************************************/
 
 // SIMD vector type representing a quaternion.
 typedef DirectX::XMVECTOR quat;
@@ -119,9 +118,9 @@ typedef DirectX::XMVECTOR quat;
 // Get the conjugate (inverse) of a quaternion.
 #define quat_conjugate(q) DirectX::XMQuaternionConjugate(q)
 
-///////////////////////////////////////////////////////////////////////////////
-// Matrix
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Matrix
+ *****************************************************************************/
 
 // 4x4 matrix using made of four SIMD vectors.
 typedef DirectX::XMMATRIX mat4;
@@ -146,9 +145,9 @@ typedef DirectX::XMMATRIX mat4;
 // Decompose a matrix into scale, rotation, and translation.
 #define mat4_decompose(m,s,r,t) DirectX::XMMatrixDecompose(&s,&r,&t,m)
 
-///////////////////////////////////////////////////////////////////////////////
-// Normalized real numbers
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Normalized real numbers
+ *****************************************************************************/
 
 // An unsigned 8-bit integer used to represent a value between 0 and 1.
 typedef uint8_t unorm8;
@@ -170,9 +169,9 @@ typedef short norm16;
 inline norm16 norm16_set(float f) { return (norm16)(std::max((float)SHRT_MIN, std::min((float)SHRT_MAX, f * (float)SHRT_MAX))); }
 inline float norm16_get(norm16 n) { return (float)n / (float)SHRT_MAX; }
 
-///////////////////////////////////////////////////////////////////////////////
-// Constants
-///////////////////////////////////////////////////////////////////////////////
+/******************************************************************************
+ * Constants
+ *****************************************************************************/
 
 constexpr const float2 FLOAT2_ZERO = { 0.0f, 0.0f };
 constexpr const float2 FLOAT2_ONE = { 1.0f, 1.0f };

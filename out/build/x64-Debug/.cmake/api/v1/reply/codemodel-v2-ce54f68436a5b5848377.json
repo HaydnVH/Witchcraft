@@ -49,7 +49,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "Witchcraft::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Witchcraft-Debug-a05c4b6cdc81e052fc4b.json",
+					"jsonFile" : "target-Witchcraft-Debug-b5d5796a2644f0537db8.json",
 					"name" : "Witchcraft",
 					"projectIndex" : 0
 				},
@@ -72,6 +72,6 @@
 	"version" : 
 	{
 		"major" : 2,
-		"minor" : 1
+		"minor" : 2
 	}
 }

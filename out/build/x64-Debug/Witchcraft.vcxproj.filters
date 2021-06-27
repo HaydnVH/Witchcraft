@@ -4,13 +4,19 @@
     <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\appconfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\console.cpp">
+    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\debug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\ecs\entity.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\sys\renderer_d3d12.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\sys\window_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\Haydn\source\repos\Witchcraft\src\tools\htable_test.cpp">

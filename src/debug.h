@@ -1,16 +1,15 @@
-#ifndef HVH_WC_CONSOLE_H
-#define HVH_WC_CONSOLE_H
+#ifndef HVH_WC_DEBUG_H
+#define HVH_WC_DEBUG_H
 
 #include <string>
 #include "tools/stringhelper.h"
 
-class _Console {
-public:
+namespace debug {
 
 	static constexpr const char* LOG_FILENAME = "log.txt";
 	static constexpr const int SAVED_MESSAGE_SIZE = 256;
 
-	enum PrintlogSeverity
+	enum DebuglogSeverity
 	{
 		INFO = 1,
 		WARNING,
@@ -62,7 +61,11 @@ public:
 		return &buffer[0];
 	}
 
-	// Recieve a line of input that the user has entered into the console.
+	// Initialize the debug log/console.
+	bool Init();
+	void Shutdown();
+
+	// Recieve a line of input that the user has entered into the terminal.
 	bool popInput(std::string& out_msg);
 	// Push a message onto the queue of crash reports to be displayed in message boxes.
 	void pushCrashReport(std::string_view msg);
@@ -70,7 +73,7 @@ public:
 	bool showCrashReports();
 
 	// This version of print does all of the heavy lifting,
-	// Everything else is just a shortcut.
+	// Everything else is just to add flavor.
 	void _print(int severity, std::string_view color, std::string_view msg);
 
 	template <typename... Args>
@@ -134,14 +137,7 @@ public:
 		print(USER, "", args...);
 	}
 
-	static _Console& getSingleton() { static _Console instance; return instance; }
+}; // namespace debug
 
-private:
-	_Console();
-	~_Console();
 
-}; // _Console
-
-inline _Console& console() { return _Console::getSingleton(); }
-
-#endif // HVH_WC_CONSOLE_H
+#endif // HVH_WC_DEBUG_H
