@@ -2,7 +2,7 @@
 #define HVH_WC_EVENTS_H
 
 #include <functional>
-#include "tools/hashtable.hpp"
+#include "tools/htable.hpp"
 
 // Event class
 // Easily create events which can be subscribed to and unsubscribed from.
@@ -37,7 +37,7 @@ public:
 	}
 
 private:
-	hvh::hashtable<int, std::function<void(Args...)>> subscribers;
+	hvh::htable<int, std::function<void(Args...)>> subscribers;
 	int next_id = 0;
 };
 

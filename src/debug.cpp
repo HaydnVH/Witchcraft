@@ -1,5 +1,6 @@
 #include "debug.h"
 
+// While this system SHOULD work fine on linux, I haven't had a chance to play with it over there.
 #ifdef _WIN32
 #include <Windows.h>
 #else
@@ -239,17 +240,17 @@ namespace {
 					if (newval != myconfig.colorful) {
 						myconfig.modified = true;
 						myconfig.colorful = newval;
-						console::info("Value changed to ", newval ? "true" : "false", ".\n");
+						debug::info("Value changed to ", newval ? "true" : "false", ".\n");
 					}
-					else console::info("Value unchanged.\n");
+					else debug::info("Value unchanged.\n");
 				}
 				else return luaL_error(L, "Expected a boolean.\n");
 			}
 			else if ((strcmp(key, "allow_cheats") == 0) ||
-				(strcmp(key, "make_console") == 0))
+					 (strcmp(key, "make_console") == 0))
 			{
-				console::warning("This value cannot be modified from the console.\n");
-				console::warnmore("You'll have to modify config.json and restart.\n");
+				debug::warning("This value cannot be modified from the console.\n");
+				debug::warnmore("You'll have to modify config.json and restart.\n");
 			}
 			else { return luaL_error(L, "'", key, "' is not a config setting in 'console'.\n"); }
 			return 0;

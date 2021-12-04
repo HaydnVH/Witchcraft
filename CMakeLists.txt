@@ -12,14 +12,17 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(
 	-D_CRT_SECURE_NO_WARNINGS -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 	-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE
-	-DRENDERER_D3D12)
+	-DPLATFORM_SDL -DRENDERER_VULKAN)
 
-# Directories
+
+# Include directories
 include_directories ("src")
 include_directories ("dependencies/rapidjson-master/include")
+include_directories ("dependencies/SDL2-2.0.18-windows/include")
+link_directories    ("dependencies/SDL2-2.0.18-windows/lib/x64")
 
-# External library directories
-# Update as needed for your installation
+# Packages
+find_package (Vulkan REQUIRED)
 
 # Add source to this project's executable
 file (GLOB_RECURSE SOURCES
@@ -33,7 +36,15 @@ set_target_properties (Witchcraft PROPERTIES
 	VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
 # Linked libraries
-target_link_libraries (Witchcraft DXGI)
-target_link_libraries (Witchcraft d3d12)
+target_link_libraries (Witchcraft SDL2)
+target_link_libraries (Witchcraft SDL2main)
+
+
+#target_link_libraries (Witchcraft DXGI)
+#target_link_libraries (Witchcraft d3d12)
 
 # Move .dll over to wherever the .exe goes
+add_custom_command(TARGET Witchcraft POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	"${PROJECT_SOURCE_DIR}/dependencies/SDL2-2.0.18-windows/lib/x64/SDL2.dll"
+	$<TARGET_FILE_DIR:Witchcraft>)

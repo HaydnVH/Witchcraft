@@ -1,4 +1,5 @@
 #ifdef _WIN32
+#ifdef RENDERER_D3D12
 #include "window.h"
 
 #include <algorithm>
@@ -198,4 +199,5 @@ namespace window {
 
 }} // namespace sys::window
 
+#endif // RENDERER_D3D12
 #endif // _WIN32

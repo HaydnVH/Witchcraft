@@ -1,3 +1,15 @@
+/* debug.hpp
+ * This module manages debug output and CLI input.
+ * by Haydn V. Harach
+ * Created October 2019
+ * Edited December 2021
+ *
+ * All outputs can be written to file, or to the command line, or both.
+ * Uses its own thread so CLI inputs can be non-blocking and synchronous.
+ * Virtual terminal sequences are used for colors and formatting, documented here:
+ * https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+ * These codes should work on other platforms (untested).
+ */
 #ifndef HVH_WC_DEBUG_H
 #define HVH_WC_DEBUG_H
 
@@ -9,6 +21,8 @@ namespace debug {
 	static constexpr const char* LOG_FILENAME = "log.txt";
 	static constexpr const int SAVED_MESSAGE_SIZE = 256;
 
+	// The severity of a message.
+	// Verbosity settings allow the user to ignore messages below a given threshold.
 	enum DebuglogSeverity
 	{
 		INFO = 1,
@@ -19,6 +33,7 @@ namespace debug {
 		NEVER
 	};
 
+	// These constants are used to prefix messages.
 	static constexpr const char* INFOMARK = "INFO: ";
 	static constexpr const char* INFOMORE = "  -   ";
 	static constexpr const char* INFOCOLR = "\x1b[38;2;0;255;0m";
@@ -35,6 +50,7 @@ namespace debug {
 	static constexpr const char* USERMORE = " - ";
 	static constexpr const char* USERCOLR = "\x1b[38;2;0;255;255m";
 
+	// These constants are used to control color.
 	static constexpr const char* CLEAR =	"\x1b[0m";
 	static constexpr const char* UL =		"\x1b[4m";
 	static constexpr const char* NOUL =		"\x1b[24m";
@@ -55,6 +71,7 @@ namespace debug {
 	static constexpr const char* CYAN =		"\x1b[96m";
 	static constexpr const char* BRIGHT =	"\x1b[97m";
 
+	// Allows a user to create any color they want for their message.
 	inline const char* rgb(unsigned char r, unsigned char g, unsigned char b) {
 		static char buffer[24];
 		snprintf(buffer, 24, "\x1b[38;2;%u;%u;%um", r, g, b);
@@ -76,47 +93,56 @@ namespace debug {
 	// Everything else is just to add flavor.
 	void _print(int severity, std::string_view color, std::string_view msg);
 
+	// Print a message without decoration.
 	template <typename... Args>
 	inline void print(int severity, std::string_view color, const Args&... args) {
 		_print(severity, color, makestr(args...));
 	}
 
+	// Print an 'INFO' message.
 	template <typename... Args>
 	inline void info(const Args&... args) {
 		print(INFO, INFOCOLR, INFOMARK);
 		print(INFO, "", args...);
 	}
 
+	// Print additional 'INFO' information.
 	template <typename... Args>
 	inline void infomore(const Args&... args) {
 		print(INFO, INFOCOLR, INFOMORE);
 		print(INFO, "", args...);
 	}
 
+	// Print a 'WARN' message.
 	template <typename... Args>
 	inline void warning(const Args&... args) {
 		print(WARNING, WARNCOLR, WARNMARK);
 		print(INFO, "", args...);
 	}
 
+	// Print additional 'WARN' information.
 	template <typename... Args>
 	inline void warnmore(const Args&... args) {
 		print(WARNING, WARNCOLR, WARNMARK);
 		print(INFO, "", args...);
 	}
 
+	// Print an 'ERROR' message.
 	template <typename... Args>
 	inline void error(const Args&... args) {
 		print(ERROR, ERRCOLR, ERRMARK);
 		print(ERROR, "", args...);
 	}
 
+	// Print additional 'ERROR' information.
 	template <typename... Args>
 	inline void errmore(const Args&... args) {
 		print(ERROR, ERRCOLR, ERRMARK);
 		print(ERROR, "", args...);
 	}
 
+	// Print a 'FATAL' message.
+	// This will be pushed to the crash reports.
 	template <typename... Args>
 	inline void fatal(const Args&... args) {
 		std::string msg = makestr(args...);
@@ -125,12 +151,14 @@ namespace debug {
 		print(FATAL, "", msg);
 	}
 
+	// Print a 'USER' message.
 	template <typename... Args>
 	inline void user(const Args&... args) {
 		print(USER, USERCOLR, USERMARK);
 		print(USER, "", args...);
 	}
 
+	// Print additional 'USER' information.
 	template <typename... Args>
 	inline void usermore(const Args&... args) {
 		print(USER, USERCOLR, USERMORE);
