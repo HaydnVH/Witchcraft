@@ -6,6 +6,12 @@ using namespace std;
 #include "sys/window.h"
 #include "events.h"
 
+namespace {
+
+	bool running = true;
+
+} // namespace <anon>
+
 int startup() {
 	appconfig::Init();
 	debug::Init();
@@ -19,28 +25,39 @@ void shutdown() {
 	debug::showCrashReports(); debug::Shutdown();
 }
 
+void mainloop(bool handleWindowMessages = true) {
+
+	// Handle window messages.
+	if (handleWindowMessages) {
+		running = sys::window::HandleMessages();
+		if (!running) { return; }
+	}
+
+	// Handle terminal input.
+	std::string terminal_input;
+	while (debug::popInput(terminal_input)) {
+		debug::user(terminal_input, "\n");
+		// lua::runString(terminal_input.c_str(), "CONSOLE", "@Console");
+	}
+
+	// Run OnLogicalUpdate events.
+	events::earlyLogicalUpdate().Execute();
+	events::onLogicalUpdate().Execute();
+	events::lateLogicalUpdate().Execute();
+}
+
 int main(int argc, char* argv[]) {
 	// Initialize services and subsystems.
 	int result = startup();
 
-	// Handle the window's message pump as we enter the main loop.
+	// Enter the main loop.
 	if (result == 0) {
-		while (sys::window::HandleMessages())
-		{
-			// Handle terminal input.
-			std::string terminal_input;
-			while (debug::popInput(terminal_input)) {
-				debug::user(terminal_input, "\n");
-				//lua::runString(console_input.c_str(), "CONSOLE", "@Console");
-			}
-
-			events::earlyLogicalUpdate().Execute();
-			events::onLogicalUpdate().Execute();
-			events::lateLogicalUpdate().Execute();
-		}
-	}
+		while (running) {
+			mainloop(true);
+	}	}
 
 	// Shutdown services and subsystems.
 	shutdown();
 	return result;
 }
+

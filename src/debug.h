@@ -123,7 +123,7 @@ namespace debug {
 	// Print additional 'WARN' information.
 	template <typename... Args>
 	inline void warnmore(const Args&... args) {
-		print(WARNING, WARNCOLR, WARNMARK);
+		print(WARNING, WARNCOLR, WARNMORE);
 		print(INFO, "", args...);
 	}
 
@@ -137,7 +137,7 @@ namespace debug {
 	// Print additional 'ERROR' information.
 	template <typename... Args>
 	inline void errmore(const Args&... args) {
-		print(ERROR, ERRCOLR, ERRMARK);
+		print(ERROR, ERRCOLR, ERRMORE);
 		print(ERROR, "", args...);
 	}
 
