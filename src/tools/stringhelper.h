@@ -290,5 +290,20 @@ inline void strip_backslashes(std::string& str) {
 		if (c == '\\') c = '/';
 }	}
 
+inline std::string strip_ansi_colors(const char* in) {
+	std::string str = in;
+	for (size_t i = 0; str[i] != '\0'; ++i) {
+		if (str[i] == '\x1b') {
+			for (size_t j = i; str[j] != '\0'; ++j) {
+				if (str[j] == 'm') {
+					str.erase(i, (j - i)+1);
+					--i;
+					break;
+				}
+			}
+		}
+	}
+	return str;
+}
 
 #endif // HVH_WC_TOOLS_STRINGHELPER_H

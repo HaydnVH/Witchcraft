@@ -4,6 +4,7 @@ using namespace std;
 #include "appconfig.h"
 #include "debug.h"
 #include "sys/window.h"
+#include "lua/luasystem.h"
 #include "events.h"
 
 namespace {
@@ -15,6 +16,7 @@ namespace {
 int startup() {
 	appconfig::Init();
 	debug::Init();
+	lua::Init();
 	if (!sys::window::Init()) return 10;
 
 	return 0;
@@ -37,7 +39,7 @@ void mainloop(bool handleWindowMessages = true) {
 	std::string terminal_input;
 	while (debug::popInput(terminal_input)) {
 		debug::user(terminal_input, "\n");
-		// lua::runString(terminal_input.c_str(), "CONSOLE", "@Console");
+		lua::RunString(terminal_input.c_str(), nullptr);// , "CONSOLE", "@Console");
 	}
 
 	// Run OnLogicalUpdate events.

@@ -4,6 +4,7 @@
 #include <SDL_vulkan.h>
 
 #include "appconfig.h"
+#include "debug.h"
 
 namespace {
 
@@ -20,13 +21,23 @@ namespace window {
 			appconfig::getAppName().c_str(),
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			800, 600,
-			SDL_WINDOW_VULKAN
+			0 //SDL_WINDOW_VULKAN
 		);
+		if (_window == nullptr) {
+			debug::error("In sys::window::Init():\n");
+			debug::errmore("Faild to create window.\n");
+			return false;
+		}
+
+		debug::info("Window opened.\n");
+		debug::infomore("800 x 600\n");
 		return true;
 	}
 
 	void Shutdown() {
-		SDL_DestroyWindow(_window);
+		if (_window) {
+			SDL_DestroyWindow(_window);
+		}
 	}
 
 	bool HandleMessages() {

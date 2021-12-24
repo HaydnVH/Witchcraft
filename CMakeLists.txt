@@ -20,6 +20,8 @@ include_directories ("src")
 include_directories ("dependencies/rapidjson-master/include")
 include_directories ("dependencies/SDL2-2.0.18-windows/include")
 link_directories    ("dependencies/SDL2-2.0.18-windows/lib/x64")
+include_directories	("dependencies/luaJIT-2.1.0-beta3/src")
+link_directories	("dependencies/luaJIT-2.1.0-beta3/src")
 
 # Packages
 find_package (Vulkan REQUIRED)
@@ -30,6 +32,7 @@ file (GLOB_RECURSE SOURCES
 	src/ecs/*.cpp
 	src/ecs/components/*.cpp
 	src/ecs/systems/*.cpp
+	src/lua/*.cpp
 	src/sys/*.cpp)
 add_executable (Witchcraft ${SOURCES})
 set_target_properties (Witchcraft PROPERTIES
@@ -38,6 +41,7 @@ set_target_properties (Witchcraft PROPERTIES
 # Linked libraries
 target_link_libraries (Witchcraft SDL2)
 target_link_libraries (Witchcraft SDL2main)
+target_link_libraries (Witchcraft lua51)
 
 
 #target_link_libraries (Witchcraft DXGI)
@@ -47,4 +51,9 @@ target_link_libraries (Witchcraft SDL2main)
 add_custom_command(TARGET Witchcraft POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 	"${PROJECT_SOURCE_DIR}/dependencies/SDL2-2.0.18-windows/lib/x64/SDL2.dll"
+	$<TARGET_FILE_DIR:Witchcraft>)
+
+add_custom_command(TARGET Witchcraft POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	"${PROJECT_SOURCE_DIR}/dependencies/luaJIT-2.1.0-beta3/src/lua51.dll"
 	$<TARGET_FILE_DIR:Witchcraft>)

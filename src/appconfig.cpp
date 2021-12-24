@@ -1,8 +1,10 @@
 #include "appconfig.h"
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <Shlobj.h>
+#ifdef PLATFORM_WIN32
+  #include <Windows.h>
+  #include <Shlobj.h>
+#elif PLATFORM_SDL
+  #include <SDL.h>
 #endif
 
 #include <rapidjson/document.h>
@@ -81,7 +83,7 @@ namespace appconfig {
 			should_write_file = true;
 		}
 		else {
-			vector<char> buffer(10240);
+			vector<char> buffer(16384);
 			FileReadStream stream(file, buffer.data(), buffer.size());
 
 			Document doc;
@@ -113,9 +115,9 @@ namespace appconfig {
 
 		// Create and obtain the user directory using the information we fetched from appconfig.
 		{
-#ifdef _WIN32
+#ifdef PLATFORM_WIN32
 			PWSTR str;
-			HRESULT result = SHGetKnownFolderPath(FOLDERID_Documents, KF_FLAG_CREATE, NULL, &str);
+			HRESULT result = SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_CREATE, NULL, &str);
 			user_path = filesystem::path(str);
 			user_path = user_path / company_name / name;
 			error_code ec;
@@ -123,7 +125,13 @@ namespace appconfig {
 			user_dir = user_path.u8string();
 			strip_backslashes(user_dir);
 			CoTaskMemFree(str);
-#endif // _WIN32
+#elif PLATFORM_SDL
+			char* prefpath = SDL_GetPrefPath(company_name.c_str(), name.c_str());
+			user_dir = prefpath;
+			user_path = filesystem::u8path(user_dir);
+			strip_backslashes(user_dir);
+			SDL_free(prefpath);
+#endif
 		}
 
 		// If we failed to load any information, we had to create that data from scratch,

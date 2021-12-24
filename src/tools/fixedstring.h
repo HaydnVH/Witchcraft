@@ -69,6 +69,7 @@ struct fixedstring {
 };
 
 // Specialization so we can use fixedstring with std::hash.
+// TODO: Better hash function?
 namespace std {
 	template <size_t LEN>
 	struct hash<fixedstring<LEN>> {

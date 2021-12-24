@@ -18,6 +18,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <regex>
 using namespace std;
 
 #include "tools/fixedstring.h"
@@ -265,6 +266,9 @@ bool debug::Init() {
 	// Open the log file.
 	std::filesystem::path logpath = appconfig::getUserPath() / LOG_FILENAME;
 	logfile = fopen_w(logpath.c_str());
+	if (!logfile) {
+		debug::error("Failed to open debug log file for writing.\n");
+	}
 
 #ifdef _WIN32
 
@@ -352,6 +356,7 @@ void debug::_print(int severity, string_view color, string_view msg) {
 
 	// TODO: Strip tags from the message being printed.
 
+
 	if (myconfig.make_console && (severity > myconfig.stdout_sensitivity)) {
 		console_mutex.lock();
 		// Restore the cursor position to where we last output.
@@ -371,7 +376,8 @@ void debug::_print(int severity, string_view color, string_view msg) {
 	}
 
 	if (logfile && (severity > myconfig.logfile_sensitivity)) {
-		fprintf(logfile, msg.data());
+		string stripped = strip_ansi_colors(msg.data());
+		fprintf(logfile, stripped.c_str());
 	}
 }
 
