@@ -31,16 +31,15 @@ namespace {
 	FILE* logfile = nullptr;
 	vector<string> crash_reports;
 	queue<string> console_queue;
-	queue<tuple<int, string, string>> preinit_queue;
+	queue<tuple<int, string>> preinit_queue;
 	mutex queue_mutex;
 
 	string last_message = "";
 
 	struct {
-		int stdout_sensitivity = 0;
-		int logfile_sensitivity = 0;
-		int console_sensitivity = 0;
-		bool colorful = true;
+		int stdout_filter = debug::EVERYTHING;
+		int logfile_filter = debug::EVERYTHING;
+		int console_filter = debug::EVERYTHING;
 		bool make_console = true;
 		bool allow_cheats = true;
 		bool modified = false;
@@ -198,12 +197,12 @@ namespace {
 			// Print a newline, restore the cursor position, move the cursor up by 1, and then save the cursor position.
 			//cout << "\n\x1b[u\x1b[1A\x1b[s";
 			// Print the user input.
-			if (myconfig.colorful) {
+			//if (myconfig.colorful) {
 				cout << debug::USERCOLR << "$> " << debug::CLEAR << echostr.c_str();
-			}
-			else {
-				cout << "$> " << echostr.c_str();
-			}
+			//}
+			//else {
+			//	cout << "$> " << echostr.c_str();
+			//}
 			// Move the cursor so it appears where our input is.
 			int cursor_dif = (int)input_buffer->size() - input_cursor;
 			if (cursor_dif > 0) {
@@ -315,7 +314,7 @@ bool debug::Init() {
 	while (!preinit_queue.empty()) {
 		auto& entry = preinit_queue.front();
 		preinit_queue.pop();
-		print(get<0>(entry), get<1>(entry).c_str(), get<2>(entry));
+		print(get<0>(entry), get<1>(entry).c_str());
 	}
 
 	// Initialize lua hooks for the console.
@@ -339,16 +338,16 @@ void debug::Shutdown() {
 #endif
 }
 
-void debug::_print(int severity, string_view color, string_view msg) {
+void debug::_print(int severity, const string& msg) {
 
 	// If the console hasn't been initialized yet,
 	// we put this call on the preinit queue.
 	if (!logfile) {
-		preinit_queue.push({severity, color.data(), msg.data()});
+		preinit_queue.push({severity, msg.data()});
 		return;
 	}
 
-	if (color.size() == 0 && severity != USER) {
+	if (severity != USER) {
 		// Check for repeated messages so we don't spam the console.
 		if (last_message == msg) return;
 		else last_message = msg;
@@ -357,14 +356,13 @@ void debug::_print(int severity, string_view color, string_view msg) {
 	// TODO: Strip tags from the message being printed.
 
 
-	if (myconfig.make_console && (severity > myconfig.stdout_sensitivity)) {
+	if (myconfig.make_console && (severity & myconfig.stdout_filter)) {
 		console_mutex.lock();
 		// Restore the cursor position to where we last output.
 		cout << DECSR;
 		// Clear the console after the current position.
 		cout << ED;
 		// Print the message.
-		if (color.size() > 0 && myconfig.colorful) { cout << color; }
 		cout << msg;
 		cout << CLEAR;
 		// Save the cursor position.
@@ -375,8 +373,9 @@ void debug::_print(int severity, string_view color, string_view msg) {
 		console_mutex.unlock();
 	}
 
-	if (logfile && (severity > myconfig.logfile_sensitivity)) {
-		string stripped = strip_ansi_colors(msg.data());
+	if (logfile && (severity & myconfig.logfile_filter)) {
+		string stripped = msg;
+		strip_ansi_colors(stripped);
 		fprintf(logfile, stripped.c_str());
 	}
 }

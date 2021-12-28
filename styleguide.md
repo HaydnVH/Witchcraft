@@ -18,7 +18,7 @@
 - Don't use `std::u8string`; assume that add `std::string` objects are UTF-8.
 - String literals which contain unicode should start with the `u8` prefix to ensure it's endoded as UTF-8.
 - An array of `char` is just bytes; use `char8_t` to denote a c-style string.
-- Use `std::string_view` if you need a read-only string parameter so you have full string functionality and never allocate/copy data.
+- Avoid string_view! .data() does not neccesarily provide a null-terminated string, so using it to interact with any library that expects a const char* is a mistake.
 
 ## Running code outside main
 - In C++, the constructor of a global variable will run before `main`.  This behavior should be use very sparingly.

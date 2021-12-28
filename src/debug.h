@@ -22,15 +22,15 @@ namespace debug {
 	static constexpr const int SAVED_MESSAGE_SIZE = 256;
 
 	// The severity of a message.
-	// Verbosity settings allow the user to ignore messages below a given threshold.
-	enum DebuglogSeverity
+	// Verbosity settings allow the user to ignore a given type of message.
+	enum DebuglogSeverityFlags
 	{
-		INFO = 1,
-		WARNING,
-		ERROR,
-		FATAL,
-		USER,
-		NEVER
+		INFO = 1 << 0,
+		WARNING = 1 << 1,
+		ERROR = 1 << 2,
+		FATAL = 1 << 3,
+		USER = 1 << 4,
+		EVERYTHING = INFO | WARNING | ERROR | FATAL | USER
 	};
 
 	// These constants are used to prefix messages.
@@ -91,12 +91,12 @@ namespace debug {
 
 	// This version of print does all of the heavy lifting,
 	// Everything else is just to add flavor.
-	void _print(int severity, std::string_view color, std::string_view msg);
+	void _print(int severity, const std::string& msg);
 
 	// Print a message without decoration.
 	template <typename... Args>
-	inline void print(int severity, std::string_view color, const Args&... args) {
-		_print(severity, color, makestr(args...));
+	inline void print(int severity, const Args&... args) {
+		_print(severity, makestr(args...));
 	}
 
 	// Print an 'INFO' message.
