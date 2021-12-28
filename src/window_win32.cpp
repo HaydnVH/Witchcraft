@@ -71,7 +71,6 @@ namespace {
 
 }; // namespace <anon>
 
-namespace sys {
 namespace window {
 
 	bool Init() {
@@ -197,7 +196,7 @@ namespace window {
 	void getWindowSize(int& w, int& h) {}
 	void getDrawableSize(int& w, int& h) {}
 
-}} // namespace sys::window
+} // namespace window
 
 #endif // RENDERER_D3D12
 #endif // _WIN32

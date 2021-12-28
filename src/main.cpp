@@ -3,7 +3,7 @@ using namespace std;
 
 #include "appconfig.h"
 #include "debug.h"
-#include "sys/window.h"
+#include "window.h"
 #include "lua/luasystem.h"
 #include "events.h"
 
@@ -17,13 +17,13 @@ int startup() {
 	appconfig::Init();
 	debug::Init();
 	lua::Init();
-	if (!sys::window::Init()) return 10;
+	if (!window::Init()) return 10;
 
 	return 0;
 }
 
 void shutdown() {
-	sys::window::Shutdown();
+	window::Shutdown();
 	debug::showCrashReports(); debug::Shutdown();
 }
 
@@ -31,7 +31,7 @@ void mainloop(bool handleWindowMessages = true) {
 
 	// Handle window messages.
 	if (handleWindowMessages) {
-		running = sys::window::HandleMessages();
+		running = window::HandleMessages();
 		if (!running) { return; }
 	}
 

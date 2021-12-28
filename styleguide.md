@@ -18,13 +18,14 @@
 - Don't use `std::u8string`; assume that add `std::string` objects are UTF-8.
 - String literals which contain unicode should start with the `u8` prefix to ensure it's endoded as UTF-8.
 - An array of `char` is just bytes; use `char8_t` to denote a c-style string.
-- Avoid string_view! .data() does not neccesarily provide a null-terminated string, so using it to interact with any library that expects a const char* is a mistake.
+- Avoid std::string_view! .data() does not neccesarily provide a null-terminated string, so using it to interact with any library that expects a const char* is a mistake.
+- std::string_view should be used ONLY in situations where you need to break up a string into parts without modifying the original string.
 
 ## Running code outside main
-- In C++, the constructor of a global variable will run before `main`.  This behavior should be use very sparingly.
+- In C++, the constructor of a global variable will run before `main`.  This behavior should be use *extremely* sparingly.
 - Code which will be used by other code during static initialization should be put inside the constructor of a static variable inside a function; this is the Initialization On First Use paradigm.
 - Code which should "call itself" should be in the constructor of an ordinary global variable, so long as this code is never called by other static initialization code.
-- As much as possible, code should be initialized and cleaned up within `main`.
+- *As much as possible, code should be initialized and cleaned up within `main`*.
 - ALWAYS be aware that the initialization order of ordinary global variables is UNDEFINED across compilation units! If this matters, wrap the variable in a function!
 
 ## Other
