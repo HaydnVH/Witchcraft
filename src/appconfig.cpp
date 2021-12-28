@@ -16,6 +16,7 @@ using namespace rapidjson;
 #include "tools/stringhelper.h"
 using namespace std;
 
+namespace wc {
 namespace appconfig {
 
 	static string name = "Witchcraft Project";
@@ -154,4 +155,4 @@ namespace appconfig {
 		return true;
 	}
 
-} // namespace::appconfig
+}} // namespace wc::appconfig

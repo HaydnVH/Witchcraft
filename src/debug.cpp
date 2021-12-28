@@ -7,8 +7,6 @@
 #pragma error("debug.cpp contains Win32 code which may need to be rewritten.")
 #endif
 
-#include "appconfig.h"
-
 #include <filesystem>
 #include <iostream>
 #include <fstream>
@@ -261,9 +259,9 @@ namespace {
 
 } // namespace <anon>
 
-bool debug::Init() {
+bool debug::Init(const char* userpath_utf8) {
 	// Open the log file.
-	std::filesystem::path logpath = appconfig::getUserPath() / LOG_FILENAME;
+	std::filesystem::path logpath = std::filesystem::u8path(userpath_utf8) / LOG_FILENAME;
 	logfile = fopen_w(logpath.c_str());
 	if (!logfile) {
 		debug::error("Failed to open debug log file for writing.\n");

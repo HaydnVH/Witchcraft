@@ -79,7 +79,8 @@ namespace debug {
 	}
 
 	// Initialize the debug log/console.
-	bool Init();
+	// userpath_utf8: The utf-8 encoded path where log.txt should be placed.
+	bool Init(const char* userpath_utf8);
 	void Shutdown();
 
 	// Recieve a line of input that the user has entered into the terminal.

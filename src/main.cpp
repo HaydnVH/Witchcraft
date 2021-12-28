@@ -1,52 +1,70 @@
+#include "main.h"
+
 #include <iostream>
 using namespace std;
 
 #include "appconfig.h"
 #include "debug.h"
 #include "window.h"
-#include "lua/luasystem.h"
 #include "events.h"
+#include "lua/luasystem.h"
 
 namespace {
+	
+	// Initialize subsystems.
+	int startup() {
+		wc::appconfig::Init();
+		debug::Init(wc::appconfig::getUserDir().c_str());
+		lua::Init();
+		if (!wc::window::Init()) return 10;
+
+		return 0;
+	}
+
+	// Shut down subsystems.
+	void shutdown() {
+		wc::window::Shutdown();
+		debug::showCrashReports(); debug::Shutdown();
+	}
 
 	bool running = true;
 
 } // namespace <anon>
 
-int startup() {
-	appconfig::Init();
-	debug::Init();
-	lua::Init();
-	if (!window::Init()) return 10;
+namespace wc {
 
-	return 0;
-}
-
-void shutdown() {
-	window::Shutdown();
-	debug::showCrashReports(); debug::Shutdown();
-}
-
-void mainloop(bool handleWindowMessages = true) {
-
-	// Handle window messages.
-	if (handleWindowMessages) {
-		running = window::HandleMessages();
-		if (!running) { return; }
+	void stop() {
+		running = false;
 	}
 
-	// Handle terminal input.
-	std::string terminal_input;
-	while (debug::popInput(terminal_input)) {
-		debug::user(terminal_input, "\n");
-		lua::RunString(terminal_input.c_str(), nullptr);// , "CONSOLE", "@Console");
+	void mainloop(bool handleWindowMessages) {
+
+		// Handle window messages.
+		if (handleWindowMessages) {
+			running = window::HandleMessages();
+			if (!running) { return; }
+		}
+
+		// Handle terminal input.
+		std::string terminal_input;
+		while (debug::popInput(terminal_input)) {
+			debug::user(terminal_input, "\n");
+			lua::RunString(terminal_input.c_str(), nullptr);// , "CONSOLE", "@Console");
+		}
+
+		// Run OnLogicalUpdate events.
+		events::earlyLogicalUpdate().Execute();
+		events::onLogicalUpdate().Execute();
+		events::lateLogicalUpdate().Execute();
 	}
 
-	// Run OnLogicalUpdate events.
-	events::earlyLogicalUpdate().Execute();
-	events::onLogicalUpdate().Execute();
-	events::lateLogicalUpdate().Execute();
-}
+
+}; // namespace wc
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Main entry point into the program.
+///////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
 	// Initialize services and subsystems.
@@ -55,7 +73,7 @@ int main(int argc, char* argv[]) {
 	// Enter the main loop.
 	if (result == 0) {
 		while (running) {
-			mainloop(true);
+			wc::mainloop(true);
 	}	}
 
 	// Shutdown services and subsystems.

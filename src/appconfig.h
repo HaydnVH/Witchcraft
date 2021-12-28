@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <string>
 
+namespace wc {
 namespace appconfig {
 
 	std::string getAppName();
@@ -27,6 +28,7 @@ namespace appconfig {
 	constexpr static const char* APPCONFIG_FILENAME = "appconfig.json";
 
 	bool Init();
-};
+
+}}; // namespace wc::appconfig
 
 #endif // HVH_WC_APPCONFIG_H
