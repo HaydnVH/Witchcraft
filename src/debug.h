@@ -1,4 +1,4 @@
-/* debug.hpp
+/* debug.h
  * This module manages debug output and CLI input.
  * by Haydn V. Harach
  * Created October 2019

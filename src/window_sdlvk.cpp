@@ -21,11 +21,11 @@ namespace window {
 			appconfig::getAppName().c_str(),
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			800, 600,
-			0 //SDL_WINDOW_VULKAN
+			SDL_WINDOW_VULKAN
 		);
 		if (_window == nullptr) {
-			debug::error("In sys::window::Init():\n");
-			debug::errmore("Faild to create window.\n");
+			debug::fatal("In sys::window::Init():\n");
+			debug::errmore("Failed to create window.\n");
 			return false;
 		}
 
