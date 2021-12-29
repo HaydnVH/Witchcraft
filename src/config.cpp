@@ -8,6 +8,7 @@ using namespace rapidjson;
 
 #include <filesystem>
 #include "tools/crossplatform.h"
+#include "debug.h"
 
 namespace wc {
 namespace config {
@@ -18,7 +19,7 @@ namespace config {
 		Document doc;
 
 	} // namespace <anon>
-
+	/*
 	bool Init(const char* userpath_utf8) {
 		// Open the config file.
 		std::filesystem::path logpath = std::filesystem::u8path(userpath_utf8) / CONFIG_FILENAME;
@@ -41,7 +42,7 @@ namespace config {
 		}
 	
 	}
-
+	*/
 
 
 }} // namespace wc::config

@@ -1,12 +1,12 @@
 ﻿# CMakeList.txt : CMake project for Witchcraft, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.16)
 
 project ("Witchcraft")
 
 # Standards and defines
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(
@@ -29,6 +29,7 @@ find_package (Vulkan REQUIRED)
 # Add source to this project's executable
 file (GLOB_RECURSE SOURCES
 	src/*.cpp
+	src/*.ixx
 	src/ecs/*.cpp
 	src/ecs/components/*.cpp
 	src/ecs/systems/*.cpp
@@ -38,11 +39,17 @@ add_executable (Witchcraft ${SOURCES})
 set_target_properties (Witchcraft PROPERTIES
 	VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
+# Moduleness?
+target_compile_features(Witchcraft PUBLIC cxx_std_20)
+get_target_property(TARGET_SOURCES Witchcraft SOURCES)
+list(FILTER TARGET_SOURCES INCLUDE REGEX "(.ixx|.cppm)$")
+message("Interface units: ${TARGET_SOURCES}")
+set_source_files_properties(${TARGET_SOURCES} PROPERTIES VS_TOOL_OVERRIDE "ClCompile")
+
 # Linked libraries
 target_link_libraries (Witchcraft SDL2)
 target_link_libraries (Witchcraft SDL2main)
 target_link_libraries (Witchcraft lua51)
-
 
 #target_link_libraries (Witchcraft DXGI)
 #target_link_libraries (Witchcraft d3d12)

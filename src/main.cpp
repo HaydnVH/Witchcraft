@@ -3,7 +3,8 @@
 #include <iostream>
 using namespace std;
 
-#include "appconfig.h"
+//#include "appconfig.h"
+import appconfig;
 #include "debug.h"
 #include "window.h"
 #include "events.h"

@@ -20,7 +20,7 @@ namespace config {
 	void setModified();
 
 	// Gets the part of the config pertaining to a particular subsystem.
-	rapidjson::GenericObject* getSubconfig(const char* name);
+	//rapidjson::GenericObject* getSubconfig(const char* name);
 
 }} // namespace wc::config
 

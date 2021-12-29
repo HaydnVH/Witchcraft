@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
-#include "appconfig.h"
+import appconfig;
 #include "debug.h"
 
 namespace {

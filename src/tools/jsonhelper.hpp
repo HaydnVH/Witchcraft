@@ -38,12 +38,12 @@ public:
 
 	template<typename T>
 	bool FollowPath(const T& path) {
-		return _followPath(path)
+		return _followPath(path);
 	}
 
 	template<typename T, typename... Ts>
 	bool FollowPath(const T& firstPath, T& restPaths) {
-		if (!_followPath(path)) return false;
+		if (!_followPath(firstPath)) return false;
 		FollowPath(restPaths...);
 	}
 
