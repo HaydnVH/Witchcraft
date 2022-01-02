@@ -13,6 +13,8 @@
 #include <rapidjson/prettywriter.h>
 using namespace rapidjson;
 
+#include <fstream>
+#include <sstream>
 #include "tools/stringhelper.h"
 using namespace std;
 
@@ -20,13 +22,13 @@ namespace wc {
 namespace appconfig {
 
 	static string name = "Witchcraft Project";
-	string getAppName() { return name; }
+	const string& getAppName() { return name; }
 
 	static string company_name = "hvh";
-	string getCompanyName() { return company_name; }
+	const string& getCompanyName() { return company_name; }
 
 	static string version_string = "0.0.0";
-	string getVerString() { return version_string; }
+	const string& getVerString() { return version_string; }
 
 	static int major_ver = 0;
 	int appconfig::getMajorVer() { return major_ver; }
@@ -38,10 +40,10 @@ namespace appconfig {
 	int appconfig::getPatchVer() { return patch_ver; }
 
 	static string engine_name = "Witchcraft";
-	string getEngineName() { return engine_name; }
+	const string& getEngineName() { return engine_name; }
 
-	static string engine_version_string = "0.12.0";
-	string getEngineVerString() { return engine_version_string; }
+	static string engine_version_string = "0.12.1";
+	const string& getEngineVerString() { return engine_version_string; }
 
 	static int engine_major_ver = 0;
 	int getEngineMajorVer() { return engine_major_ver; }
@@ -49,20 +51,20 @@ namespace appconfig {
 	static int engine_minor_ver = 12;
 	int getEngineMinorVer() { return engine_minor_ver; }
 
-	static int engine_patch_ver = 0;
+	static int engine_patch_ver = 1;
 	int getEnginePatchVer() { return engine_patch_ver; }
 
 	static string install_dir;
-	string getInstallDir() { return install_dir; }
+	const string& getInstallDir() { return install_dir; }
 
 	static string user_dir;
-	string getUserDir() { return user_dir; }
+	const string& getUserDir() { return user_dir; }
 
 	static filesystem::path install_path;
-	filesystem::path getInstallPath() { return install_path; }
+	const filesystem::path& getInstallPath() { return install_path; }
 
 	static filesystem::path user_path;
-	filesystem::path getUserPath() { return user_path; }
+	const filesystem::path& getUserPath() { return user_path; }
 
 	//////////////////////////////////////////////////////////////////////////////
 
@@ -79,16 +81,15 @@ namespace appconfig {
 
 		// Here we attempt to open up appconfig.json.
 		string filepath = makestr(install_dir, APPCONFIG_FILENAME);
-		FILE* file = fopen(filepath.c_str(), "rb");
-		if (!file) {
+		ifstream infile(filepath, ios::in | ios::binary);
+		if (!infile.is_open()) {
 			should_write_file = true;
 		}
 		else {
-			vector<char> buffer(16384);
-			FileReadStream stream(file, buffer.data(), buffer.size());
-
+			stringstream ss;
+			ss << infile.rdbuf();
 			Document doc;
-			doc.ParseStream<0, UTF8<>, FileReadStream>(stream);
+			doc.Parse(ss.str().c_str());
 			if (doc.HasParseError() || !doc.IsObject()) {
 				should_write_file = true;
 			}
@@ -110,8 +111,6 @@ namespace appconfig {
 				}
 				else { should_write_file = true; }
 			}
-			fclose(file);
-			file = nullptr;
 		}
 
 		// Create and obtain the user directory using the information we fetched from appconfig.
@@ -144,12 +143,13 @@ namespace appconfig {
 			doc.AddMember(Value("company name", doc.GetAllocator()).Move(), Value(company_name.c_str(), doc.GetAllocator()).Move(), doc.GetAllocator());
 			doc.AddMember(Value("version", doc.GetAllocator()).Move(), Value(version_string.c_str(), doc.GetAllocator()).Move(), doc.GetAllocator());
 
-			file = fopen(filepath.c_str(), "wb");
-			vector<char> buffer(10240);
-			FileWriteStream stream(file, buffer.data(), buffer.size());
-			PrettyWriter<FileWriteStream> writer(stream);
-			doc.Accept(writer);
-			fclose(file);
+			ofstream outfile(filepath, ios::out | ios::binary);
+			if (outfile.is_open()) {
+				StringBuffer buffer;
+				PrettyWriter writer(buffer);
+				doc.Accept(writer);
+				outfile << buffer.GetString();
+			}
 		}
 
 		return true;

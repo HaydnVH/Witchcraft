@@ -15,7 +15,7 @@ namespace {
 	int startup() {
 		wc::appconfig::Init();
 		debug::Init(wc::appconfig::getUserDir().c_str());
-		lua::Init();
+		wc::lua::Init();
 		if (!wc::window::Init()) return 10;
 
 		return 0;
@@ -49,7 +49,7 @@ namespace wc {
 		std::string terminal_input;
 		while (debug::popInput(terminal_input)) {
 			debug::user(terminal_input, "\n");
-			lua::RunString(terminal_input.c_str(), nullptr);// , "CONSOLE", "@Console");
+			lua::RunString(terminal_input.c_str(), "CONSOLE", "@CommandLine");// , "CONSOLE", "@Console");
 		}
 
 		// Run OnLogicalUpdate events.

@@ -26,7 +26,7 @@ using namespace std;
 
 namespace {
 
-	FILE* logfile = nullptr;
+	ofstream logfile;
 	vector<string> crash_reports;
 	queue<string> console_queue;
 	queue<tuple<int, string>> preinit_queue;
@@ -262,8 +262,8 @@ namespace {
 bool debug::Init(const char* userpath_utf8) {
 	// Open the log file.
 	std::filesystem::path logpath = std::filesystem::u8path(userpath_utf8) / LOG_FILENAME;
-	logfile = fopen_w(logpath.c_str());
-	if (!logfile) {
+	logfile.open(logpath, ios::out);
+	if (!logfile.is_open()) {
 		debug::error("Failed to open debug log file for writing.\n");
 	}
 
@@ -371,10 +371,10 @@ void debug::_print(int severity, const string& msg) {
 		console_mutex.unlock();
 	}
 
-	if (logfile && (severity & myconfig.logfile_filter)) {
+	if (logfile.is_open() && (severity & myconfig.logfile_filter)) {
 		string stripped = msg;
 		strip_ansi_colors(stripped);
-		fprintf(logfile, stripped.c_str());
+		logfile << stripped;
 	}
 }
 

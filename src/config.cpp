@@ -19,6 +19,7 @@ namespace config {
 
 	} // namespace <anon>
 
+	/*
 	bool Init(const char* userpath_utf8) {
 		// Open the config file.
 		std::filesystem::path logpath = std::filesystem::u8path(userpath_utf8) / CONFIG_FILENAME;
@@ -41,7 +42,7 @@ namespace config {
 		}
 	
 	}
-
+	*/
 
 
 }} // namespace wc::config

@@ -47,7 +47,7 @@ target_link_libraries (Witchcraft lua51)
 #target_link_libraries (Witchcraft DXGI)
 #target_link_libraries (Witchcraft d3d12)
 
-# Move .dll over to wherever the .exe goes
+# Move .dlls over to wherever the .exe goes
 add_custom_command(TARGET Witchcraft POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 	"${PROJECT_SOURCE_DIR}/dependencies/SDL2-2.0.18-windows/lib/x64/SDL2.dll"
@@ -57,3 +57,12 @@ add_custom_command(TARGET Witchcraft POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 	"${PROJECT_SOURCE_DIR}/dependencies/luaJIT-2.1.0-beta3/src/lua51.dll"
 	$<TARGET_FILE_DIR:Witchcraft>)
+
+# Compile lua corescripts
+file (GLOB_RECURSE LUA_CORESCRIPTS ${PROJECT_SOURCE_DIR}/src/lua/corescripts/*.lua)
+foreach(script ${LUA_CORESCRIPTS})
+	add_custom_command(TARGET Witchcraft POST_BUILD
+		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies/luaJIT-2.1.0-beta3/src
+		COMMAND luajit.exe -b ${script} ${script}.h
+	)
+endforeach()

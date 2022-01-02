@@ -3,6 +3,7 @@
 
 #include <lua.hpp>
 
+namespace wc {
 namespace lua {
 
 	// Initialize the lua system.
@@ -24,10 +25,10 @@ namespace lua {
 	// Executes the lua source code 'src' within the environment 'env'.
 	// If 'env' is null, 'src' will run in _G.
 	// Returns true on success, false on failure.
-	bool RunString(const char* src, const char* env);
+	bool RunString(const char* src, const char* env, const char* sourcename = nullptr);
 
 
 
-} // namespace lua
+}} // namespace wc::lua
 
 #endif // HVH_WC_LUA_SYSTEM_H
