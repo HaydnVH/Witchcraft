@@ -30,7 +30,7 @@ public:
 	// Execute the event.
 	// Calls each subscribed function.
 	void Execute(const Args&... args) {
-		auto* funcs = subscribers.data<1>();
+		auto* funcs = subscribers.template data<1>();
 		for (size_t i = 0; i < subscribers.size(); ++i) {
 			funcs[i](args...);
 		}

@@ -31,13 +31,13 @@ namespace appconfig {
 	const string& getVerString() { return version_string; }
 
 	static int major_ver = 0;
-	int appconfig::getMajorVer() { return major_ver; }
+	int getMajorVer() { return major_ver; }
 
 	static int minor_ver = 0;
-	int appconfig::getMinorVer() { return minor_ver; }
+	int getMinorVer() { return minor_ver; }
 
 	static int patch_ver = 0;
-	int appconfig::getPatchVer() { return patch_ver; }
+	int getPatchVer() { return patch_ver; }
 
 	static string engine_name = "Witchcraft";
 	const string& getEngineName() { return engine_name; }

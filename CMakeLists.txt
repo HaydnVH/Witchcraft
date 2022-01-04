@@ -29,6 +29,7 @@ find_package (Vulkan REQUIRED)
 # Add source to this project's executable
 file (GLOB_RECURSE SOURCES
 	src/*.cpp
+	src/tools/*.cpp
 	src/ecs/*.cpp
 	src/ecs/components/*.cpp
 	src/ecs/systems/*.cpp

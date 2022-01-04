@@ -6,18 +6,10 @@
 #include <codecvt>
 #include <locale>
 
-constexpr inline void _makestr(std::stringstream& ss) {}
-
-template <typename FirstType, typename... RestTypes>
-constexpr inline void _makestr(std::stringstream& ss, const FirstType& first, const RestTypes&... rest) {
-	ss << first;
-	_makestr(ss, rest...);
-}
-
 template <typename... Args>
-constexpr inline std::string makestr(const Args&... args) {
+inline std::string makestr(const Args&... args) {
 	std::stringstream ss;
-	_makestr(ss, args...);
+	(ss << ... << args);
 	return ss.str();
 }
 
