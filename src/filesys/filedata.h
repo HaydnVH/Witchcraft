@@ -27,30 +27,30 @@ namespace wc {
 		FileData() {}
 		FileData(const FileData& rhs) = delete;
 		FileData(FileData&& rhs) noexcept {
-			fdata = rhs.fdata; rhs.fdata = nullptr;
-			source = rhs.source; rhs.source = nullptr;
-			fsize = rhs.fsize; rhs.fsize = 0;
-			errcode = rhs.errcode; rhs.errcode = FILE_CLOSED;
+			_fdata = rhs._fdata; rhs._fdata = nullptr;
+			_source = rhs._source; rhs._source = nullptr;
+			_fsize = rhs._fsize; rhs._fsize = 0;
+			_errcode = rhs._errcode; rhs._errcode = FILE_CLOSED;
 		}
 		FileData& operator = (const FileData& rhs) = delete;
 		FileData& operator = (FileData&& rhs) noexcept {
-			fdata = rhs.fdata; rhs.fdata = nullptr;
-			source = rhs.source; rhs.source = nullptr;
-			fsize = rhs.fsize; rhs.fsize = 0;
-			errcode = rhs.errcode; rhs.errcode = FILE_CLOSED;
+			_fdata = rhs._fdata; rhs._fdata = nullptr;
+			_source = rhs._source; rhs._source = nullptr;
+			_fsize = rhs._fsize; rhs._fsize = 0;
+			_errcode = rhs._errcode; rhs._errcode = FILE_CLOSED;
 			return *this;
 		}
 		~FileData() { close(); }
 		void close();
-		inline bool is_open() { return (fdata != nullptr); }
+		inline bool is_open() { return (_fdata != nullptr); }
 
 		FileData(const Package* module, const char* u8path);
 		FileData(const Archive& archive, const char* u8path);
 		FileData(const std::filesystem::path& folder, const char* u8path);
 
-		void* data() { return fdata; }
-		const Package* package() { return source; }
-		size_t size() { return fsize; }
+		void* data() { return _fdata; }
+		const Package* package() { return _source; }
+		size_t size() { return _fsize; }
 
 		enum Enum {
 			SUCCESS = 0,
@@ -62,9 +62,9 @@ namespace wc {
 			MALLOC_FAIL
 		};
 
-		int getErrorEnum() { return errcode; }
+		int getErrorEnum() { return _errcode; }
 		const char* getError() {
-			switch (errcode) {
+			switch (_errcode) {
 			case (SUCCESS): return nullptr;
 			case (NOT_INITIALIZED): return "FileData not initialized.";
 			case (FILE_CLOSED): return "FileData has been closed.";
@@ -77,10 +77,10 @@ namespace wc {
 		}
 
 	private:
-		void* fdata = nullptr;
-		const Package* source = nullptr;
-		uint32_t fsize = 0;
-		int errcode = NOT_INITIALIZED;
+		void* _fdata = nullptr;
+		const Package* _source = nullptr;
+		uint32_t _fsize = 0;
+		int _errcode = NOT_INITIALIZED;
 	};
 
 

@@ -13,7 +13,7 @@ namespace wc {
 	bool Archive::open(const char* u8filename) {
 
 		// If the archive is already open, close it first.
-		if (file) close();
+		if (_file) close();
 
 		// Get the proper filepath.
 		std::filesystem::path archivepath = std::filesystem::u8path(u8filename);
@@ -27,94 +27,94 @@ namespace wc {
 			}
 
 			// If the dile doesn't exist yet, then we can't open it with "r+", so we create it here.
-			file = fopen_w(archivepath.c_str());
+			_file = fopen_w(archivepath.c_str());
 
 			Archive::Header newheader = {};
 			strncpy(newheader.magic, Archive::MAGIC, 8);
 			newheader.back = sizeof(Archive::Header);
 			newheader.version = Archive::CURRENT_VERSION;
 
-			fwrite(&newheader, sizeof(Archive::Header), 1, file);
-			fclose(file);
-			modified = true;
+			fwrite(&newheader, sizeof(Archive::Header), 1, _file);
+			fclose(_file);
+			_modified = true;
 		}
 
 		// 'r+' opens the file for both reading and writing, keeping the existing contents.
-		file = fopen_rw(archivepath.c_str());
-		if (file == nullptr) {
+		_file = fopen_rw(archivepath.c_str());
+		if (_file == nullptr) {
 			debug::error("In wc::Archive::open():\n");
 			debug::errmore("File '", u8filename, "' could not be opened.\n");
 			return false;
 		}
 
 		// Load the header.
-		fread(&header, sizeof(Archive::Header), 1, file);
+		fread(&_header, sizeof(Archive::Header), 1, _file);
 
 		// Check the header to make sure the file format is valid.
-		if (strncmp(header.magic, Archive::MAGIC, 8) != 0) {
+		if (strncmp(_header.magic, Archive::MAGIC, 8) != 0) {
 			debug::error("In wc::Archive::open():\n");
 			debug::errmore("File '", u8filename, "' is not a valid archive.\n");
-			fclose(file);
-			file = nullptr;
+			fclose(_file);
+			_file = nullptr;
 			return false;
 		}
 
-		if (header.numfiles > 0) {
+		if (_header.numfiles > 0) {
 			// Reserve space for the dictionary.
 			size_t dictbytes;
-			void* dictmem = dictionary.deserialize(header.numfiles, dictbytes);
+			void* dictmem = _dictionary.deserialize(_header.numfiles, dictbytes);
 			if (!dictmem) {
 				debug::error("In wc::Archive::open():\n");
 				debug::errmore("Failed to allocate memory for archive dictionary.\n");
-				fclose(file);
-				file = nullptr;
+				fclose(_file);
+				_file = nullptr;
 				return false;
 			}
 
 			// Seek to its position,
-			fseek64(file, header.back, SEEK_SET);
+			fseek64(_file, _header.back, SEEK_SET);
 
 			// Read the dictionary in.
-			size_t bytesread = fread(dictmem, 1, dictbytes, file);
+			size_t bytesread = fread(dictmem, 1, dictbytes, _file);
 			if (bytesread != dictbytes) {
 				debug::error("In wc::Archive::open():\n");
 				debug::errmore("Failed to load dictionary data.\n");
 				debug::errmore("Expected ", dictbytes, " bytes, read ", bytesread, ".\n");
-				fclose(file);
-				file = nullptr;
+				fclose(_file);
+				_file = nullptr;
 				return false;
 			}
 		}
 
-		savedpath = u8filename;
+		_savedpath = u8filename;
 		return true;
 	}
 
 	void Archive::close() {
 		// If the file isn't open, we have nothing to close.
-		if (file == nullptr) return;
+		if (_file == nullptr) return;
 
 		// If the archive has been modified, we update the file's header and dictionary.
-		if (modified) {
+		if (_modified) {
 
-			dictionary.shrink_to_fit();
+			_dictionary.shrink_to_fit();
 
 			// Update the archive header.
-			fseek64(file, 0, SEEK_SET);
-			fwrite(&header, sizeof(Archive::Header), 1, file);
+			fseek64(_file, 0, SEEK_SET);
+			fwrite(&_header, sizeof(Archive::Header), 1, _file);
 
 			// If we deleted or overwrote anything in the archive,
 			// we should rebuild the whole thing.
-			if (files_deleted) {
+			if (_files_deleted) {
 				rebuild();
 			}
 			else {
 				// Otherwise, we can just re-write the dictionary at the end.
-				fseek64(file, header.back, SEEK_SET);
+				fseek64(_file, _header.back, SEEK_SET);
 
 				size_t dictbytes;
-				void* dictmem = dictionary.serialize(dictbytes);
-				size_t byteswritten = fwrite(dictmem, 1, dictbytes, file);
+				void* dictmem = _dictionary.serialize(dictbytes);
+				size_t byteswritten = fwrite(dictmem, 1, dictbytes, _file);
 				if (byteswritten != dictbytes) {
 					debug::error("In wc::Archive::close():\n");
 					debug::errmore("Failed to save the dictionary data.\n");
@@ -124,33 +124,33 @@ namespace wc {
 		}
 
 		// Close the file.
-		fclose(file);
-		file = nullptr;
+		fclose(_file);
+		_file = nullptr;
 
 		// Clear out the dictionary.
-		dictionary.clear();
+		_dictionary.clear();
 
 		// Reset flags.
-		modified = false;
-		files_deleted = false;
+		_modified = false;
+		_files_deleted = false;
 	}
 
 	void Archive::rebuild() {
 		// Make sure the archive is open.
-		if (file == nullptr) return;
+		if (_file == nullptr) return;
 
 		// Create a new temporary archive.
-		std::filesystem::path temppath = std::filesystem::u8path(std::string(savedpath) + "_TEMP");
+		std::filesystem::path temppath = std::filesystem::u8path(std::string(_savedpath) + "_TEMP");
 		FILE* tempfile = fopen_w(temppath.c_str());
 
 		// First we write the header to the new archive.
-		fwrite(&header, sizeof(Archive::Header), 1, tempfile);
+		fwrite(&_header, sizeof(Archive::Header), 1, tempfile);
 		uint64_t newback = sizeof(Archive::Header);
 
 		// Next we go through all of our files.
-		for (uint32_t i = 0; i < header.numfiles; ++i) {
+		for (uint32_t i = 0; i < _header.numfiles; ++i) {
 			// Allocate a buffer large enough to store the file contents.
-			void* buffer = malloc(fileinfos[i].size_compressed);
+			void* buffer = malloc(_fileinfos[i].size_compressed);
 			if (buffer == nullptr) {
 				debug::error("In wc::Archive::rebuild():\n");
 				debug::errmore("Memory allocation failure.\n");
@@ -158,16 +158,16 @@ namespace wc {
 			}
 
 			// Read the file into memory.
-			fseek64(file, fileinfos[i].offset, SEEK_SET);
-			fread(buffer, 1, fileinfos[i].size_compressed, file);
+			fseek64(_file, _fileinfos[i].offset, SEEK_SET);
+			fread(buffer, 1, _fileinfos[i].size_compressed, _file);
 
 			// Write the file to the temporary archive.
 			fseek64(tempfile, newback, SEEK_SET);
-			fwrite(buffer, 1, fileinfos[i].size_compressed, tempfile);
+			fwrite(buffer, 1, _fileinfos[i].size_compressed, tempfile);
 
 			// Keep track of where the file is now.
-			fileinfos[i].offset = newback;
-			newback += fileinfos[i].size_compressed;
+			_fileinfos[i].offset = newback;
+			newback += _fileinfos[i].size_compressed;
 
 			// Clear up the memory we used.
 			free(buffer);
@@ -175,67 +175,67 @@ namespace wc {
 
 		// Now we write the dictionary to the temporary archive.
 		size_t dictbytes;
-		void* dictmem = dictionary.serialize(dictbytes);
+		void* dictmem = _dictionary.serialize(dictbytes);
 		fwrite(dictmem, 1, dictbytes, tempfile);
 
 		//Since our 'back' has changed, we need to correct it and re-write the header.
-		header.back = newback;
+		_header.back = newback;
 		fseek64(tempfile, 0, SEEK_SET);
-		fwrite(&header, sizeof(Archive::Header), 1, tempfile);
+		fwrite(&_header, sizeof(Archive::Header), 1, tempfile);
 
 		// Close both archives.
-		fclose(file);
+		fclose(_file);
 		fclose(tempfile);
 
 		//Have the filesystem clean things for us.
-		std::filesystem::path mypath = std::filesystem::u8path(savedpath);
+		std::filesystem::path mypath = std::filesystem::u8path(_savedpath);
 		std::filesystem::rename(temppath, mypath);
 
 		// Re-open the file.
-		file = fopen_rw(mypath.c_str());
+		_file = fopen_rw(mypath.c_str());
 	}
 
 	int Archive::erase_file(const char* utf8path) {
 		// Make sure the archive is open.
-		if (file == nullptr) return -1;
+		if (_file == nullptr) return -1;
 
 		// Find the index of the file we're looking for.
 		fixedstring<64> fixedpath(utf8path);
-		size_t index = dictionary.find(fixedpath, true);
+		size_t index = _dictionary.find(fixedpath, true);
 		if (index == SIZE_MAX) {
 			return -1;
 		}
 
-		dictionary.erase_found();
-		modified = true;
-		files_deleted = true;
+		_dictionary.erase_found();
+		_modified = true;
+		_files_deleted = true;
 
 		return (int)index;
 	}
 
 	bool Archive::file_exists(const char* utf8path) const {
 		// Make sure the archive is open.
-		if (file == nullptr) return false;
+		if (_file == nullptr) return false;
 
 		// Look for the file.
 		fixedstring<64> fixedpath(utf8path);
-		size_t index = dictionary.find(fixedpath);
+		size_t index = _dictionary.find(fixedpath);
 		return (index != SIZE_MAX);
 	}
 
 	void* Archive::extract_data(const char* utf8path, void* buffer, uint32_t& size, int64_t& timestamp, bool alloc) const {
 		// Make sure the archive is open.
-		if (file == nullptr) { size = 0;  return nullptr; }
+		if (_file == nullptr) { size = 0;  return nullptr; }
 
 		// Search for the file we're looking for.
 		fixedstring<64> fixedpath(utf8path);
-		size_t index = dictionary.find(fixedpath);
+		size_t index = _dictionary.find(fixedpath);
 		if (index == SIZE_MAX) {
 			size = 0;
 			return nullptr;
 		}
 
-		const FileInfo& info = fileinfos[index];
+		const FileInfo& info = _fileinfos[index];
 		size = info.size_uncompressed;
 		timestamp = info.timestamp;
 
@@ -244,8 +244,8 @@ namespace wc {
 			return nullptr;
 		}
 
-		fseek64(file, info.offset, SEEK_SET);
-		if (feof(file)) {
+		fseek64(_file, info.offset, SEEK_SET);
+		if (feof(_file)) {
 			// File's offset points to beyond the end of the archive, somehow.
 			size = 0;
 			return nullptr;
@@ -259,7 +259,7 @@ namespace wc {
 		// If the file's compressed size is equal to its uncompressed size, the file is not compressed.
 		if (info.size_compressed == info.size_uncompressed) {
 			// Load the file contents straight into memory.
-			fread(buffer, 1, info.size_uncompressed, file);
+			fread(buffer, 1, info.size_uncompressed, _file);
 		}
 		else {
 			// TODO: Handle file decompression!
@@ -304,7 +304,7 @@ namespace wc {
 
 	bool Archive::insert_data(const char* utf8path, void* buffer, uint32_t size, int64_t timestamp, ReplaceEnum replace) {
 		// Make sure the archive is open.
-		if (file == nullptr) return false;
+		if (_file == nullptr) return false;
 
 		// Copy the file's path anf convert backslashes to forward slashes.
 		// Functions like extract and exists will simply fail if given backslashes.
@@ -313,15 +313,15 @@ namespace wc {
 
 		// Create a dictionary entry for the new file.
 		FileInfo newinfo = {};
-		newinfo.offset = header.back;
+		newinfo.offset = _header.back;
 		newinfo.size_compressed = size;
 		newinfo.size_uncompressed = size;
 		newinfo.timestamp = timestamp;
 
 		// Perform a binary search to find the file we're looking for.
-		size_t index = dictionary.find(newpath);
+		size_t index = _dictionary.find(newpath);
 		if (index == SIZE_MAX) {
-			dictionary.insert(newpath, newinfo);
+			_dictionary.insert(newpath, newinfo);
 		}
 		else {
 			// The specified file is already in this archive, so use 'replace' to decide what to do.
@@ -330,13 +330,13 @@ namespace wc {
 				return false;
 				break;
 			case REPLACE:
-				files_deleted = true;
-				fileinfos[index] = newinfo;
+				_files_deleted = true;
+				_fileinfos[index] = newinfo;
 				break;
 			case REPLACE_IF_NEWER:
-				if (timestamp > fileinfos[index].timestamp) {
-					files_deleted = true;
-					fileinfos[index] = newinfo;
+				if (timestamp > _fileinfos[index].timestamp) {
+					_files_deleted = true;
+					_fileinfos[index] = newinfo;
 				}
 				else return false;
 				break;
@@ -351,12 +351,12 @@ namespace wc {
 		// If the new file has a non-zero size,
 		if (newinfo.size_compressed > 0) {
 			// We write the file contents.
-			fseek64(file, header.back, SEEK_SET);
-			fwrite(buffer, 1, (size_t)newinfo.size_compressed, file);
-			header.back += newinfo.size_compressed;
+			fseek64(_file, _header.back, SEEK_SET);
+			fwrite(buffer, 1, (size_t)newinfo.size_compressed, _file);
+			_header.back += newinfo.size_compressed;
 		}
 
-		modified = true;
+		_modified = true;
 		return true;
 	}
 
@@ -417,7 +417,7 @@ namespace wc {
 
 	void Archive::pack(const char* u8folder, ReplaceEnum replace) {
 		// Make sure the archive is open.
-		if (file == nullptr) return;
+		if (_file == nullptr) return;
 
 		std::filesystem::path srcpath = std::filesystem::u8path(u8folder);
 		if (!std::filesystem::exists(srcpath)) {
@@ -436,7 +436,7 @@ namespace wc {
 
 	void Archive::unpack(const char* u8folder) {
 		// Make sure the archive is open.
-		if (file == nullptr) return;
+		if (_file == nullptr) return;
 
 		std::filesystem::path dstpath = std::filesystem::u8path(u8folder);
 		if (!std::filesystem::exists(dstpath))
@@ -449,9 +449,9 @@ namespace wc {
 		}
 
 		// Go through each file in the archive,
-		for (size_t i = 0; i < header.numfiles; ++i) {
+		for (size_t i = 0; i < _header.numfiles; ++i) {
 			// and extract it to disk.
-			fixedstring<64>& entry = filepaths[i];
+			fixedstring<64>& entry = _filepaths[i];
 			extract_file(entry.c_str, (dstpath / entry.c_str).u8string().c_str());
 		}
 	}
@@ -460,8 +460,8 @@ namespace wc {
 		Archive other;
 		if (!other.open(utf8other)) return;
 
-		for (size_t i = 0; i < other.header.numfiles; ++i) {
-			fixedstring<64> entry = other.filepaths[i];
+		for (size_t i = 0; i < other._header.numfiles; ++i) {
+			fixedstring<64> entry = other._filepaths[i];
 			uint32_t size; int64_t timestamp;
 			void* filedata = other.extract_data(entry.c_str, nullptr, size, timestamp, true);
 			insert_data(entry.c_str, filedata, size, timestamp, replace);

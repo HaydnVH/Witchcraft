@@ -38,12 +38,12 @@
 
 // Handle 64-bit file offsets in a platform-agnostic manner.
 #ifdef _WIN32
- #define fseek64(filename,offset,origin) _fseeki64(file,offset,origin)
+ #define fseek64(file,offset,origin) _fseeki64(file,offset,origin)
  #define fopen_w(filename) _wfopen(filename, L"wb");
  #define fopen_rw(filename) _wfopen(filename, L"r+b");
  #define fopen_r(filename) _wfopen(filename, L"rb");
 #else
- #define fseek64(filename,offset,origin) fseek(file,offset,origin)
+ #define fseek64(file,offset,origin) fseek(file,offset,origin)
  #define fopen_w(filename) fopen(filename,"wb");
  #define fopen_rw(filename) fopen(filename,"r+b");
  #define fopen_r(filename) fopen(filename,"rb");

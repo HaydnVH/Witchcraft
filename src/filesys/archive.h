@@ -26,12 +26,12 @@ namespace wc {
 
 		friend inline void swap(Archive& lhs, Archive& rhs) {
 			using std::swap;
-			swap(lhs.header, rhs.header);
-			swap(lhs.dictionary, rhs.dictionary);
-			swap(lhs.file, rhs.file);
-			swap(lhs.savedpath, rhs.savedpath);
-			swap(lhs.modified, rhs.modified);
-			swap(lhs.files_deleted, rhs.files_deleted);
+			swap(lhs._header, rhs._header);
+			swap(lhs._dictionary, rhs._dictionary);
+			swap(lhs._file, rhs._file);
+			swap(lhs._savedpath, rhs._savedpath);
+			swap(lhs._modified, rhs._modified);
+			swap(lhs._files_deleted, rhs._files_deleted);
 		}
 
 		enum ReplaceEnum
@@ -53,7 +53,7 @@ namespace wc {
 
 		// Returns whether or not the archive in question is open/valid.
 		bool is_open() const {
-			return (file != nullptr);
+			return (_file != nullptr);
 		}
 
 		// Checks to see if a file exists in the archive.
@@ -88,7 +88,7 @@ namespace wc {
 
 		// Get the number of files in the archive.
 		uint32_t num_files() const {
-			return header.numfiles;
+			return _header.numfiles;
 		}
 
 		// Iterate over every file in the archive.
@@ -97,9 +97,9 @@ namespace wc {
 		bool iterate_files(fixedstring<64>& fname, bool restart = true) const {
 			static uint32_t i = 0;
 			if (restart) i = 0;
-			if (i >= header.numfiles) return false;
+			if (i >= _header.numfiles) return false;
 
-			fname = dictionary.at<0>(i); ++i;
+			fname = _dictionary.at<0>(i); ++i;
 			return true;
 		}
 
@@ -115,7 +115,7 @@ namespace wc {
 			uint32_t numfiles = 0;
 			uint16_t version = 0; // Which version of this software was used to create the archive?
 			char _reserved[38] = {}; // Reserved in case we need it for future versions without having to break compatability.
-		} header;
+		} _header;
 
 		struct FileInfo
 		{
@@ -127,14 +127,14 @@ namespace wc {
 			char _reserved[4] = {}; // Reserved for future use.  May or may not actually use.
 		};
 
-		hvh::htable<fixedstring<64>, FileInfo> dictionary;
-		fixedstring<64>* const& filepaths = dictionary.data<0>();
-		FileInfo* const& fileinfos = dictionary.data<1>();
+		hvh::htable<fixedstring<64>, FileInfo> _dictionary;
+		fixedstring<64>* const& _filepaths = _dictionary.data<0>();
+		FileInfo* const& _fileinfos = _dictionary.data<1>();
 
-		FILE* file = nullptr;
-		const char* savedpath = nullptr;
-		bool modified = false;
-		bool files_deleted = false;
+		FILE* _file = nullptr;
+		std::string _savedpath;
+		bool _modified = false;
+		bool _files_deleted = false;
 	};
 
 } // namespace wc

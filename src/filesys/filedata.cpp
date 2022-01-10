@@ -3,11 +3,11 @@
 namespace wc {
 
 	void FileData::close() {
-		if (fdata) free(fdata);
-		fdata = nullptr;
-		source = nullptr;
-		fsize = 0;
-		errcode = FILE_CLOSED;
+		if (_fdata) free(_fdata);
+		_fdata = nullptr;
+		_source = nullptr;
+		_fsize = 0;
+		_errcode = FILE_CLOSED;
 	}
 
 	FileData::FileData(const Package* package, const char* u8path) {
@@ -15,9 +15,9 @@ namespace wc {
 		const Archive& archive = package->getArchive();
 		if (archive.is_open()) {
 			int64_t nil;
-			fdata = archive.extract_data(u8path, nullptr, fsize, nil, true);
-			if (!fdata) {
-				errcode = FILE_NOT_FOUND;
+			_fdata = archive.extract_data(u8path, nullptr, _fsize, nil, true);
+			if (!_fdata) {
+				_errcode = FILE_NOT_FOUND;
 				return;
 			}
 		}
@@ -25,66 +25,66 @@ namespace wc {
 			std::filesystem::path fullpath = std::filesystem::u8path(package->getPath());
 			fullpath /= u8path;
 			if (!std::filesystem::exists(fullpath)) {
-				errcode = FILE_NOT_FOUND;
+				_errcode = FILE_NOT_FOUND;
 				return;
 			}
 			if (!std::filesystem::is_regular_file(fullpath)) {
-				errcode = NOT_REGULAR_FILE;
+				_errcode = NOT_REGULAR_FILE;
 				return;
 			}
 			FILE* file = fopen_r(fullpath.c_str());
 			if (!file) {
-				errcode = COULD_NOT_OPEN;
+				_errcode = COULD_NOT_OPEN;
 				return;
 			}
 			size_t filesize = std::filesystem::file_size(fullpath);
-			fdata = malloc(filesize);
-			if (!fdata) {
-				errcode = MALLOC_FAIL;
+			_fdata = malloc(filesize);
+			if (!_fdata) {
+				_errcode = MALLOC_FAIL;
 				fclose(file);
 				return;
 			}
-			fsize = (uint32_t)fread(fdata, 1, filesize, file);
+			_fsize = (uint32_t)fread(_fdata, 1, filesize, file);
 			fclose(file);
 		}
-		errcode = SUCCESS;
+		_errcode = SUCCESS;
 	}
 
 	FileData::FileData(const Archive& archive, const char* utf8path) {
 		int64_t nil;
-		fdata = archive.extract_data(utf8path, nullptr, fsize, nil, true);
-		if (!fdata) {
-			errcode = FILE_NOT_FOUND;
+		_fdata = archive.extract_data(utf8path, nullptr, _fsize, nil, true);
+		if (!_fdata) {
+			_errcode = FILE_NOT_FOUND;
 			return;
 		}
-		errcode = SUCCESS;
+		_errcode = SUCCESS;
 	}
 
 	FileData::FileData(const std::filesystem::path& folder, const char* utf8path) {
 		std::filesystem::path fullpath = folder / utf8path;
 		if (!std::filesystem::exists(fullpath)) {
-			errcode = FILE_NOT_FOUND;
+			_errcode = FILE_NOT_FOUND;
 			return;
 		}
 		if (!std::filesystem::is_regular_file(fullpath)) {
-			errcode = NOT_REGULAR_FILE;
+			_errcode = NOT_REGULAR_FILE;
 			return;
 		}
 		FILE* file = fopen_r(fullpath.c_str());
 		if (!file) {
-			errcode = COULD_NOT_OPEN;
+			_errcode = COULD_NOT_OPEN;
 			return;
 		}
 		size_t filesize = std::filesystem::file_size(fullpath);
-		fdata = malloc(filesize);
-		if (!fdata) {
-			errcode = MALLOC_FAIL;
+		_fdata = malloc(filesize);
+		if (!_fdata) {
+			_errcode = MALLOC_FAIL;
 			fclose(file);
 			return;
 		}
-		fsize = (uint32_t)fread(fdata, 1, filesize, file);
+		_fsize = (uint32_t)fread(_fdata, 1, filesize, file);
 		fclose(file);
-		errcode = SUCCESS;
+		_errcode = SUCCESS;
 	}
 
 } // namespace wc

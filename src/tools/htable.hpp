@@ -2,7 +2,7 @@
  * A Hash Table implementation utilizing a Struct-Of-Arrays
  * by Haydn V. Harach
  * Created October 2019
- * Modified March 2021
+ * Modified January 2022
  *
  * By storing a lightweight hashmap alongside a struct-of-arrays, memory
  * efficiency is improved compared to a traditional hash table.
@@ -277,7 +277,7 @@ namespace hvh {
 				if (!reserve(this->mycapacity * 2)) return false;
 			}
 			soa<KeyT, ItemTs...>& base = *this;
-			size_t where = base.lower_bound_row<K>(key, items...);
+			size_t where = base.template lower_bound_row<K>(key, items...);
 			base.insert(where, key, items...);
 			rehash();
 		}

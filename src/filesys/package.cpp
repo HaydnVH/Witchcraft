@@ -34,13 +34,6 @@ namespace wc {
 			return false;
 		}
 
-		// Make sure the path isn't too long; we only allocate 256 bytes to store the utf8 path.
-		if (strlen(u8path) > sizeof(module_path)) {
-			debug::error("In wc::Package::open():\n");
-			debug::errmore("Path '", u8path, "' is too long (255 bytes max).\n");
-			return false;
-		}
-
 		// Create the path, and make sure something exists there.
 		fs::path mypath = fs::u8path(u8path);
 		if (!fs::exists(mypath)) {
@@ -57,8 +50,8 @@ namespace wc {
 			modinfo = FileData(mypath, PACKAGEINFO_FILENAME);
 		}
 		else if (fs::is_regular_file(mypath)) {
-			if (archive.open(mypath.u8string().c_str())) {
-				modinfo = FileData(archive, PACKAGEINFO_FILENAME);
+			if (_archive.open(mypath.u8string().c_str())) {
+				modinfo = FileData(_archive, PACKAGEINFO_FILENAME);
 			}
 		}
 
@@ -74,40 +67,39 @@ namespace wc {
 		if (doc.HasParseError() || !doc.IsObject()) {
 			debug::error("In wc::Package::open():\n");
 			debug::errmore("Failed to parse '", u8path, "/", PACKAGEINFO_FILENAME, "'.\n");
-			archive.close();
+			_archive.close();
 			return false;
 		}
 
 		// Weve found and correctly parsed modinfo.json,
 		// by this point we can confidently say that we're looking at a module.
-		if (doc.HasMember("name")) { strncpy(name, doc["name"].GetString(), sizeof(name)); }
-		else { strncpy(name, mypath.filename().u8string().c_str(), sizeof(name)); }
-		if (doc.HasMember("author")) { strncpy(author, doc["author"].GetString(), sizeof(author)); }
-		if (doc.HasMember("category")) { strncpy(category, doc["category"].GetString(), sizeof(category)); }
-		if (doc.HasMember("description")) { strncpy(description, doc["description"].GetString(), sizeof(description)); }
-		if (doc.HasMember("priority")) { priority = doc["priority"].GetFloat(); }
+		if (doc.HasMember("name")) { _name =  doc["name"].GetString(); }
+		else { _name = mypath.filename().u8string(); }
+		if (doc.HasMember("author")) { _author = doc["author"].GetString(); }
+		if (doc.HasMember("category")) { _category = doc["category"].GetString(); }
+		if (doc.HasMember("description")) { _description = doc["description"].GetString(); }
+		if (doc.HasMember("priority")) { _priority = doc["priority"].GetFloat(); }
 
 		// Timestamp is used to sort modules which have equal priority.
-		timestamp = fs::last_write_time(mypath).time_since_epoch().count();
+		_timestamp = fs::last_write_time(mypath).time_since_epoch().count();
 
-		strncpy(module_path, u8path, sizeof(module_path));
-		found = true;
+		_path = u8path;
+		_found = true;
 		return true;
 	}
 
 	void Package::close() {
-		archive.close();
-		file_list.clear();
-		loaded = false;
+		_archive.close();
+		_file_table.clear();
+		_loaded = false;
 
-		module_path[0] = '\0';
-		name[0] = '\0';
-		author[0] = '\0';
-		description[0] = '\0';
-		description[0] = '\0';
-		priority = 0.0f;
-		timestamp = 0;
-		found = false;
+		_path.clear();
+		_name.clear();
+		_author.clear();
+		_description.clear();
+		_priority = 0.0f;
+		_timestamp = 0;
+		_found = false;
 	}
 
 	void loadFileListRecursive(hvh::htable<fixedstring<64>>& file_list, const fs::path& parent, fs::path dir) {
@@ -153,30 +145,30 @@ namespace wc {
 
 	void Package::loadFileList() {
 
-		if (!found) {
+		if (!_found) {
 			debug::error("In wc::Package::loadFileList():\n");
 			debug::errmore("Trying to load module before opening it.\n");
 			return;
 		}
 
-		if (loaded) {
+		if (_loaded) {
 			debug::error("In wc::Package::loadFileList():\n");
-			debug::errmore("Trying to load module '", name, "' more than once.\n");
+			debug::errmore("Trying to load module '", _name, "' more than once.\n");
 			return;
 		}
 
-		if (archive.is_open()) {
-			file_list.reserve(archive.num_files());
+		if (_archive.is_open()) {
+			_file_table.reserve(_archive.num_files());
 
 			fixedstring<64> fname;
-			for (bool exists = archive.iterate_files(fname, true); exists; exists = archive.iterate_files(fname, false)) {
-				file_list.insert(fname);
+			for (bool exists = _archive.iterate_files(fname, true); exists; exists = _archive.iterate_files(fname, false)) {
+				_file_table.insert(fname);
 			}
 		}
 		else {
-			loadFileListRecursive(file_list, module_path, "");
+			loadFileListRecursive(_file_table, _path, "");
 		}
-		loaded = true;
+		_loaded = true;
 	}
 
 } // namespace wc
