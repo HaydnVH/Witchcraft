@@ -56,29 +56,30 @@ namespace wc {
 		}
 
 		if (!modinfo.is_open()) {
-			debug::error("In wc::Package::open():\n");
-			debug::errmore("Failed to open '", u8path, "/", PACKAGEINFO_FILENAME, "': ", modinfo.getError(), "\n");
-			return false;
+			debug::warning("In wc::Package::open():\n");
+			debug::warnmore("Failed to open '", u8path, "/", PACKAGEINFO_FILENAME, "': ", modinfo.getError(), "\n");
+			_name = mypath.filename().u8string();
 		}
-
-		// Parse the file contents as json.
-		Document doc;
-		doc.Parse((char*)modinfo.data(), modinfo.size());
-		if (doc.HasParseError() || !doc.IsObject()) {
-			debug::error("In wc::Package::open():\n");
-			debug::errmore("Failed to parse '", u8path, "/", PACKAGEINFO_FILENAME, "'.\n");
-			_archive.close();
-			return false;
+		else {
+			// Parse the file contents as json.
+			Document doc;
+			doc.Parse((char*)modinfo.data(), modinfo.size());
+			if (doc.HasParseError() || !doc.IsObject()) {
+				debug::warning("In wc::Package::open():\n");
+				debug::warnmore("Failed to parse '", u8path, "/", PACKAGEINFO_FILENAME, "'.\n");
+				_name = mypath.filename().u8string();
+			}
+			else {
+				// Weve found and correctly parsed modinfo.json,
+				// by this point we can confidently say that we're looking at a module.
+				if (doc.HasMember("name")) { _name = doc["name"].GetString(); }
+				else { _name = mypath.filename().u8string(); }
+				if (doc.HasMember("author")) { _author = doc["author"].GetString(); }
+				if (doc.HasMember("category")) { _category = doc["category"].GetString(); }
+				if (doc.HasMember("description")) { _description = doc["description"].GetString(); }
+				if (doc.HasMember("priority")) { _priority = doc["priority"].GetFloat(); }
+			}
 		}
-
-		// Weve found and correctly parsed modinfo.json,
-		// by this point we can confidently say that we're looking at a module.
-		if (doc.HasMember("name")) { _name =  doc["name"].GetString(); }
-		else { _name = mypath.filename().u8string(); }
-		if (doc.HasMember("author")) { _author = doc["author"].GetString(); }
-		if (doc.HasMember("category")) { _category = doc["category"].GetString(); }
-		if (doc.HasMember("description")) { _description = doc["description"].GetString(); }
-		if (doc.HasMember("priority")) { _priority = doc["priority"].GetFloat(); }
 
 		// Timestamp is used to sort modules which have equal priority.
 		_timestamp = fs::last_write_time(mypath).time_since_epoch().count();
