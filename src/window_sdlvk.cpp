@@ -34,6 +34,12 @@ namespace window {
 
 		if (!userconfig::isInitialized()) {
 			debug::fatal("Can't open window before loading user config!\n");
+			return false;
+		}
+
+		if (pWindow) {
+			debug::fatal("Can't open the window a second time!\n");
+			return false;
 		}
 
 		// Load in config settings.
@@ -117,6 +123,8 @@ namespace window {
 
 	void getWindowSize(int& w, int& h) {}
 	void getDrawableSize(int& w, int& h) {}
+
+	SDL_Window* getHandle() { return pWindow; }
 
 }} // namespace wc::window
 

@@ -12,8 +12,10 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(
 	-D_CRT_SECURE_NO_WARNINGS -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 	-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE
-	-DPLATFORM_SDL -DRENDERER_VULKAN)
+	-DPLATFORM_SDL -DRENDERER_VULKAN -DVULKAN_HPP_NO_EXCEPTIONS)
 
+# Packages
+find_package (Vulkan REQUIRED)
 
 # Include directories
 include_directories ("src")
@@ -22,9 +24,9 @@ include_directories ("dependencies/SDL2-2.0.18-windows/include")
 link_directories    ("dependencies/SDL2-2.0.18-windows/lib/x64")
 include_directories	("dependencies/luaJIT-2.1.0-beta3/src")
 link_directories	("dependencies/luaJIT-2.1.0-beta3/src")
+include_directories (${Vulkan_INCLUDE_DIRS})
 
-# Packages
-find_package (Vulkan REQUIRED)
+
 
 # Add source to this project's executable
 file (GLOB_RECURSE SOURCES
@@ -34,7 +36,7 @@ file (GLOB_RECURSE SOURCES
 	src/ecs/components/*.cpp
 	src/ecs/systems/*.cpp
 	src/lua/*.cpp
-	src/sys/*.cpp)
+	src/graphics/*.cpp)
 add_executable (Witchcraft ${SOURCES})
 set_target_properties (Witchcraft PROPERTIES
 	VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
@@ -43,6 +45,7 @@ set_target_properties (Witchcraft PROPERTIES
 target_link_libraries (Witchcraft SDL2)
 target_link_libraries (Witchcraft SDL2main)
 target_link_libraries (Witchcraft lua51)
+target_link_libraries (Witchcraft ${Vulkan_LIBRARIES})
 
 
 #target_link_libraries (Witchcraft DXGI)

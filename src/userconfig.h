@@ -21,12 +21,13 @@ namespace userconfig {
 	// Returns true if a path already exists in the config, or false if it should be created.
 	bool exists(const char* path);
 
-	// Reads a value from config.
-	// Returns the default value if anything goes wrong.
-	bool read(const char* path, const char* key, const char*& val);
-	bool read(const char* path, const char* key, int& val);
-	bool read(const char* path, const char* key, float& val);
-	bool read(const char* path, const char* key, bool& val);
+	// Reads a value from config, writing the result to 'out_val'.
+	// Returns false and doesn't modify 'out_val' if anything goes wrong,
+	// returns true if all is well.
+	bool read(const char* path, const char* key, const char*& out_val);
+	bool read(const char* path, const char* key, int& out_val);
+	bool read(const char* path, const char* key, float& out_val);
+	bool read(const char* path, const char* key, bool& out_val);
 
 	std::vector<const char*> readStringArray(const char* path, const char* key);
 	std::vector<int>		 readIntArray(const char* path, const char* key);
@@ -34,7 +35,7 @@ namespace userconfig {
 	std::vector<bool>		 readBoolArray(const char* path, const char* key);
 
 	// Writes a value to the config document.
-	// After Close() is called, changes made will be reflected in the config file.
+	// After shutdown() is called, changes made will be reflected in the config file.
 	void write(const char* path, const char* key, const char* val);
 	void write(const char* path, const char* key, int val);
 	void write(const char* path, const char* key, float val);
