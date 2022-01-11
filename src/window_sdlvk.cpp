@@ -4,7 +4,7 @@
 #include <SDL_vulkan.h>
 
 #include "appconfig.h"
-#include "config.h"
+#include "userconfig.h"
 #include "debug.h"
 
 namespace wc {
@@ -12,77 +12,80 @@ namespace window {
 
 	namespace {
 
-		SDL_Window* _window = nullptr;
+		SDL_Window* pWindow = nullptr;
 
 		struct {
 
-			int width = 1280, height = 720;
-			bool maximized = false;
-			bool fs_enabled = false, fs_borderless_window = true;
-			int fs_width = 0, fs_height = 0;
+			int iWidth = 1280, iHeight = 720;
+			bool bMaximized = false;
 
+			struct {
+				bool bEnabled = false;
+				bool bBorderless = true;
+				int iWidth = 0, iHeight = 0;
+			} fs;
 			bool modified = false;
 
-		} _config;
+		} config;
 
 	} // namespace <anon>
 
 	bool init() {
 
-		if (!config::isInitialized()) {
-			debug::fatal("Can't open window before loading config!\n");
+		if (!userconfig::isInitialized()) {
+			debug::fatal("Can't open window before loading user config!\n");
 		}
 
 		// Load in config settings.
-		if (config::exists("window")) {
-			config::read("window", "width", _config.width);
-			config::read("window", "height", _config.height);
-			config::read("window", "maximized", _config.maximized);
-			config::read("window.fullscreen", "enabled", _config.fs_enabled);
-			config::read("window.fullscreen", "borderless window", _config.fs_borderless_window);
-			config::read("window.fullscreen", "width", _config.fs_width);
-			config::read("window.fullscreen", "height", _config.fs_height);
+		if (userconfig::exists("window")) {
+			userconfig::read("window", "iWidth", config.iWidth);
+			userconfig::read("window", "iHeight", config.iHeight);
+			userconfig::read("window", "bMaximized", config.bMaximized);
+			userconfig::read("window.fullscreen", "bEnabled", config.fs.bEnabled);
+			userconfig::read("window.fullscreen", "bBorderless", config.fs.bBorderless);
+			userconfig::read("window.fullscreen", "iWidth", config.fs.iWidth);
+			userconfig::read("window.fullscreen", "iHeight", config.fs.iHeight);
 		}
-		else _config.modified = true;
+		else config.modified = true;
 
 		// Initialize SDL.
 		SDL_Init(SDL_INIT_VIDEO);
 
 		// Determine window flags.
 		uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN;
-		if (_config.maximized) { flags |= SDL_WINDOW_MAXIMIZED; }
+		if (config.bMaximized) { flags |= SDL_WINDOW_MAXIMIZED; }
 
 		// Create the widnow.
-		_window = SDL_CreateWindow(
+		pWindow = SDL_CreateWindow(
 			appconfig::getAppName().c_str(),
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-			_config.width, _config.height,
+			config.iWidth, config.iHeight,
 			flags
 		);
-		if (_window == nullptr) {
+		if (pWindow == nullptr) {
 			debug::fatal("Failed to create window.\n");
 			return false;
 		}
 
 		debug::info("Window opened.\n");
-		debug::infomore(_config.width, " x ", _config.height, "\n");
+		debug::infomore(config.iWidth, " x ", config.iHeight, "\n");
 		return true;
 	}
 
 	void shutdown() {
-		if (_window) {
-			SDL_DestroyWindow(_window);
+		if (pWindow) {
+			SDL_DestroyWindow(pWindow);
 		}
 
 		// Save config settings.
-		if (_config.modified) {
-			config::write("window", "width", _config.width);
-			config::write("window", "height", _config.height);
-			config::write("window", "maximized", _config.maximized);
-			config::write("window.fullscreen", "enabled", _config.fs_enabled);
-			config::write("window.fullscreen", "borderless window", _config.fs_borderless_window);
-			config::write("window.fullscreen", "width", _config.fs_width);
-			config::write("window.fullscreen", "height", _config.fs_height);
+		if (config.modified) {
+			userconfig::write("window", "iWidth", config.iWidth);
+			userconfig::write("window", "iHeight", config.iHeight);
+			userconfig::write("window", "bMaximized", config.bMaximized);
+			userconfig::write("window.fullscreen", "bEnabled", config.fs.bEnabled);
+			userconfig::write("window.fullscreen", "bBorderless", config.fs.bBorderless);
+			userconfig::write("window.fullscreen", "iWidth", config.fs.iWidth);
+			userconfig::write("window.fullscreen", "iHeight", config.fs.iHeight);
 		}
 	}
 
@@ -96,11 +99,11 @@ namespace window {
 			case SDL_WINDOWEVENT: {
 				switch (_event.window.event) {
 				case SDL_WINDOWEVENT_RESIZED:
-					_config.modified = true;
-					_config.maximized = SDL_GetWindowFlags(_window) & SDL_WINDOW_MAXIMIZED;
-					if (!_config.maximized) {
-						_config.width = _event.window.data1;
-						_config.height = _event.window.data2;
+					config.modified = true;
+					config.bMaximized = SDL_GetWindowFlags(pWindow) & SDL_WINDOW_MAXIMIZED;
+					if (!config.bMaximized) {
+						config.iWidth = _event.window.data1;
+						config.iHeight = _event.window.data2;
 					}
 					debug::info("Window resized to ", _event.window.data1, " x ", _event.window.data2, '\n');
 					break;

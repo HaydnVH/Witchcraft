@@ -5,7 +5,7 @@
 using namespace std;
 
 #include "appconfig.h"
-#include "config.h"
+#include "userconfig.h"
 #include "debug.h"
 #include "window.h"
 #include "events.h"
@@ -29,7 +29,7 @@ namespace wc {
 		// Initialize subsystems.
 		int startup() {
 			appconfig::init();
-			config::init();
+			userconfig::init();
 			debug::init(appconfig::getUserDir().c_str());
 			lua::init();
 			if (!vfs::init()) return 10;
@@ -43,7 +43,7 @@ namespace wc {
 			window::shutdown();
 			vfs::shutdown();
 			debug::showCrashReports(); debug::shutdown();
-			config::shutdown();
+			userconfig::shutdown();
 		}
 
 		bool running = true;

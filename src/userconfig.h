@@ -4,7 +4,7 @@
 #include <vector>
 
 namespace wc {
-namespace config {
+namespace userconfig {
 
 	// The filename of the config file, relative to the user directory.
 	constexpr const char* CONFIG_FILENAME = "config.json";

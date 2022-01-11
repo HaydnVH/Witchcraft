@@ -1,4 +1,4 @@
-#include "config.h"
+#include "userconfig.h"
 #include "appconfig.h"
 
 #include <rapidjson/document.h>
@@ -23,7 +23,7 @@ namespace {
 } // namespace <anon>
 
 namespace wc {
-namespace config {
+namespace userconfig {
 
 void init() {
 	// Open the config file.
