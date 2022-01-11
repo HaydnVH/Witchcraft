@@ -57,7 +57,7 @@ namespace wc {
 		running = false;
 	}
 
-	void mainloop(bool handleWindowMessages) {
+	void mainloop(bool handle_window_messages) {
 
 		// Get the amount of time passed since the previous call to mainLoop().
 		prevtime = nowtime;
@@ -75,7 +75,7 @@ namespace wc {
 		while (logical_time_budget >= LOGICAL_SECONDS_PER_FRAME) {
 
 			// Handle window messages.
-			if (handleWindowMessages) {
+			if (handle_window_messages) {
 				if (!window::handleMessages()) {
 					running = false;
 					return;

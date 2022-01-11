@@ -17,7 +17,7 @@ namespace wc {
 	// This should not be called explicitly unless something is blocking the window message pump.
 	// Lookin' at you, win32!
 	// handleWindowMessages: whether or not this loop iteration should handle window messages.
-	void mainloop(bool handleWindowMessages);
+	void mainloop(bool handle_window_messages);
 
 }; // namespace wc
 

@@ -110,7 +110,7 @@ bool exists(const char* path) {
 	return (object != nullptr);
 }
 
-bool read(const char* path, const char* key, const char*& out_val) {
+bool read(const char* path, const char* key, std::string& out_val) {
 	Value* object = followPath(path, false);
 	if (!object) return false;
 

@@ -2,6 +2,7 @@
 #define HVH_WC_CONFIG_H
 
 #include <vector>
+#include <string>
 
 namespace wc {
 namespace userconfig {
@@ -24,7 +25,7 @@ namespace userconfig {
 	// Reads a value from config, writing the result to 'out_val'.
 	// Returns false and doesn't modify 'out_val' if anything goes wrong,
 	// returns true if all is well.
-	bool read(const char* path, const char* key, const char*& out_val);
+	bool read(const char* path, const char* key, std::string& out_val);
 	bool read(const char* path, const char* key, int& out_val);
 	bool read(const char* path, const char* key, float& out_val);
 	bool read(const char* path, const char* key, bool& out_val);
