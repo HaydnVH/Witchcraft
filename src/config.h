@@ -23,10 +23,10 @@ namespace config {
 
 	// Reads a value from config.
 	// Returns the default value if anything goes wrong.
-	const char* read(const char* path, const char* key, const char* default_val);
-	int			read(const char* path, const char* key, int default_val);
-	float		read(const char* path, const char* key, float default_val);
-	bool		read(const char* path, const char* key, bool default_val);
+	bool read(const char* path, const char* key, const char*& val);
+	bool read(const char* path, const char* key, int& val);
+	bool read(const char* path, const char* key, float& val);
+	bool read(const char* path, const char* key, bool& val);
 
 	std::vector<const char*> readStringArray(const char* path, const char* key);
 	std::vector<int>		 readIntArray(const char* path, const char* key);

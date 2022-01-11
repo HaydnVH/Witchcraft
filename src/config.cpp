@@ -110,55 +110,51 @@ bool exists(const char* path) {
 	return (object != nullptr);
 }
 
-const char* read(const char* path, const char* key, const char* default_val) {
+bool read(const char* path, const char* key, const char*& out_val) {
 	Value* object = followPath(path, false);
-	if (!object)
-		return default_val;
+	if (!object) return false;
 
 	Value& val = (*object)[key];
-	if (!val.IsString())
-		return default_val;
+	if (!val.IsString()) return false;
 
-	return val.GetString();
+	out_val = val.GetString();
+	return true;
 }
 
-int read(const char* path, const char* key, int default_val)
+bool read(const char* path, const char* key, int& out_val)
 {
 	Value* object = followPath(path, false);
-	if (!object)
-		return default_val;
+	if (!object) return false;
 
 	Value& val = (*object)[key];
-	if (!val.IsInt())
-		return default_val;
+	if (!val.IsInt()) return false;
 
-	return val.GetInt();
+	out_val = val.GetInt();
+	return true;
 }
 
-float read(const char* path, const char* key, float default_val)
+bool read(const char* path, const char* key, float& out_val)
 {
 	Value* object = followPath(path, false);
-	if (!object)
-		return default_val;
+	if (!object) return false;
 
 	Value& val = (*object)[key];
-	if (!val.IsFloat())
-		return default_val;
+	if (!val.IsFloat()) return false;
 
-	return val.GetFloat();
+	out_val = val.GetFloat();
+	return true;
 }
 
-bool read(const char* path, const char* key, bool default_val)
+bool read(const char* path, const char* key, bool& out_val)
 {
 	Value* object = followPath(path, false);
-	if (!object)
-		return default_val;
+	if (!object) return false;
 
 	Value& val = (*object)[key];
-	if (!val.IsBool())
-		return default_val;
+	if (!val.IsBool()) return false;
 
-	return val.GetBool();
+	out_val = val.GetBool();
+	return true;
 }
 
 std::vector<const char*> readStringArray(const char* path, const char* key) {
