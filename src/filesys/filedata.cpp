@@ -47,6 +47,7 @@ namespace wc {
 			_fsize = (uint32_t)fread(_fdata, 1, filesize, file);
 			fclose(file);
 		}
+		_source = package;
 		_errcode = SUCCESS;
 	}
 

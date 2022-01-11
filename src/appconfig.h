@@ -27,7 +27,7 @@ namespace appconfig {
 
 	constexpr const char* APPCONFIG_FILENAME = "appconfig.json";
 
-	bool Init();
+	bool init();
 
 }}; // namespace wc::appconfig
 

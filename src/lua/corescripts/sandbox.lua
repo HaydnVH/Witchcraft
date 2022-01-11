@@ -50,7 +50,7 @@ SANDBOX_SCRIPT_ACCESS = {}
 SANDBOX = {
 
 	assert = _G.assert,
---	dofile = _G.dofile, -- Redefined by the engine
+	dofile = _G.dofile, -- Engine Redefined
 	error = _G.error,
 	ipairs = _G.ipairs,
 	next = _G.next,

@@ -44,7 +44,7 @@ namespace wc {
 		void close();
 		inline bool is_open() { return (_fdata != nullptr); }
 
-		FileData(const Package* module, const char* u8path);
+		FileData(const Package* package, const char* u8path);
 		FileData(const Archive& archive, const char* u8path);
 		FileData(const std::filesystem::path& folder, const char* u8path);
 
@@ -74,6 +74,12 @@ namespace wc {
 			case (MALLOC_FAIL): return "Memory allocation failure.";
 			default: return "Unknown error.";
 			}
+		}
+
+		const std::string& getSourceName() const {
+			static std::string nil = "";
+			if (!_source) return nil;
+			return _source->getName();
 		}
 
 	private:

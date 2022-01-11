@@ -259,7 +259,7 @@ namespace {
 
 } // namespace <anon>
 
-bool debug::Init(const char* userpath_utf8) {
+bool debug::init(const char* userpath_utf8) {
 	// Open the log file.
 	std::filesystem::path logpath = std::filesystem::u8path(userpath_utf8) / LOG_FILENAME;
 	logfile.open(logpath, ios::out);
@@ -315,12 +315,10 @@ bool debug::Init(const char* userpath_utf8) {
 		print(get<0>(entry), get<1>(entry).c_str());
 	}
 
-	// Initialize lua hooks for the console.
-	initLua();
 	return true;
 }
 
-void debug::Shutdown() {
+void debug::shutdown() {
 	if (!logfile) return;
 	// Indicate that the input thread should stop looping.
 	inthread_running = false;

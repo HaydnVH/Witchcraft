@@ -8,7 +8,7 @@ namespace lua {
 
 	// Initialize the lua system.
 	// Returns true on success, false on failure.
-	bool Init();
+	bool init();
 
 	// Get the global lua state.
 	// Returns nullptr on failure (if run before Init).
@@ -25,7 +25,7 @@ namespace lua {
 	// Executes the lua source code 'src' within the environment 'env'.
 	// If 'env' is null, 'src' will run in _G.
 	// Returns true on success, false on failure.
-	bool RunString(const char* src, const char* env, const char* sourcename = nullptr);
+	bool runString(const char* src, const char* env, const char* sourcename = nullptr);
 
 
 

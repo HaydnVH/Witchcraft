@@ -4,8 +4,8 @@
 #include <string>
 using namespace std;
 
+#include "filesys/vfs.h"
 #include "tools/stringhelper.h"
-
 #include "debug.h"
 
 #include "corescripts/sandbox.lua.h"
@@ -14,8 +14,8 @@ using namespace std;
 
 namespace {
 
-	constexpr const char* SCRIPTS_DIR = "scripts/";
-	constexpr const char* SCRIPTS_EXT = ".lua";
+	constexpr const char* SCRIPT_DIR = "scripts/";
+	constexpr const char* SCRIPT_EXT = ".lua";
 
 	lua_State* L = nullptr;
 
@@ -55,7 +55,7 @@ namespace {
 namespace wc {
 namespace lua {
 
-	bool Init() {
+	bool init() {
 		L = luaL_newstate();
 		luaL_openlibs(L);
 
@@ -123,6 +123,18 @@ namespace lua {
 			});
 			lua_setfield(L, -2, "printmore");
 
+			// dofile(script)
+			// Execute a file as a lua script.
+			// Unlike the version from the lua standard library,
+			// This runs the script properly in a protected environment.
+			lua_pushcfunction(L, [](lua_State* L) {
+				const char* filename = luaL_checkstring(L, 1);
+				bool result = doFile(filename);
+				lua_pushboolean(L, result);
+				return 1;
+			});
+			lua_setfield(L, -2, "dofile");
+
 		lua_pop(L, 1); // Pop '_G' off the stack.
 
 		debug::info("Finished initalizing lua system.\n");
@@ -184,7 +196,7 @@ namespace lua {
 		return L;
 	}
 
-	bool RunString(const char* str, const char* env, const char* sourcename) {
+	bool runString(const char* str, const char* env, const char* sourcename) {
 		if (sourcename) {
 			if (luaL_loadbuffer(L, str, strlen(str), sourcename)) {
 				debug::error(lua_tostring(L, -1), '\n');
@@ -216,6 +228,57 @@ namespace lua {
 		if (lua_pcall(L, 0, 0, 0)) {
 			debug::error(lua_tostring(L, -1), '\n');
 			lua_pop(L, 1); // Pop the error mesage off the stack.
+			return false;
+		}
+
+		return true;
+	}
+
+	bool doFile(const char* filename) {
+		string path = makestr(SCRIPT_DIR, filename, SCRIPT_EXT);
+
+		// Open and load the script file.
+		FileData file = vfs::LoadFile(path.c_str(), true);
+		if (!file.is_open()) {
+			debug::error("In wc::lua::doFile():\n");
+			debug::errmore("Script '", filename, "' does not exist.\n");
+			return false;
+		}
+
+		// Adjust the source name for debugging.
+		if (file.getSourceName().size() > 0) { path = makestr('@', file.getSourceName(), "::", path); }
+		else { path = makestr('@', path); }
+
+		// Load the script into lua.
+		if (luaL_loadbuffer(L, (const char*)file.data(), file.size(), path.c_str())) {
+			debug::error("In wc::lua::doFile():\n");
+			debug::errmore("Error loading script:\n");
+			lua_pop(L, 1);
+			return false;
+		}
+
+		// Set up the protected environment.
+		lua_getglobal(L, "setup_script_env");
+		lua_pushstring(L, filename);
+		if (lua_pcall(L, 1, 0, 0)) {
+			debug::error("In wc::lua::doFile():\n");
+			debug::errmore("Failed to set up environment for script '", filename, "':\n");
+			debug::errmore(lua_tostring(L, -1), '\n');
+			lua_pop(L, 2); // pop the error and the loaded script function
+			return false;
+		}
+
+		// Get the protected environment for the script.
+		lua_getglobal(L, "SCRIPT_ENV");
+		lua_getfield(L, -1, filename); // SCRIPT_ENV[filename] is the environment used by the script.
+
+		lua_setfenv(L, -3); // pops [filename] and assigns it as the environment for "-3" (the script code).
+		lua_pop(L, 1); // pops SCRIPT_ENV.
+
+		// Actually run the script.
+		if (lua_pcall(L, 0, 0, 0)) {
+			debug::error(lua_tostring(L, -1), '\n');
+			lua_pop(L, 1); // pop the error.
 			return false;
 		}
 

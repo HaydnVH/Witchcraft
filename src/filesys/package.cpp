@@ -55,10 +55,11 @@ namespace wc {
 			}
 		}
 
+		_name = mypath.filename().u8string();
+
 		if (!modinfo.is_open()) {
 			debug::warning("In wc::Package::open():\n");
 			debug::warnmore("Failed to open '", u8path, "/", PACKAGEINFO_FILENAME, "': ", modinfo.getError(), "\n");
-			_name = mypath.filename().u8string();
 		}
 		else {
 			// Parse the file contents as json.
@@ -67,13 +68,11 @@ namespace wc {
 			if (doc.HasParseError() || !doc.IsObject()) {
 				debug::warning("In wc::Package::open():\n");
 				debug::warnmore("Failed to parse '", u8path, "/", PACKAGEINFO_FILENAME, "'.\n");
-				_name = mypath.filename().u8string();
 			}
 			else {
 				// Weve found and correctly parsed modinfo.json,
 				// by this point we can confidently say that we're looking at a module.
 				if (doc.HasMember("name")) { _name = doc["name"].GetString(); }
-				else { _name = mypath.filename().u8string(); }
 				if (doc.HasMember("author")) { _author = doc["author"].GetString(); }
 				if (doc.HasMember("category")) { _category = doc["category"].GetString(); }
 				if (doc.HasMember("description")) { _description = doc["description"].GetString(); }

@@ -5,6 +5,7 @@
 using namespace std;
 
 #include "appconfig.h"
+#include "config.h"
 #include "debug.h"
 #include "window.h"
 #include "events.h"
@@ -27,20 +28,22 @@ namespace wc {
 
 		// Initialize subsystems.
 		int startup() {
-			appconfig::Init();
-			debug::Init(appconfig::getUserDir().c_str());
-			lua::Init();
+			appconfig::init();
+			config::init();
+			debug::init(appconfig::getUserDir().c_str());
+			lua::init();
 			if (!vfs::init()) return 10;
-			if (!window::Init()) return 20;
+			if (!window::init()) return 20;
 
 			return 0;
 		}
 
 		// Shut down subsystems.
 		void shutdown() {
-			window::Shutdown();
+			window::shutdown();
 			vfs::shutdown();
-			debug::showCrashReports(); debug::Shutdown();
+			debug::showCrashReports(); debug::shutdown();
+			config::shutdown();
 		}
 
 		bool running = true;
@@ -70,7 +73,7 @@ namespace wc {
 
 			// Handle window messages.
 			if (handleWindowMessages) {
-				if (!window::HandleMessages()) {
+				if (!window::handleMessages()) {
 					running = false;
 					return;
 				}
@@ -80,7 +83,7 @@ namespace wc {
 			std::string terminal_input;
 			while (debug::popInput(terminal_input)) {
 				debug::user(terminal_input, "\n");
-				lua::RunString(terminal_input.c_str(), "CONSOLE", "@CommandLine");
+				lua::runString(terminal_input.c_str(), "CONSOLE", "@CommandLine");
 			}
 
 			// Run onLogicalUpdate events.

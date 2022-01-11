@@ -68,7 +68,7 @@ namespace appconfig {
 
 	//////////////////////////////////////////////////////////////////////////////
 
-	bool Init() {
+	bool init() {
 
 		// First, we initialize the installation directory.
 		// This determines where we'll find appconfig.json.

@@ -74,7 +74,7 @@ namespace {
 namespace wc {
 namespace window {
 
-	bool Init() {
+	bool init() {
 		if (hwnd) {
 			debug::fatal("Trying to open the window a second time.\n");
 			return false;
@@ -186,11 +186,11 @@ namespace window {
 		return true;
 	}
 
-	void Shutdown() {
+	void shutdown() {
 		if (hwnd) DestroyWindow(hwnd);
 	}
 
-	bool HandleMessages() {
+	bool handleMessages() {
 		return true;
 	}
 

@@ -88,6 +88,12 @@ namespace vfs {
 		// Sort the list of modules according to the load order of the modules.
 		packages.sort<1>();
 
+		// Go ahead and load all the packages for now.
+		for (size_t pkgindex = 0; pkgindex < packages.size(); ++pkgindex) {
+			debug::info("Loading package '", packages.at<0>(pkgindex), "'.\n");
+			load_module(pkgindex);
+		}
+
 		// Find default modules and load them.
 		/*
 		std::vector<const char*> default_module_names = Config::ReadStringArray("filesys", "default modules");
@@ -96,7 +102,7 @@ namespace vfs {
 			size_t index = packages.find(name);
 			if (index == SIZE_MAX) debug::error("Failed to find default module '%s'.\n", name);
 			else {
-				debug::info("Loading module '", packages.at<0>(index), "'.\n");
+				debug::info("Loading package '", packages.at<0>(index), "'.\n");
 				load_module(index);
 				++loaded_default_modules;
 			}
@@ -123,5 +129,43 @@ namespace vfs {
 		return (packages.size() > 0);
 	}
 
+	FileData LoadFile(const char* u8path, bool reverse_sort) {
+		// This persistent list and its index allow us to continue our search after we load the first file.
+		static std::vector<size_t> list;
+		static size_t list_index;
+
+		// If path is not null, then we're not continuing from last time.
+		if (u8path) {
+			// Clear the list and tell it to reserve enough space for our files.
+			list.clear();
+			list.reserve(files.count(u8path));
+
+			// Get the module indices from the map and save them in the list.
+			for (size_t index = files.find(u8path, true); index != SIZE_MAX; index = files.find(u8path, false)) {
+				list.push_back(files.at<1>(index));
+			}
+
+			// Sort the list and reset the index.
+			if (list.size() > 1) {
+				if (reverse_sort)
+					std::sort(list.begin(), list.end(), std::greater<size_t>());
+				else
+					std::sort(list.begin(), list.end());
+			}
+			list_index = 0;
+		}
+
+		// If the list index points beyond the list,
+		// either we've run out of files or the file we searched for doesn't exist.
+		if (list_index >= list.size())
+			return FileData();
+
+		// Grab the module index for the file we want, then increment the index for next time.
+		size_t module_index = list[list_index];
+		++list_index;
+
+		// Use a pointer to the mod we're looking at to load the file data.
+		return FileData(&packages.at<1>(module_index), u8path);
+	}
 
 }} // namespace wc::vfs

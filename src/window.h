@@ -4,10 +4,10 @@
 namespace wc {
 namespace window {
 
-	bool Init();
-	void Shutdown();
+	bool init();
+	void shutdown();
 
-	bool HandleMessages();
+	bool handleMessages();
 
 	void getWindowSize(int& w, int& h);
 	void getDrawableSize(int& w, int& h);

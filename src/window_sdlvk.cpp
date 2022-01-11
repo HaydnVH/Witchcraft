@@ -6,16 +6,27 @@
 #include "appconfig.h"
 #include "debug.h"
 
-namespace {
-
-	SDL_Window* _window = nullptr;
-
-} // namespace <anon>
-
 namespace wc {
 namespace window {
 
-	bool Init() {
+	namespace {
+
+		SDL_Window* _window = nullptr;
+
+		namespace _config {
+
+			int width = 1280, height = 720;
+			bool maximized = false;
+			bool fs_enabled = false, fs_borderless_window = true;
+			int fs_width = 0, fs_height = 0;
+
+			bool modified = false;
+
+		} // namespace _config
+
+	} // namespace <anon>
+
+	bool init() {
 		SDL_Init(SDL_INIT_VIDEO);
 		_window = SDL_CreateWindow(
 			appconfig::getAppName().c_str(),
@@ -34,13 +45,13 @@ namespace window {
 		return true;
 	}
 
-	void Shutdown() {
+	void shutdown() {
 		if (_window) {
 			SDL_DestroyWindow(_window);
 		}
 	}
 
-	bool HandleMessages() {
+	bool handleMessages() {
 		SDL_Event _event;
 		while (SDL_PollEvent(&_event) != 0) {
 			switch (_event.type) {

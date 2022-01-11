@@ -1,27 +1,49 @@
 #ifndef HVH_WC_CONFIG_H
 #define HVH_WC_CONFIG_H
 
-#include <rapidjson/document.h>
+#include <vector>
 
 namespace wc {
 namespace config {
 
-	static constexpr const char* CONFIG_FILENAME = "config.json";
+	// The filename of the config file, relative to the user directory.
+	constexpr const char* CONFIG_FILENAME = "config.json";
 
-	// Loads the config file from disc into memory.
-	// userpath_utf8: the UTF8-encoded directory where the config file is saved.
-	// Returns false on failure.
-	bool Init(const char* userpath_utf8);
+	// Opens the config file and loads its contents.  Creates an empty document if no config file exists.
+	void init();
 
-	// Saves the config file to disc, if neccesary.
-	void Shutdown();
+	// Saves the config document and closes the file.
+	void shutdown();
 
-	// Notifies that the config has been modified and needs to be saves.
-	void setModified();
+	// Returns true after the config has been loaded (or created); false otherwise.
+	bool isInitialized();
 
-	// Gets the part of the config pertaining to a particular subsystem.
-	//rapidjson::GenericObject* getSubconfig(const char* name);
+	// Returns true if a path already exists in the config, or false if it should be created.
+	bool exists(const char* path);
+
+	// Reads a value from config.
+	// Returns the default value if anything goes wrong.
+	const char* read(const char* path, const char* key, const char* default_val);
+	int			read(const char* path, const char* key, int default_val);
+	float		read(const char* path, const char* key, float default_val);
+	bool		read(const char* path, const char* key, bool default_val);
+
+	std::vector<const char*> readStringArray(const char* path, const char* key);
+	std::vector<int>		 readIntArray(const char* path, const char* key);
+	std::vector<float>		 readFloatArray(const char* path, const char* key);
+	std::vector<bool>		 readBoolArray(const char* path, const char* key);
+
+	// Writes a value to the config document.
+	// After Close() is called, changes made will be reflected in the config file.
+	void write(const char* path, const char* key, const char* val);
+	void write(const char* path, const char* key, int val);
+	void write(const char* path, const char* key, float val);
+	void write(const char* path, const char* key, bool val);
+
+	void writeArray(const char* path, const char* key, const std::vector<const char*>& vals);
+	void writeArray(const char* path, const char* key, const std::vector<int>& vals);
+	void writeArray(const char* path, const char* key, const std::vector<float>& vals);
+	void writeArray(const char* path, const char* key, const std::vector<bool>& vals);
 
 }} // namespace wc::config
-
 #endif // HVH_WC_CONFIG_H
