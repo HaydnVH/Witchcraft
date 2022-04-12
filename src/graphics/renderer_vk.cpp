@@ -151,7 +151,7 @@ namespace gfx {
 
 		// Get the window surface.
 		{
-#ifdef PLATFORM_SDL
+		#ifdef PLATFORM_SDL
 			VkSurfaceKHR tmpsurface;
 			bool surface_success = SDL_Vulkan_CreateSurface(window::getHandle(), instance, &tmpsurface);
 			window_surface = tmpsurface;
@@ -160,7 +160,7 @@ namespace gfx {
 				debug::errmore(SDL_GetError(), '\n');
 				return false;
 			}
-#endif
+		#endif
 		}
 
 		// Pick a physical device.
@@ -403,6 +403,11 @@ namespace gfx {
 				}
 				swapchain_views[i] = result.value;
 			}
+		}
+
+		// Create the graphics pipeline.
+		{
+
 		}
 		
 

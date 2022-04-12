@@ -50,6 +50,17 @@ namespace {
 
 	const string nilstr = makestr(debug::ERRCOLR, "nil", debug::CLEAR);
 
+	void printLuaError(int errindex) {
+		string errstr = lua_tostring(L, errindex);
+		if (errstr.find(": ") != string::npos) {
+			errstr.replace(errstr.find(": "), 2, "]: \033[0m"); // debug::CLEAR
+			debug::print(debug::ERROR, debug::ERRCOLR, "ERROR [", errstr, '\n');
+		}
+		else {
+			debug::error(errstr, '\n');
+		}
+	}
+
 } // namespace <anon>
 
 namespace wc {
@@ -80,7 +91,7 @@ namespace lua {
 					lua_getfield(L, -1, "currentline");
 					  if (lua_isnumber(L, -1)) currentline = lua_tointeger(L, -1);
 					lua_pop(L, 1);
-					debug::print(debug::USER, debug::MAGENTA, "LUA (", short_src, ":", currentline, "): ", debug::CLEAR);
+					debug::print(debug::USER, debug::MAGENTA, "LUA [", short_src, ":", currentline, "]: ", debug::CLEAR);
 				}
 				else {
 					debug::print(debug::USER, debug::MAGENTA, "LUA: ", debug::CLEAR);
@@ -123,7 +134,7 @@ namespace lua {
 			});
 			lua_setfield(L, -2, "printmore");
 
-			// dofile(script)
+			// dofile(scriptname)
 			// Execute a file as a lua script.
 			// Unlike the version from the lua standard library,
 			// This runs the script properly in a protected environment.
@@ -148,12 +159,12 @@ namespace lua {
 
 		// Run core scripts here.
 		if (luaL_loadbuffer(L, (const char*)luaJIT_BC_math2, luaJIT_BC_math2_SIZE, "@math2")) {
-			debug::error(lua_tostring(L, -1), '\n');
+			printLuaError(-1);
 			lua_pop(L, 1);
 			return false;
 		}
 		else if (lua_pcall(L, 0, 0, 0)) {
-			debug::error(lua_tostring(L, -1), '\n');
+			printLuaError(-1);
 			lua_pop(L, 1);
 			return false;
 		}
@@ -162,12 +173,12 @@ namespace lua {
 		}
 
 		if (luaL_loadbuffer(L, (const char*)luaJIT_BC_sandbox, luaJIT_BC_sandbox_SIZE, "@sandbox")) {
-			debug::error(lua_tostring(L, -1), '\n');
+			printLuaError(-1);
 			lua_pop(L, 1);
 			return false;
 		}
 		else if (lua_pcall(L, 0, 0, 0)) {
-			debug::error(lua_tostring(L, -1), '\n');
+			printLuaError(-1);
 			lua_pop(L, 1);
 			return false;
 		}
@@ -176,18 +187,59 @@ namespace lua {
 		}
 
 		if (luaL_loadbuffer(L, (const char*)luaJIT_BC_events, luaJIT_BC_events_SIZE, "@events")) {
-			debug::error(lua_tostring(L, -1), '\n');
+			printLuaError(-1);
 			lua_pop(L, 1);
 			return false;
 		}
 		else if (lua_pcall(L, 0, 0, 0)) {
-			debug::error(lua_tostring(L, -1), '\n');
+			printLuaError(-1);
 			lua_pop(L, 1);
 			return false;
 		}
 		else {
 			debug::infomore("Successfully ran events.lua\n");
 		}
+
+		// More global functions, these require functionality defined by built-in scripts.
+		lua_getglobal(L, "_G"); {
+
+			// require(scriptname)
+			// Exexute a file as a lua script only if it has not been run before,
+			// then return a readonly reference to its environment table.
+			// Runs in a protected environment, like dofile.
+			lua_pushcfunction(L, [](lua_State* L) {
+				const char* filename = luaL_checkstring(L, 1);
+				// Get the SCRIPT_ENV[filename] table and put it on the stack.
+				lua_getglobal(L, "SCRIPT_ENV");
+				lua_getfield(L, -1, filename);
+				// If it's not a table, call 'dofile' to run it.
+				if (!lua_istable(L, -1)) {
+					lua_pop(L, 1);
+					doFile(filename);
+					lua_getfield(L, -1, filename);
+					// If it's still not a table, something failed.
+					if (!lua_istable(L, -1)) {
+						lua_pop(L, 1);
+						luaL_error(L, "Failed to find script env after running.\n");
+						return 0;
+					}
+				}
+				// Remove 'SCRIPT_ENV' from the stack, so only '[filename]' remains.
+				lua_remove(L, -2);
+				// Go grab 'readonly' and move it below '[filename]'.
+				lua_getglobal(L, "readonly"); lua_insert(L, -2);
+				// Call 'readonly([filename])'.
+				lua_call(L, 1, 1);
+				return 1;
+			});
+			lua_setfield(L, -2, "require");
+			lua_getglobal(L, "SANDBOX");
+			lua_getglobal(L, "require");
+			lua_setfield(L, -2, "require");
+			lua_pop(L, 1);
+
+		} lua_pop(L, 1); // Pop _G
+
 
 		return true;
 	}
@@ -199,14 +251,14 @@ namespace lua {
 	bool runString(const char* str, const char* env, const char* sourcename) {
 		if (sourcename) {
 			if (luaL_loadbuffer(L, str, strlen(str), sourcename)) {
-				debug::error(lua_tostring(L, -1), '\n');
+				printLuaError(-1);
 				lua_pop(L, 1);
 				return false;
 			}
 		}
 		else {
 			if (luaL_loadstring(L, str)) {
-				debug::error(lua_tostring(L, -1), '\n');
+				printLuaError(-1);
 				lua_pop(L, 1);
 				return false;
 			}
@@ -226,8 +278,8 @@ namespace lua {
 		}
 
 		if (lua_pcall(L, 0, 0, 0)) {
-			debug::error(lua_tostring(L, -1), '\n');
-			lua_pop(L, 1); // Pop the error mesage off the stack.
+			printLuaError(-1);
+			lua_pop(L, 1);
 			return false;
 		}
 
@@ -277,8 +329,8 @@ namespace lua {
 
 		// Actually run the script.
 		if (lua_pcall(L, 0, 0, 0)) {
-			debug::error(lua_tostring(L, -1), '\n');
-			lua_pop(L, 1); // pop the error.
+			printLuaError(-1);
+			lua_pop(L, 1);
 			return false;
 		}
 

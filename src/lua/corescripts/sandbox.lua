@@ -2,8 +2,8 @@
 
 --- Sets up tables and functions to allow scripts run by the Witchcraft engine
 --- to run in their own protected sandbox environments.
--- Written by Haydn V. "Candlemaster" Harach on 3/21/2016
--- Last modified on 3/29/2018
+-- Written by Haydn V. "Candlemaster" Harach on 21/03/2016
+-- Last modified on 12/04/2022
 
 -- The 'readonly' function makes it simple to define read-only tables.
 function readonly(tbl)
@@ -42,8 +42,6 @@ showtable = function(t, depth, set)
 	end
 	
 end
-
-SANDBOX_SCRIPT_ACCESS = {}
 
 -- The 'SANDBOX' table contains everything from _G that we want user-run scripts to have access to.
 -- It also contains proxy tables that give user scripts read-only access to other user scripts.
@@ -158,19 +156,12 @@ SANDBOX = {
 		sort = _G.table.sort,
 		unpack = _G.table.unpack,
 	}),
-	
-	script = readonly(SANDBOX_SCRIPT_ACCESS),
 }
 
 -- The 'SCRIPT_ENV' table holds the tables which will be the environment for user-run scripts.
 -- Each script gets it's own environment, shared only by scripts with the same name.
+-- To clear or re-initialize the script environment (for testing) set SCRIPT_ENV[scriptname] to an empty table.
 SCRIPT_ENV = {}
-
--- The 'SCRIPT_ENV_PROTECTED' table holds things that are specific to a particular script's env,
--- but are read-only even within that script's own environment.  Things like class internals, etc.
-SCRIPT_ENV_PROTECTED = {}
-
--- To clear or re-initialize the script environment (for testing), set SANDBOX.script, SCRIPT_ENV, and SCRIPT_ENV_PROTECTED all to empty tables.
 
 -- Every script environment has the same metatable, so we save it in _G to re-use.
 -- While the script runs in it's own environment, 'SCRIPT_ENV.scriptName',
@@ -219,33 +210,7 @@ function setup_script_env(scriptname)
 
 	-- If we've set up a table for 'scriptname' before, we bail out now.
 	if SCRIPT_ENV[scriptname] then return end
-
-	-- Don't let the user give their script the same name as something already in 'SANDBOX'.
-	if SANDBOX[scriptname] then
-		error("Cannot create environment for '"..scriptname.."' as it is a reserved key.")
-		return
-	end
-	
 	
 	-- Create the table for 'scriptname', and a protected table as well.
-	-- The protected table is used whenever the engine sets up methods for the script,
-	-- ie. making it behave like a class.
-	-- SCRIPT_ENV[i] is where the script runs.  It's index points to SCRIPT_ENV_PROTECTED[i].
-	-- SCRIPT_ENV_PROTECTED[i] is where engine-defined per-script methods go.  It's index points to SANDBOX.
-	SCRIPT_ENV_PROTECTED[scriptname] = setmetatable({_SCRIPTNAME = scriptname}, SCRIPT_ENV_MT)
-	SCRIPT_ENV[scriptname] = setmetatable({}, {
-		__index = SCRIPT_ENV_PROTECTED[scriptname],
-		__newindex = function(tbl, key, val)
-			if SCRIPT_ENV_PROTECTED[scriptname][key] then
-				error("Attempting to overwrite protected key '"..tostring(key).."'.", 3)
-				return end
-			rawset(tbl, key, val)
-		end,
-		__metatable = false
-	})
-	
-	-- Add a proxy table named 'scriptname' to 'SANDBOX.script',
-	-- allowing other scripts read-only access to the contents of 'SCRIPT_ENV[scriptname]'.
-	-- Note that the contents of any tables inside 'SCRIPT_ENV[scriptname]' will be writeable by default.
-	SANDBOX_SCRIPT_ACCESS[scriptname] = readonly(SCRIPT_ENV[scriptname])
+	SCRIPT_ENV[scriptname] = setmetatable({}, SCRIPT_ENV_MT)
 end
