@@ -12,6 +12,7 @@ using namespace std;
 #include "window.h"
 #include "graphics/renderer.h"
 #include "events.h"
+#include "ecs/entity.h"
 
 
 namespace wc {
@@ -36,6 +37,8 @@ namespace wc {
 			if (!vfs::init()) return 10;
 			if (!window::init()) return 20;
 			if (!gfx::init()) return 30;
+
+			entity::initLua();
 
 			return 0;
 		}

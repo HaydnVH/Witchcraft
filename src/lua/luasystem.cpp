@@ -220,7 +220,7 @@ namespace lua {
 					// If it's still not a table, something failed.
 					if (!lua_istable(L, -1)) {
 						lua_pop(L, 1);
-						luaL_error(L, "Failed to find script env after running.\n");
+						luaL_error(L, "Requested script environment could not be found.\n");
 						return 0;
 					}
 				}

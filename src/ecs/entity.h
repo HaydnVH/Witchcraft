@@ -11,7 +11,7 @@ namespace entity {
 
 	const char* toString(ID id);
 
-	bool init();
+	bool initLua();
 }
 
 #endif // HVH_WC_ECS_ENTITY_H
