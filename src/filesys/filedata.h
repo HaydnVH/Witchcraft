@@ -59,6 +59,7 @@ namespace wc {
 			FILE_NOT_FOUND,
 			NOT_REGULAR_FILE,
 			COULD_NOT_OPEN,
+			ASYNC_STILL_LOADING,
 			MALLOC_FAIL
 		};
 
@@ -72,6 +73,7 @@ namespace wc {
 			case (NOT_REGULAR_FILE): return "Not a regular file.";
 			case (COULD_NOT_OPEN): return "Failed to open.";
 			case (MALLOC_FAIL): return "Memory allocation failure.";
+			case (ASYNC_STILL_LOADING): return "File still loading.";
 			default: return "Unknown error.";
 			}
 		}

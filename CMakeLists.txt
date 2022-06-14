@@ -62,11 +62,28 @@ add_custom_command(TARGET Witchcraft POST_BUILD
 	"${PROJECT_SOURCE_DIR}/dependencies/luaJIT-2.1.0-beta3/src/lua51.dll"
 	$<TARGET_FILE_DIR:Witchcraft>)
 
-# Compile lua corescripts
-file (GLOB_RECURSE LUA_CORESCRIPTS ${PROJECT_SOURCE_DIR}/src/lua/corescripts/*.lua)
-foreach(script ${LUA_CORESCRIPTS})
+# Compile Lua scripts
+file (GLOB_RECURSE LUA_SCRIPTS ${PROJECT_SOURCE_DIR}/src/lua/scripts/*.lua)
+foreach(script ${LUA_SCRIPTS})
+	get_filename_component(OUTPUT_FILENAME ${script} NAME)
+	set (OUTPUT_FILENAME ${PROJECT_SOURCE_DIR}"/src/lua/scripts/build/"${OUTPUT_FILENAME}".h")
 	add_custom_command(TARGET Witchcraft POST_BUILD
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies/luaJIT-2.1.0-beta3/src
-		COMMAND luajit.exe -b ${script} ${script}.h
+		COMMAND luajit.exe -b ${script} ${OUTPUT_FILENAME}
+	)
+endforeach()
+
+# Compile GLSL shaders
+file (GLOB_RECURSE GLSL_SHADERS ${PROJECT_SOURCE_DIR}/src/graphics/shaders/*.glsl)
+foreach(shader ${GLSL_SHADERS})
+	get_filename_component(OUTPUT_FILENAME ${shader} NAME_WLE)
+	set (OUTPUT_FILENAME ${PROJECT_SOURCE_DIR}"/src/graphics/shaders/build/"${OUTPUT_FILENAME}".spv")
+	add_custom_command(TARGET Witchcraft POST_BUILD
+		WORKING_DIRECTORY ${Vulkan_INCLUDE_DIR}/../Bin
+		COMMAND glslc.exe ${shader} -o ${OUTPUT_FILENAME}
+	)
+	add_custom_command(TARGET Witchcraft POST_BUILD
+		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies
+		COMMAND FileToHeader.exe ${OUTPUT_FILENAME}
 	)
 endforeach()

@@ -8,9 +8,9 @@ using namespace std;
 #include "tools/stringhelper.h"
 #include "debug.h"
 
-#include "corescripts/sandbox.lua.h"
-#include "corescripts/math2.lua.h"
-#include "corescripts/events.lua.h"
+#include "scripts/build/sandbox.lua.h"
+#include "scripts/build/math2.lua.h"
+#include "scripts/build/events.lua.h"
 
 namespace {
 
