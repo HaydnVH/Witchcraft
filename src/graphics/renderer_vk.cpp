@@ -13,6 +13,9 @@
 
 #include "tools/htable.hpp"
 
+#include "shaders/build/tut.vert.spv.h"
+#include "shaders/build/tut.frag.spv.h"
+
 namespace wc {
 namespace gfx {
 
@@ -34,6 +37,10 @@ namespace gfx {
 		std::vector<vk::ImageView> swapchain_views;
 		vk::Format swapchain_format;
 		vk::Extent2D swapchain_extent;
+
+		vk::RenderPass render_pass;
+		vk::PipelineLayout pipeline_layout;
+		vk::Pipeline graphics_pipeline;
 
 		struct {
 
@@ -66,6 +73,16 @@ namespace gfx {
 			}
 
 			return VK_FALSE;
+		}
+
+		vk::ShaderModule createShaderModule(size_t numbytes, const unsigned char data[]) {
+			vk::ShaderModuleCreateInfo ci({}, numbytes, (const uint32_t*)data);
+			auto result = device.createShaderModule(ci);
+			if (result.result != vk::Result::eSuccess) {
+				debug::error("Failed to create shader module.\n");
+				return vk::ShaderModule();
+			}
+			return result.value;
 		}
 
 
@@ -237,7 +254,16 @@ namespace gfx {
 				for (const auto& heap : memory.memoryHeaps) {
 					if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal) {
 						// Report how much VRAM this device has.
-						debug::print(debug::INFO, " (", heap.size, " bytes of local memory)");
+
+						// Stick commas between the thousands places.
+						debug::print(debug::INFO, " (");
+						if (heap.size / 1000000000000 > 0) { debug::print(debug::INFO,  heap.size / 1000000000000, ","); }
+						if (heap.size / 1000000000 > 0)    { debug::print(debug::INFO, (heap.size % 1000000000000) / 1000000000, ","); }
+						if (heap.size / 1000000 > 0)       { debug::print(debug::INFO, (heap.size % 1000000000) / 1000000, ","); }
+						if (heap.size / 1000 > 0)          { debug::print(debug::INFO, (heap.size % 1000000) / 1000, ","); }
+						if (heap.size > 0)                 { debug::print(debug::INFO, (heap.size % 1000)); }
+						debug::print(debug::INFO, " bytes of local memory)");
+
 						// Save this device in a table for sorting.
 						device_table.insert(std::string(pdevice.getProperties().deviceName.data()), pdevice, heap.size);
 						break;
@@ -405,16 +431,130 @@ namespace gfx {
 			}
 		}
 
+		// Create the render pass.
+		{
+			vk::AttachmentDescription color_attachment{};
+			color_attachment.format = swapchain_format;
+			color_attachment.samples = vk::SampleCountFlagBits::e1;
+			color_attachment.loadOp = vk::AttachmentLoadOp::eClear;
+			color_attachment.storeOp = vk::AttachmentStoreOp::eStore;
+			color_attachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+			color_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+			color_attachment.initialLayout = vk::ImageLayout::eUndefined;
+			color_attachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+			vk::AttachmentReference attachment_ref{};
+			attachment_ref.attachment = 0;
+			attachment_ref.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+			vk::SubpassDescription subpass{};
+			subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+			subpass.colorAttachmentCount = 1;
+			subpass.pColorAttachments = &attachment_ref;
+
+			//vk::RenderPassCreateInfo ci({}, 1, &color_attachment, 1, &subpass);
+			auto result = device.createRenderPass({ {}, 1, &color_attachment, 1, &subpass });
+			if (result.result != vk::Result::eSuccess) {
+				debug::fatal("Failed to create render pass!\n");
+				return false;
+			}
+			render_pass = result.value;
+		}
+
 		// Create the graphics pipeline.
 		{
+			auto vertShader = createShaderModule(FILE_tut_vert_spv_SIZE, FILE_tut_vert_spv_DATA);
+			auto fragShader = createShaderModule(FILE_tut_frag_spv_SIZE, FILE_tut_frag_spv_DATA);
+			{
+				// Shader Stages
+				std::vector<vk::PipelineShaderStageCreateInfo> sci = {
+					{ {}, vk::ShaderStageFlagBits::eVertex, vertShader, "main", {} },
+					{ {}, vk::ShaderStageFlagBits::eFragment, fragShader, "main", {} }
+				};
 
+				// Vertex Input
+				vk::PipelineVertexInputStateCreateInfo vici({}, 0, nullptr, 0, nullptr);
+				// Input Assembly
+				vk::PipelineInputAssemblyStateCreateInfo iaci({}, vk::PrimitiveTopology::eTriangleList, false);
+				// Viewport
+				vk::Viewport viewport{};
+				viewport.x = 0.0f, viewport.y = 0.0f;
+				viewport.width = (float)swapchain_extent.width; viewport.height = (float)swapchain_extent.height;
+				viewport.minDepth = 0.0f; viewport.maxDepth = 0.0f;
+				vk::Rect2D scissor{};
+				scissor.offset = vk::Offset2D({ 0, 0 });
+				scissor.extent = swapchain_extent;
+				vk::PipelineViewportStateCreateInfo vsci({}, 1, &viewport, 1, &scissor);
+				// Rasterizer
+				vk::PipelineRasterizationStateCreateInfo rci({},
+					false, false, vk::PolygonMode::eFill,
+					vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise,
+					false, 0.0f, 0.0f, 0.0f, 1.0f);
+				// Multisampling
+				vk::PipelineMultisampleStateCreateInfo msci({}, vk::SampleCountFlagBits::e1, false, 1.0f, nullptr, false, false);
+				// Blending
+				vk::PipelineColorBlendAttachmentState cb{};
+				cb.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+				cb.blendEnable = false;
+				cb.srcColorBlendFactor = vk::BlendFactor::eOne;
+				cb.dstColorBlendFactor = vk::BlendFactor::eZero;
+				cb.colorBlendOp = vk::BlendOp::eAdd;
+				cb.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+				cb.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+				cb.alphaBlendOp = vk::BlendOp::eAdd;
+				vk::PipelineColorBlendStateCreateInfo cbci({},
+					false, vk::LogicOp::eClear, 1, &cb, {0.0f, 0.0f, 0.0f, 0.0f});
+				// Dynamic States
+				std::vector<vk::DynamicState> dstates = { vk::DynamicState::eViewport, vk::DynamicState::eLineWidth };
+				vk::PipelineDynamicStateCreateInfo dsci({}, dstates );
+				// Pipeline Layout
+				vk::PipelineLayoutCreateInfo plci({}, 0, nullptr, 0, nullptr);
+				auto result = device.createPipelineLayout(plci);
+				if (result.result != vk::Result::eSuccess) {
+					debug::fatal("Failed to create pipeline layout!\n");
+					return false;
+				}
+				pipeline_layout = result.value;
+
+				vk::GraphicsPipelineCreateInfo gpci;
+				gpci.setStages(sci);
+				gpci.setPVertexInputState(&vici);
+				gpci.setPInputAssemblyState(&iaci);
+				gpci.setPViewportState(&vsci);
+				gpci.setPRasterizationState(&rci);
+				gpci.setPMultisampleState(&msci);
+				gpci.setPDepthStencilState(nullptr);
+				gpci.setPColorBlendState(&cbci);
+				gpci.setPDynamicState(nullptr);
+				gpci.setLayout(pipeline_layout);
+				gpci.setRenderPass(render_pass);
+				gpci.setSubpass(0);
+				gpci.setBasePipelineHandle(nullptr);
+				gpci.setBasePipelineIndex(-1);
+				auto result2 = device.createGraphicsPipeline(nullptr, gpci);
+				if (result2.result != vk::Result::eSuccess) {
+					debug::fatal("Failed to create graphics pipeline!\n");
+					return false;
+				}
+				graphics_pipeline = result2.value;
+
+			}
+			device.destroyShaderModule(vertShader);
+			device.destroyShaderModule(fragShader);
 		}
 		
 
 		return true;
 	}
 
+	
+
 	void shutdown() {
+		
+		device.destroyPipeline(graphics_pipeline);
+		device.destroyPipelineLayout(pipeline_layout);
+		device.destroyRenderPass(render_pass);
+
 		for (const auto& view : swapchain_views) {
 			device.destroyImageView(view);
 		}
