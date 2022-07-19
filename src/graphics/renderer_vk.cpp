@@ -41,6 +41,7 @@ namespace gfx {
 		vk::RenderPass render_pass;
 		vk::PipelineLayout pipeline_layout;
 		vk::Pipeline graphics_pipeline;
+		std::vector<vk::Framebuffer> swapchain_framebuffers;
 
 		struct {
 
@@ -541,6 +542,12 @@ namespace gfx {
 			}
 			device.destroyShaderModule(vertShader);
 			device.destroyShaderModule(fragShader);
+		}
+
+		// Create the framebuffers
+		{
+			swapchain_framebuffers.resize(swapchain_images.size());
+			
 		}
 		
 
