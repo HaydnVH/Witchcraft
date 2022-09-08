@@ -14,10 +14,51 @@ using namespace std;
 #include "events.h"
 #include "ecs/entity.h"
 
+#include "flecs.h"
+#include "tools/dxmathhelper.h"
+
+struct Transform {
+	float3 pos;
+	quat rot;
+	float3 scl;
+	mat4 world_matrix;
+};
+
+struct InterpolatedTransform {
+	float3 pos;
+	quat rot;
+	float3 scl;
+};
+
+void FlipTransforms(flecs::world& world) {
+	world.each([](InterpolatedTransform& prev_transform, Transform& current_transform) {
+		prev_transform.pos = current_transform.pos;
+		prev_transform.rot = current_transform.rot;
+		prev_transform.scl = current_transform.scl;
+	});
+}
+/*
+void CreateMatrices(flecs::world& world, float interpolation) {
+	world.each([](InterpolatedTransform& prev_transform, Transform& current_transform) {
+		current_transform.world_matrix =
+			mat4_scale(lerp(prev_transform.scl, current_transform.scl, interpolation)) *
+			mat4_rotation(quat_slerp(prev_transform.rot, current_transform.rot, interpolation)) *
+			mat4_translation(lerp(prev_transform.pos, current_transform.pos, interpolation));
+	});
+
+	auto f = world.filter_builder<>()
+		.term<Transform>()
+		.term<InterpolatedTransform>().oper(flecs::Not)
+		.build();
+
+}
+*/
 
 namespace wc {
 
 	namespace {
+
+		flecs::world world;
 
 		uint32_t logical_frame_counter = 0;
 		uint32_t display_frame_counter = 0;
@@ -39,7 +80,16 @@ namespace wc {
 			if (!gfx::init()) return 30;
 
 			entity::initLua();
-
+			/*
+			auto e = world.entity("alice");
+			debug::info("Entity created: ", e.name(), ", id: ", e.id(), ".\n");
+			flecs::entity e2(world, 2000000000);
+			e2.set_name("bob");
+			debug::info("Entity created: ", e2.name(), ", id: ", e2.id(), ".\n");
+			e.add<Transform>();
+			auto t_e = world.id<Transform>();
+			debug::info(e.type().str(), "\n");
+			*/
 			return 0;
 		}
 

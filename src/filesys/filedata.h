@@ -15,6 +15,7 @@
 #define HVH_WC_FILESYS_FILEDATA_H
 
 #include <filesystem>
+#include <vector>
 #include "archive.h"
 #include "package.h"
 #include "tools/crossplatform.h"
@@ -27,30 +28,30 @@ namespace wc {
 		FileData() {}
 		FileData(const FileData& rhs) = delete;
 		FileData(FileData&& rhs) noexcept {
-			_fdata = rhs._fdata; rhs._fdata = nullptr;
+			std::swap(_fdata, rhs._fdata);
 			_source = rhs._source; rhs._source = nullptr;
-			_fsize = rhs._fsize; rhs._fsize = 0;
 			_errcode = rhs._errcode; rhs._errcode = FILE_CLOSED;
 		}
 		FileData& operator = (const FileData& rhs) = delete;
 		FileData& operator = (FileData&& rhs) noexcept {
-			_fdata = rhs._fdata; rhs._fdata = nullptr;
+			std::swap(_fdata, rhs._fdata);
+			//_fdata = rhs._fdata; rhs._fdata = nullptr;
 			_source = rhs._source; rhs._source = nullptr;
-			_fsize = rhs._fsize; rhs._fsize = 0;
+			//_fsize = rhs._fsize; rhs._fsize = 0;
 			_errcode = rhs._errcode; rhs._errcode = FILE_CLOSED;
 			return *this;
 		}
 		~FileData() { close(); }
 		void close();
-		inline bool is_open() { return (_fdata != nullptr); }
+		inline bool is_open() { return (_fdata.size() != 0); }
 
 		FileData(const Package* package, const char* u8path);
 		FileData(const Archive& archive, const char* u8path);
 		FileData(const std::filesystem::path& folder, const char* u8path);
 
-		void* data() { return _fdata; }
+		void* data() { return _fdata.data(); }
 		const Package* package() { return _source; }
-		size_t size() { return _fsize; }
+		size_t size() { return _fdata.size(); }
 
 		enum Enum {
 			SUCCESS = 0,
@@ -85,9 +86,8 @@ namespace wc {
 		}
 
 	private:
-		void* _fdata = nullptr;
+		std::vector<char> _fdata;
 		const Package* _source = nullptr;
-		uint32_t _fsize = 0;
 		int _errcode = NOT_INITIALIZED;
 	};
 

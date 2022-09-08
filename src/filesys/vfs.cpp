@@ -19,12 +19,13 @@ namespace vfs {
 		hvh::htable<fixedstring<64>, Package> packages;
 		hvh::htable<fixedstring<64>, size_t> files;
 
-		void load_module(size_t module_index) {
+		size_t load_module(size_t module_index) {
 			Package& pkg = packages.at<1>(module_index);
 			pkg.loadFileList();
 			for (size_t i = 0; i < pkg.getFileTable().size(); ++i) {
 				files.insert(pkg.getFileTable().at<0>(i), module_index);
 			}
+			return pkg.getFileTable().size();
 		}
 
 	} // namespace <anon>
@@ -40,14 +41,14 @@ namespace vfs {
 		fs::path user_data_path = appconfig::getUserPath() / DATA_FOLDER;
 		if (!fs::exists(user_data_path)) fs::create_directories(user_data_path);
 		for (fs::directory_iterator it(user_data_path); it != fs::directory_iterator(); ++it) {
-			// If this entry is a directory or a .wcmod file...
+			// If this entry is a directory or a .wcp file...
 			if (it->is_directory() ||
 				(it->is_regular_file() && it->path().extension().string() == PACKAGE_EXT))
 			{
 				// Add it to the list of available modules.
 				Package pkg;
 				if (pkg.open(it->path().u8string().c_str())) {
-					debug::info("Found package '$install/", it->path().filename().u8string().c_str(), "'.\n");
+					debug::info("Found package '$user/", it->path().filename().u8string().c_str(), "'.\n");
 					if (packages.count(pkg.getName().c_str()) > 0)
 						debug::infomore("A package with this name is already present.\n");
 					else
@@ -91,7 +92,8 @@ namespace vfs {
 		// Go ahead and load all the packages for now.
 		for (size_t pkgindex = 0; pkgindex < packages.size(); ++pkgindex) {
 			debug::info("Loading package '", packages.at<0>(pkgindex), "'.\n");
-			load_module(pkgindex);
+			size_t num_files_loaded = load_module(pkgindex);
+			debug::infomore("Found ", num_files_loaded, " file(s).\n");
 		}
 
 		// Find default modules and load them.

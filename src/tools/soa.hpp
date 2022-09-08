@@ -45,6 +45,9 @@
 
 namespace hvh {
 
+	// This is the base case for the recursive class.
+	// It contains basic size info for the container,
+	// but mainly does nothing so the recursive calls can stop.
 	template <typename... Ts>
 	class _soa_base {
 	public:
@@ -76,16 +79,16 @@ namespace hvh {
 	template <typename FT, typename... RTs>
 	class _soa_base<FT, RTs...> : public _soa_base<RTs...> {
 
-		// This stuff is neccesary to hold the list of types.
-		// I'm not entirely sure exactly how this works, tbh.
-
+		// This allows us to get the type of a given column.
 		template <size_t, typename> struct elem_type_holder;
 
+		// Template specialization to fetch the actual type (base case).
 		template <typename T, typename... Ts>
 		struct elem_type_holder<0, _soa_base<T, Ts...>> {
 			typedef T type;
 		};
 
+		// Template specialization to fetch the actual type (recursive case).
 		template <size_t K, typename T, typename... Ts>
 		struct elem_type_holder<K, _soa_base<T, Ts...>> {
 			typedef typename elem_type_holder<K - 1, _soa_base<Ts...>>::type type;

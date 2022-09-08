@@ -3,10 +3,8 @@
 namespace wc {
 
 	void FileData::close() {
-		if (_fdata) free(_fdata);
-		_fdata = nullptr;
+		_fdata.clear();
 		_source = nullptr;
-		_fsize = 0;
 		_errcode = FILE_CLOSED;
 	}
 
@@ -15,8 +13,7 @@ namespace wc {
 		const Archive& archive = package->getArchive();
 		if (archive.is_open()) {
 			int64_t nil;
-			_fdata = archive.extract_data(u8path, nullptr, _fsize, nil, true);
-			if (!_fdata) {
+			if (!archive.extract_data(u8path, _fdata, nil)) {
 				_errcode = FILE_NOT_FOUND;
 				return;
 			}
@@ -38,13 +35,8 @@ namespace wc {
 				return;
 			}
 			size_t filesize = std::filesystem::file_size(fullpath);
-			_fdata = malloc(filesize);
-			if (!_fdata) {
-				_errcode = MALLOC_FAIL;
-				fclose(file);
-				return;
-			}
-			_fsize = (uint32_t)fread(_fdata, 1, filesize, file);
+			_fdata.resize(filesize);
+			fread(_fdata.data(), 1, _fdata.size(), file);
 			fclose(file);
 		}
 		_source = package;
@@ -53,8 +45,7 @@ namespace wc {
 
 	FileData::FileData(const Archive& archive, const char* utf8path) {
 		int64_t nil;
-		_fdata = archive.extract_data(utf8path, nullptr, _fsize, nil, true);
-		if (!_fdata) {
+		if (!archive.extract_data(utf8path, _fdata, nil)) {
 			_errcode = FILE_NOT_FOUND;
 			return;
 		}
@@ -77,13 +68,8 @@ namespace wc {
 			return;
 		}
 		size_t filesize = std::filesystem::file_size(fullpath);
-		_fdata = malloc(filesize);
-		if (!_fdata) {
-			_errcode = MALLOC_FAIL;
-			fclose(file);
-			return;
-		}
-		_fsize = (uint32_t)fread(_fdata, 1, filesize, file);
+		_fdata.resize(filesize);
+		fread(_fdata.data(), 1, _fdata.size(), file);
 		fclose(file);
 		_errcode = SUCCESS;
 	}

@@ -26,7 +26,7 @@ namespace wc {
 				std::filesystem::create_directories(archivepath.parent_path());
 			}
 
-			// If the dile doesn't exist yet, then we can't open it with "r+", so we create it here.
+			// If the file doesn't exist yet, then we can't open it with "r+", so we create it here.
 			_file = fopen_w(archivepath.c_str());
 
 			Archive::Header newheader = {};
@@ -200,7 +200,7 @@ namespace wc {
 		if (_file == nullptr) return -1;
 
 		// Find the index of the file we're looking for.
-		fixedstring<64> fixedpath(utf8path);
+		fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(utf8path);
 		size_t index = _dictionary.find(fixedpath, true);
 		if (index == SIZE_MAX) {
 			return -1;
@@ -218,91 +218,91 @@ namespace wc {
 		if (_file == nullptr) return false;
 
 		// Look for the file.
-		fixedstring<64> fixedpath(utf8path);
+		fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(utf8path);
 		size_t index = _dictionary.find(fixedpath);
 		return (index != SIZE_MAX);
 	}
 
-	void* Archive::extract_data(const char* utf8path, void* buffer, uint32_t& size, int64_t& timestamp, bool alloc) const {
+	bool Archive::extract_data(const char* u8path, std::vector<char>& buffer, int64_t& timestamp) const {
 		// Make sure the archive is open.
-		if (_file == nullptr) { size = 0;  return nullptr; }
+		if (_file == nullptr) { return false; }
 
 		// Search for the file we're looking for.
-		fixedstring<64> fixedpath(utf8path);
+		fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(u8path);
 		size_t index = _dictionary.find(fixedpath);
 		if (index == SIZE_MAX) {
-			size = 0;
-			return nullptr;
+			debug::error("In wc::Archive::extract_data(\"", u8path, "\"):\n");
+			debug::errmore("Failed to find file.\n");
+			return false;
 		}
 
+		// Fetch the file's information and resize the buffer accordingly.
 		const FileInfo& info = _fileinfos[index];
-		size = info.size_uncompressed;
+		buffer.resize(info.size_uncompressed);
 		timestamp = info.timestamp;
 
-		if (!buffer && !alloc) {
-			// We found the file, but we don't have any space allocated for it, and they don't want us allocating space.
-			return nullptr;
-		}
-
+		// Seek to the file data's location in the archive.
 		fseek64(_file, info.offset, SEEK_SET);
 		if (feof(_file)) {
-			// File's offset points to beyond the end of the archive, somehow.
-			size = 0;
-			return nullptr;
+			debug::error("In wc::Archive::extract_data(\"", u8path, "\"):\n");
+			debug::errmore("File offset points beyond the end of the archive, somehow.\n");
+			return false;
 		}
 
-		// If we haven't been given a buffer, and we have permission to allocate, then we allocate a buffer.
-		if (!buffer && alloc) {
-			buffer = malloc(info.size_uncompressed);
-		}
-
-		// If the file's compressed size is equal to its uncompressed size, the file is not compressed.
-		if (info.size_compressed == info.size_uncompressed) {
+		// If the file is not compressed, we can load it straight into memory.
+		if (!(info.flags & FILEFLAG_COMPRESSED)) {
 			// Load the file contents straight into memory.
-			fread(buffer, 1, info.size_uncompressed, _file);
+			fread(buffer.data(), 1, info.size_uncompressed, _file);
 		}
+		// Otherwise, the file has been compressed using LZ4.
+		// LZ4 default and LZ4 HC are both decompressed using the same function,
+		// so the file info doesn't need to know which was used for compression.
 		else {
-			// TODO: Handle file decompression!
-			if (alloc)
-				free(buffer);
-			return nullptr;
+			/*
+			std::vector<char> compressed_buffer(info.size_compressed);
+			fread(compressed_buffer.data(), 1, info.size_compressed, _file);
+			int result = LZ4_decompress_safe(compressed_buffer.data(), buffer.data(), info.size_compressed, info.size_uncompressed);
+			if (result < 0) {
+				debug::error("In wc::Archive::extract_data(\"", u8path, "\"):\n);
+				debug::errmore("Failed to decompress; source stream is malformed.\n");
+				return false;
+			}
+			*/
+			return false;
 		}
 
 		// Finally, we return the buffer we just loaded the memory to.
-		return buffer;
+		return true;
 	}
 
 	void Archive::extract_file(const char* utf8path, const char* utf8dstfile) const {
 		// Extract the file data.
 		uint32_t size = 0; int64_t timestamp = 0;
-		void* buffer = extract_data(utf8path, NULL, size, timestamp, true);
+		std::vector<char> buffer;
+		if (!extract_data(utf8path, buffer, timestamp)) { return; }
 
-		if (buffer) {
-			// Create the directory where we'll place the file.
-			std::filesystem::path dstpath = std::filesystem::u8path(utf8dstfile);
-			std::error_code ec;
-			std::filesystem::create_directories(dstpath.parent_path(), ec);
-			if (ec) {
-				debug::error("In wc::Archive::extract_file():\n");
-				debug::errmore("Filesystem error: ", ec.message(), "\n");
-				free(buffer);
-				return;
-			}
+		// Create the directory where we'll place the file.
+		std::filesystem::path dstpath = std::filesystem::u8path(utf8dstfile);
+		std::error_code ec;
+		std::filesystem::create_directories(dstpath.parent_path(), ec);
+		if (ec) {
+			debug::error("In wc::Archive::extract_file():\n");
+			debug::errmore("Filesystem error: ", ec.message(), "\n");
+			return;
+		}
 
-			// Open the file we're extracting to...
-			FILE* dstfile = fopen_w(dstpath.c_str());
-			if (dstfile) {
-				// Write the file data.
-				fwrite(buffer, 1, size, dstfile);
-				fclose(dstfile);
-				// Correct the extracted file's timestamp.
-				std::filesystem::last_write_time(dstpath, std::filesystem::file_time_type(std::chrono::seconds(timestamp)));
-			}
-			free(buffer);
+		// Open the file we're extracting to...
+		FILE* dstfile = fopen_w(dstpath.c_str());
+		if (dstfile) {
+			// Write the file data.
+			fwrite(buffer.data(), 1, buffer.size(), dstfile);
+			fclose(dstfile);
+			// Correct the extracted file's timestamp.
+			std::filesystem::last_write_time(dstpath, std::filesystem::file_time_type(std::chrono::seconds(timestamp)));
 		}
 	}
 
-	bool Archive::insert_data(const char* utf8path, void* buffer, uint32_t size, int64_t timestamp, ReplaceEnum replace) {
+	bool Archive::insert_data(const char* utf8path, void* buffer, uint32_t size, int64_t timestamp, ReplaceEnum replace, CompressEnum compress) {
 		// Make sure the archive is open.
 		if (_file == nullptr) return false;
 
@@ -318,10 +318,30 @@ namespace wc {
 		newinfo.size_uncompressed = size;
 		newinfo.timestamp = timestamp;
 
-		// Perform a binary search to find the file we're looking for.
+		// TODO: Handle file compression.
+		/*
+		std::vector<char> compressed_buffer(size);
+		switch (compress) {
+			case COMPRESSED_FAST:
+				newinfo.size_compressed = LZ4_compress_default((const char*)buffer, compressed_buffer.data(), size, size);
+				newinfo.flags |= FILEFLAG_COMPRESSED;
+				buffer = compressed_buffer.data();
+				break;
+			case COMPRESSED_SMALL:
+				newinfo.size_compressed = LZ4_compress_HC((const char*)buffer, compressed_buffer.data(), size, size, 1);
+				newinfo.flags |= FILEFLAG_COMPRESSED;
+				buffer = compressed_buffer.data();
+				break;
+			default:
+				break;
+		}
+		*/
+
+		// Find the file we're looking for.
 		size_t index = _dictionary.find(newpath);
 		if (index == SIZE_MAX) {
 			_dictionary.insert(newpath, newinfo);
+			index = _dictionary.find(newpath);
 		}
 		else {
 			// The specified file is already in this archive, so use 'replace' to decide what to do.
@@ -329,7 +349,7 @@ namespace wc {
 			case DO_NOT_REPLACE:
 				return false;
 				break;
-			case REPLACE:
+			case ALWAYS_REPLACE:
 				_files_deleted = true;
 				_fileinfos[index] = newinfo;
 				break;
@@ -346,7 +366,7 @@ namespace wc {
 			}
 		}
 
-		// TODO: Handle file compression.
+		
 
 		// If the new file has a non-zero size,
 		if (newinfo.size_compressed > 0) {
@@ -360,11 +380,11 @@ namespace wc {
 		return true;
 	}
 
-	bool Archive::insert_file(const char* u8path, const char* u8srcfile, ReplaceEnum replace) {
+	bool Archive::insert_file(const char* u8path, const char* u8srcfile, ReplaceEnum replace, CompressEnum compress) {
 		// Make sure the path isn't too long.
-		if (strlen(u8path) > 63) {
+		if (strlen(u8path) > (Archive::FILEPATH_FIXEDLEN-1)) {
 			debug::error("In wc::Archive::insert_file():\n");
-			debug::error("Failed to insert '", u8path, "'; path too long (max 63 bytes).\n");
+			debug::error("Failed to insert '", u8path, "'; path too long (max ", Archive::FILEPATH_FIXEDLEN-1, " bytes).\n");
 			return false;
 		}
 
@@ -391,7 +411,7 @@ namespace wc {
 		size_t realsize = fread(buffer, 1, filesize, srcfile);
 
 		// Insert the file into the archive.
-		bool result = insert_data(u8path, buffer, (uint32_t)realsize, timestamp, replace);
+		bool result = insert_data(u8path, buffer, (uint32_t)realsize, timestamp, replace, compress);
 
 		// Clean up after ourselves.
 		fclose(srcfile);
@@ -456,16 +476,16 @@ namespace wc {
 		}
 	}
 
-	void Archive::merge(const char* utf8other, ReplaceEnum replace) {
+	void Archive::merge(const char* u8other, ReplaceEnum replace) {
 		Archive other;
-		if (!other.open(utf8other)) return;
+		if (!other.open(u8other)) return;
 
+		std::vector<char> buffer;
 		for (size_t i = 0; i < other._header.numfiles; ++i) {
 			fixedstring<64> entry = other._filepaths[i];
-			uint32_t size; int64_t timestamp;
-			void* filedata = other.extract_data(entry.c_str, nullptr, size, timestamp, true);
-			insert_data(entry.c_str, filedata, size, timestamp, replace);
-			free(filedata);
+			int64_t timestamp;
+			other.extract_data(entry.c_str, buffer, timestamp);
+			insert_data(entry.c_str, buffer.data(), (uint32_t)buffer.size(), timestamp, replace);
 		}
 	}
 

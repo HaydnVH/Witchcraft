@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <vector>
 
 #include "tools/htable.hpp"
 #include "tools/fixedstring.h"
@@ -37,8 +38,20 @@ namespace wc {
 		enum ReplaceEnum
 		{
 			DO_NOT_REPLACE,
-			REPLACE,
+			ALWAYS_REPLACE,
 			REPLACE_IF_NEWER
+		};
+
+		enum CompressEnum
+		{
+			DO_NOT_COMPRESS,
+			COMPRESS_FAST,	// Uses LZ4 default
+			COMPRESS_SMALL	// Uses LZ4 HC
+		};
+
+		enum FileInfoFlags
+		{
+			FILEFLAG_COMPRESSED = 1 << 0
 		};
 
 
@@ -60,17 +73,17 @@ namespace wc {
 		bool file_exists(const char* u8path) const;
 
 		// Finds the file and extracts it to an in-memory buffer.
-		// If alloc is true, extract_data will allocate a buffer on the heap which must be freed using aligned_free.
-		void* extract_data(const char* u8path, void* buffer, uint32_t& size, int64_t& timestamp, bool alloc = false) const;
+		// 'buffer' will be resized, and it will contain the file data.
+		bool extract_data(const char* u8path, std::vector<char>& buffer, int64_t& timestamp) const;
 
 		// Finds the file and extracts it to a file on disc.
-		void extract_file(const char* u8path, const char* utf8dstfile) const;
+		void extract_file(const char* u8path, const char* u8dstfile) const;
 
 		// Takes a region of memory and, treating it like a single contiguous file, inserts it into the archive.
-		bool insert_data(const char* u8path, void* buffer, uint32_t size, int64_t timestamp, ReplaceEnum replace = REPLACE_IF_NEWER);
+		bool insert_data(const char* u8path, void* buffer, uint32_t size, int64_t timestamp, ReplaceEnum replace = REPLACE_IF_NEWER, CompressEnum compress = COMPRESS_FAST);
 
 		// Opens a file on disc and inserts its entire contents into the archive.
-		bool insert_file(const char* u8path, const char* utf8srcfile, ReplaceEnum replace = REPLACE_IF_NEWER);
+		bool insert_file(const char* u8path, const char* utf8srcfile, ReplaceEnum replace = REPLACE_IF_NEWER, CompressEnum compress = COMPRESS_FAST);
 
 		// Erases a file from the archive.
 		// All it really does is remove the file's information from the dictionary, and flag the instance as dirty.
@@ -93,7 +106,7 @@ namespace wc {
 
 		// Iterate over every file in the archive.
 		// Returns false when there are no more files to check.
-		// Usage: for (bool exists = a.iterate_files(f, true); exists; exists = a.iterate_files(f, false)) { ... }
+		// Usage: for (bool exists = a.iterate_files(fname, true); exists; exists = a.iterate_files(fname, false)) { ... }
 		bool iterate_files(fixedstring<64>& fname, bool restart = true) const {
 			static uint32_t i = 0;
 			if (restart) i = 0;
@@ -107,6 +120,7 @@ namespace wc {
 
 		static constexpr const char* MAGIC = "WCARCHV";
 		static constexpr const uint16_t CURRENT_VERSION = 3;
+		static constexpr const size_t FILEPATH_FIXEDLEN = 64;
 
 		struct Header {
 			char magic[8] = {}; // This is set to a predefined string and used to ensure that the file type is correct.
@@ -127,8 +141,8 @@ namespace wc {
 			char _reserved[4] = {}; // Reserved for future use.  May or may not actually use.
 		};
 
-		hvh::htable<fixedstring<64>, FileInfo> _dictionary;
-		fixedstring<64>* const& _filepaths = _dictionary.data<0>();
+		hvh::htable<fixedstring<FILEPATH_FIXEDLEN>, FileInfo> _dictionary;
+		fixedstring<FILEPATH_FIXEDLEN>* const& _filepaths = _dictionary.data<0>();
 		FileInfo* const& _fileinfos = _dictionary.data<1>();
 
 		FILE* _file = nullptr;

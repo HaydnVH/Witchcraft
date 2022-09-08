@@ -24,12 +24,14 @@ include_directories ("dependencies/SDL2-2.0.18-windows/include")
 link_directories    ("dependencies/SDL2-2.0.18-windows/lib/x64")
 include_directories	("dependencies/luaJIT-2.1.0-beta3/src")
 link_directories	("dependencies/luaJIT-2.1.0-beta3/src")
+include_directories ("dependencies/flecs-3.0.3")
 include_directories (${Vulkan_INCLUDE_DIRS})
 
 
 
 # Add source to this project's executable
 file (GLOB_RECURSE SOURCES
+	dependencies/flecs-3.0.3/flecs.c
 	src/*.cpp
 	src/tools/*.cpp
 	src/ecs/*.cpp
