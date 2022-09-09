@@ -318,7 +318,7 @@ namespace wc {
 		// Make sure the archive is open.
 		if (_file == nullptr) return false;
 
-		// Copy the file's path anf convert backslashes to forward slashes.
+		// Copy the file's path and convert backslashes to forward slashes.
 		// Functions like extract and exists will simply fail if given backslashes.
 		fixedstring<FILEPATH_FIXEDLEN> newpath(path);
 		strip_backslashes(newpath.c_str);
@@ -331,13 +331,13 @@ namespace wc {
 		newinfo.timestamp = timestamp;
 
 		// Handle file compression.
-		std::vector<char> compressed_buffer(size);
-		if (compress == COMPRESS_FAST || compress == COMPRESS_SMALL) {
+		std::vector<char> compressed_buffer(LZ4_compressBound(size));
+		if (compress != DO_NOT_COMPRESS) {
 			if (compress == COMPRESS_FAST) {
-				newinfo.size_compressed = LZ4_compress_default((const char*)buffer, compressed_buffer.data(), size, size);
+				newinfo.size_compressed = LZ4_compress_default((const char*)buffer, compressed_buffer.data(), size, (int)compressed_buffer.size());
 			}
 			else if (compress == COMPRESS_SMALL) {
-				newinfo.size_compressed = LZ4_compress_HC((const char*)buffer, compressed_buffer.data(), size, size, 9);
+				newinfo.size_compressed = LZ4_compress_HC((const char*)buffer, compressed_buffer.data(), size, (int)compressed_buffer.size(), 9);
 			}
 			// Compression failed
 			if (newinfo.size_compressed <= 0) {
@@ -381,8 +381,6 @@ namespace wc {
 			}
 		}
 
-		
-
 		// If the new file has a non-zero size,
 		if (newinfo.size_compressed > 0) {
 			// We write the file contents.
@@ -425,28 +423,11 @@ namespace wc {
 		if (!srcfile) {
 			debug::error("In wc::Archive::insert_file('", path, "'):\n");
 			debug::errmore("Only read ", srcfile.gcount(), " bytes out of ", len, ".\n");
-			//return false;
+			return false;
 		}
 
-		// Slurp up the file contents.
-	//	size_t filesize = std::filesystem::file_size(srcpath);
-	//	char* buffer = (char*)malloc(filesize);
-	//	if (!buffer) {
-	//		debug::error("In wc::Archive::insert_file():\n");
-	//		debug::errmore("Failed to insert '", path, "'; memory allocation failure.\n");
-	//		fclose(srcfile);
-	//		return false;
-	//	}
-	//	size_t realsize = fread(buffer, 1, filesize, srcfile);
-
 		// Insert the file into the archive.
-		bool result = insert_data(path, buffer.data(), (uint32_t)buffer.size(), timestamp, replace, compress);
-
-		// Clean up after ourselves.
-	//	fclose(srcfile);
-	//	free(buffer);
-
-		return result;
+		return insert_data(path, buffer.data(), (uint32_t)buffer.size(), timestamp, replace, compress);
 	}
 
 	void recursive_pack(Archive& archive, const std::filesystem::path& parent, std::filesystem::path child, Archive::ReplaceEnum replace, Archive::CompressEnum compress) {
