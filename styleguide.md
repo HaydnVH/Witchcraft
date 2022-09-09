@@ -1,12 +1,12 @@
 ## Language
 - Code is written in Modern C++17.
 - Don't use features from C++20 unless that feature is available in both Visual Studio and GCC.
-- Do not use exceptions.  Disable them whenever possible.
+- Do not use exceptions.  Disable them whenever possible and avoid library calls that can potentially throw.
 - Runtime error checking should be wrapped in `#ifdef DEBUG/#endif` blocks unless the error could have been caused by user input, bad data, or system/hardware failures.
 - Errors should be checked as close to the user/data as possible, and never more than once.
 - Use `static_assert` to check for compile-time errors.
 - Use `auto` when reasonable, especially for iterator types.
-- Use ranged-based `for` loops whenever possible.
+- Use ranged-based `for` loops where approrpriate.
 - Any globally-accessible functions or variables should be inside a namespace or static class member.
 - Never use `long` - its size depends on platform/architecture.
 - Use `nullptr` instead of `NULL`.

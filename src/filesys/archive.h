@@ -84,7 +84,7 @@ namespace wc {
 		void extract_file(const char* path, const char* dstfilename) const;
 
 		// Takes a region of memory and, treating it like a single contiguous file, inserts it into the archive.
-		bool insert_data(const char* path, void* buffer, uint32_t size, timestamp_t timestamp, ReplaceEnum replace = REPLACE_IF_NEWER, CompressEnum compress = COMPRESS_FAST);
+		bool insert_data(const char* path, void* buffer, int32_t size, timestamp_t timestamp, ReplaceEnum replace = REPLACE_IF_NEWER, CompressEnum compress = COMPRESS_FAST);
 
 		// Opens a file on disc and inserts its entire contents into the archive.
 		bool insert_file(const char* path, const char* srcfilename, ReplaceEnum replace = REPLACE_IF_NEWER, CompressEnum compress = COMPRESS_FAST);

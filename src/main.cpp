@@ -83,11 +83,11 @@ namespace wc {
 			entity::initLua();
 			
 			Archive archive;
-			archive.open((std::filesystem::current_path() / "src_1.wca").string().c_str());
-			archive.pack("src", Archive::REPLACE_IF_NEWER, Archive::COMPRESS_FAST);
+			archive.open((std::filesystem::current_path() / "dep_1.wca").string().c_str());
+			archive.pack("dependencies", Archive::REPLACE_IF_NEWER, Archive::COMPRESS_SMALL);
 			archive.close();
-			archive.open((std::filesystem::current_path() / "src_1.wca").string().c_str());
-			archive.unpack("src_1");
+			archive.open((std::filesystem::current_path() / "dep_1.wca").string().c_str());
+			archive.unpack("dependencies_1");
 			archive.close();
 
 

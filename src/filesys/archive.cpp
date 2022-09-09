@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <chrono>
 #include <algorithm>
+#include <fstream>
 #include "debug.h"
 #include "tools/soa.hpp"
 #include "tools/stringhelper.h"
@@ -313,7 +314,7 @@ namespace wc {
 		}
 	}
 
-	bool Archive::insert_data(const char* path, void* buffer, uint32_t size, timestamp_t timestamp, ReplaceEnum replace, CompressEnum compress) {
+	bool Archive::insert_data(const char* path, void* buffer, int32_t size, timestamp_t timestamp, ReplaceEnum replace, CompressEnum compress) {
 		// Make sure the archive is open.
 		if (_file == nullptr) return false;
 
@@ -331,19 +332,24 @@ namespace wc {
 
 		// Handle file compression.
 		std::vector<char> compressed_buffer(size);
-		switch (compress) {
-			case COMPRESS_FAST:
+		if (compress == COMPRESS_FAST || compress == COMPRESS_SMALL) {
+			if (compress == COMPRESS_FAST) {
 				newinfo.size_compressed = LZ4_compress_default((const char*)buffer, compressed_buffer.data(), size, size);
-				newinfo.flags |= FILEFLAG_COMPRESSED;
-				buffer = compressed_buffer.data();
-				break;
-			case COMPRESS_SMALL:
+			}
+			else if (compress == COMPRESS_SMALL) {
 				newinfo.size_compressed = LZ4_compress_HC((const char*)buffer, compressed_buffer.data(), size, size, 9);
+			}
+			// Compression failed
+			if (newinfo.size_compressed <= 0) {
+				debug::warning("In wc::Archive::insert_data(\"", path, "\"):\n");
+				debug::warnmore("Failed to compress file; will store uncompressed.\n");
+				newinfo.size_compressed = size;
+			}
+			// Compression success
+			else {
 				newinfo.flags |= FILEFLAG_COMPRESSED;
 				buffer = compressed_buffer.data();
-				break;
-			default:
-				break;
+			}
 		}
 
 		// Find the file we're looking for.
@@ -393,7 +399,7 @@ namespace wc {
 		// Make sure the path isn't too long.
 		if (strlen(path) > (Archive::FILEPATH_FIXEDLEN-1)) {
 			debug::error("In wc::Archive::insert_file():\n");
-			debug::error("Failed to insert '", path, "'; path too long (max ", Archive::FILEPATH_FIXEDLEN-1, " bytes).\n");
+			debug::errmore("Failed to insert '", path, "'; path too long (max ", Archive::FILEPATH_FIXEDLEN-1, " bytes).\n");
 			return false;
 		}
 
@@ -403,27 +409,42 @@ namespace wc {
 		timestamp_t timestamp = std::chrono::clock_cast<std::chrono::utc_clock>(std::filesystem::last_write_time(srcpath));
 
 		// Open the file.
-		FILE* srcfile = fopen_r(srcpath.c_str());
-		if (srcfile == nullptr)
-			return false;
-
-		// Slurp up the file contents.
-		size_t filesize = std::filesystem::file_size(srcpath);
-		char* buffer = (char*)malloc(filesize);
-		if (!buffer) {
-			debug::error("In wc::Archive::insert_file():\n");
-			debug::errmore("Failed to insert '", path, "'; memory allocation failure.\n");
-			fclose(srcfile);
+		std::ifstream srcfile(srcpath, std::ios::binary);
+		if (!srcfile.is_open()) {
+			debug::error("In wc::Archive::insert_file('", path, "'):\n");
+			debug::errmore("Failed to open file.\n");
 			return false;
 		}
-		size_t realsize = fread(buffer, 1, filesize, srcfile);
+
+		// Slurp up the file contents.
+		srcfile.seekg(0, srcfile.end);
+		size_t len = srcfile.tellg();
+		srcfile.seekg(0, srcfile.beg);
+		std::vector<char> buffer(len);
+		srcfile.read(buffer.data(), buffer.size());
+		if (!srcfile) {
+			debug::error("In wc::Archive::insert_file('", path, "'):\n");
+			debug::errmore("Only read ", srcfile.gcount(), " bytes out of ", len, ".\n");
+			//return false;
+		}
+
+		// Slurp up the file contents.
+	//	size_t filesize = std::filesystem::file_size(srcpath);
+	//	char* buffer = (char*)malloc(filesize);
+	//	if (!buffer) {
+	//		debug::error("In wc::Archive::insert_file():\n");
+	//		debug::errmore("Failed to insert '", path, "'; memory allocation failure.\n");
+	//		fclose(srcfile);
+	//		return false;
+	//	}
+	//	size_t realsize = fread(buffer, 1, filesize, srcfile);
 
 		// Insert the file into the archive.
-		bool result = insert_data(path, buffer, (uint32_t)realsize, timestamp, replace, compress);
+		bool result = insert_data(path, buffer.data(), (uint32_t)buffer.size(), timestamp, replace, compress);
 
 		// Clean up after ourselves.
-		fclose(srcfile);
-		free(buffer);
+	//	fclose(srcfile);
+	//	free(buffer);
 
 		return result;
 	}
