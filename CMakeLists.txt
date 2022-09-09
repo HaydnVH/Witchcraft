@@ -6,11 +6,11 @@ cmake_minimum_required (VERSION 3.8)
 project ("Witchcraft")
 
 # Standards and defines
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(
-	-D_CRT_SECURE_NO_WARNINGS -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+	-D_CRT_SECURE_NO_WARNINGS -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -D_SILENCE_CXX20_U8PATH_DEPRECATION_WARNING
 	-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE
 	-DPLATFORM_SDL -DRENDERER_VULKAN -DVULKAN_HPP_NO_EXCEPTIONS)
 
@@ -25,6 +25,7 @@ link_directories    ("dependencies/SDL2-2.0.18-windows/lib/x64")
 include_directories	("dependencies/luaJIT-2.1.0-beta3/src")
 link_directories	("dependencies/luaJIT-2.1.0-beta3/src")
 include_directories ("dependencies/flecs-3.0.3")
+include_directories	("dependencies/lz4-dev/lib")
 include_directories (${Vulkan_INCLUDE_DIRS})
 
 
@@ -32,6 +33,8 @@ include_directories (${Vulkan_INCLUDE_DIRS})
 # Add source to this project's executable
 file (GLOB_RECURSE SOURCES
 	dependencies/flecs-3.0.3/flecs.c
+	dependencies/lz4-dev/lz4.c
+	dependencies/lz4-dev/lz4hc.c
 	src/*.cpp
 	src/tools/*.cpp
 	src/ecs/*.cpp

@@ -17,7 +17,7 @@
 - The only time a non-UTF-8 string should ever be used is when explicitly interfacing with Win32 or performing a per-character loop.
 - Don't use `std::u8string`; assume that add `std::string` objects are UTF-8.
 - String literals which contain unicode should start with the `u8` prefix to ensure it's endoded as UTF-8.
-- An array of `char` is just bytes; use `char8_t` to denote a c-style string.
+- Do not use char8_t or std::u8string! Conversions are awkward and compatibility with libraries is broken.
 - Avoid std::string_view! .data() does not neccesarily provide a null-terminated string, so using it to interact with any library that expects a const char* is a mistake.
 - std::string_view should be used ONLY in situations where you need to break up a string into parts without modifying the original string.
 
