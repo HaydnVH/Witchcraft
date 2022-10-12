@@ -100,10 +100,10 @@ namespace gfx {
 		// Initialize the Vulkan instance.
 		{
 			// Application Info.
-			vk::ApplicationInfo ai(	appconfig::getAppName().c_str(),
-				VK_MAKE_VERSION(appconfig::getMajorVer(), appconfig::getMinorVer(), appconfig::getPatchVer()),
-				appconfig::getEngineName().c_str(),
-				VK_MAKE_VERSION(appconfig::getEngineMajorVer(), appconfig::getEngineMinorVer(), appconfig::getEnginePatchVer()),
+			vk::ApplicationInfo ai(	appconfig::APP_NAME,
+				VK_MAKE_VERSION(appconfig::APP_MAJOR_VER, appconfig::APP_MINOR_VER, appconfig::APP_PATCH_VER),
+				appconfig::ENGINE_NAME,
+				VK_MAKE_VERSION(appconfig::ENGINE_MAJOR_VER, appconfig::ENGINE_MINOR_VER, appconfig::ENGINE_PATCH_VER),
 				VK_API_VERSION_1_2);
 
 			// Neccesary layers.
@@ -122,7 +122,6 @@ namespace gfx {
 			layers.push_back("VK_LAYER_KHRONOS_validation");
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		#endif
-
 
 			// Create the instance.
 			vk::InstanceCreateInfo ci({}, &ai, layers, extensions);
@@ -557,21 +556,24 @@ namespace gfx {
 	
 
 	void shutdown() {
-		
-		device.destroyPipeline(graphics_pipeline);
-		device.destroyPipelineLayout(pipeline_layout);
-		device.destroyRenderPass(render_pass);
+		if (device) {
+			if (graphics_pipeline) { device.destroyPipeline(graphics_pipeline); }
+			if (pipeline_layout) { device.destroyPipelineLayout(pipeline_layout); }
+			if (render_pass) { device.destroyRenderPass(render_pass); }
 
-		for (const auto& view : swapchain_views) {
-			device.destroyImageView(view);
+			for (const auto& view : swapchain_views) {
+				device.destroyImageView(view);
+			}
+			if (swapchain) { device.destroySwapchainKHR(swapchain); }
+			device.destroy(nullptr, dldi);
 		}
-		device.destroySwapchainKHR(swapchain);
-		device.destroy(nullptr, dldi);
-		instance.destroySurfaceKHR(window_surface);
-	#ifndef NDEBUG
-		instance.destroyDebugUtilsMessengerEXT(debug_messenger, nullptr, dldi);
-	#endif
-		vkDestroyInstance(instance, nullptr);
+		if (instance) {
+			if (window_surface) { instance.destroySurfaceKHR(window_surface); }
+		#ifndef NDEBUG
+			if (debug_messenger) { instance.destroyDebugUtilsMessengerEXT(debug_messenger, nullptr, dldi); }
+		#endif
+			vkDestroyInstance(instance, nullptr);
+		}
 
 		if (config.modified) {
 			userconfig::write("renderer", "sPreferredGPU", config.sPreferredGPU.c_str());

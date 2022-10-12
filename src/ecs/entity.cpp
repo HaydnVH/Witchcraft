@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "tools/rng.h"
+#include "tools/stringhelper.h"
 
 namespace {
 
@@ -27,13 +28,15 @@ namespace entity {
 		// TODO: Unlink this entity from every component.
 	}
 
-	const char* toString(ID id) {
-		static char strbuffer[64];
-		if (id == 0) snprintf(strbuffer, 64, "[0] (null)");
-		else {
-			snprintf(strbuffer, 64, "[%016llx] (no name)", (uint64_t)id);
+	std::string toString(ID id) {
+		std::string result;
+		if (id == 0) {
+			result = "[0] (null)";
 		}
-		return strbuffer;
+		else {
+			result = makestr("[", hexid(id), "] (no name)");
+		}
+		return result;
 	}
 
 } // namespace entity

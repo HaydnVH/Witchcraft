@@ -42,8 +42,8 @@ namespace entity {
 			// string conversion metamethod.
 			lua_pushcfunction(L, [](lua_State* L) {
 				ID* id = (ID*)luaL_checkudata(L, 1, "entity");
-				const char* str = entity::toString(*id);
-				lua_pushstring(L, str);
+				std::string str = entity::toString(*id);
+				lua_pushstring(L, str.c_str());
 				return 1;
 			}); lua_setfield(L, -2, "__tostring");
 
