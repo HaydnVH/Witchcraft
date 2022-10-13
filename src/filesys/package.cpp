@@ -1,8 +1,9 @@
 #include "package.h"
 
 #include <filesystem>
+#include <fstream>
+using namespace std;
 namespace fs = std::filesystem;
-#include "filedata.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
@@ -42,24 +43,37 @@ namespace wc {
 			return false;
 		}
 
-		FileData modinfo;
+		vector<char> modinfo;
 
 		// Check to see if the path points to a directory or a file.
 		// If it's a file, we'l try to open it like an archive.
 		if (fs::is_directory(mypath)) {
-			modinfo = FileData(mypath, PACKAGEINFO_FILENAME);
+			ifstream file(mypath / PACKAGEINFO_FILENAME, ios::binary);
+			if (file.is_open()) {
+				file.seekg(0, file.end);
+				size_t len = file.tellg();
+				file.seekg(0, file.beg);
+				modinfo.resize(len);
+				file.read(modinfo.data(), modinfo.size());
+				if (!file) {
+					// Error when loading file.
+					modinfo.clear();
+				}
+			}
+			//modinfo = FileData(mypath, PACKAGEINFO_FILENAME);
 		}
 		else if (fs::is_regular_file(mypath)) {
 			if (_archive.open(mypath.string().c_str())) {
-				modinfo = FileData(_archive, PACKAGEINFO_FILENAME);
+				Archive::timestamp_t nil;
+				_archive.extract_data(PACKAGEINFO_FILENAME, modinfo, nil);
 			}
 		}
 
 		_name = mypath.filename().string();
 
-		if (!modinfo.is_open()) {
+		if (modinfo.empty()) {
 			debug::warning("In wc::Package::open():\n");
-			debug::warnmore("Failed to open '", u8path, "/", PACKAGEINFO_FILENAME, "': ", modinfo.getError(), "\n");
+			debug::warnmore("Failed to open '", u8path, "/", PACKAGEINFO_FILENAME, "'\n");
 		}
 		else {
 			// Parse the file contents as json.

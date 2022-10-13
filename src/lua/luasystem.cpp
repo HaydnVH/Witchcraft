@@ -290,19 +290,18 @@ namespace lua {
 		string path = makestr(SCRIPT_DIR, filename, SCRIPT_EXT);
 
 		// Open and load the script file.
-		FileData file = vfs::LoadFile(path.c_str(), true);
-		if (!file.is_open()) {
+		vector<char> fdata = vfs::LoadFile(path.c_str(), true);
+		if (fdata.empty()) {
 			debug::error("In wc::lua::doFile():\n");
-			debug::errmore("Script '", filename, "' does not exist.\n");
+			debug::errmore("Could not load script '", filename, "'.\n");
 			return false;
 		}
 
 		// Adjust the source name for debugging.
-		if (file.getSourceName().size() > 0) { path = makestr('@', file.getSourceName(), "::", path); }
-		else { path = makestr('@', path); }
+		path = makestr('@', path);
 
 		// Load the script into lua.
-		if (luaL_loadbuffer(L, (const char*)file.data(), file.size(), path.c_str())) {
+		if (luaL_loadbuffer(L, (const char*)fdata.data(), fdata.size(), path.c_str())) {
 			debug::error("In wc::lua::doFile():\n");
 			debug::errmore("Error loading script:\n");
 			lua_pop(L, 1);

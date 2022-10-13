@@ -3,9 +3,11 @@
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <fstream>
 using namespace std;
 namespace fs = std::filesystem;
 
+#include "package.h"
 #include "tools/htable.hpp"
 #include "tools/stringhelper.h"
 #include "appconfig.h"
@@ -131,7 +133,7 @@ namespace vfs {
 		return (packages.size() > 0);
 	}
 
-	FileData LoadFile(const char* u8path, bool reverse_sort) {
+	std::vector<char> LoadFile(const char* u8path, bool reverse_sort) {
 		// This persistent list and its index allow us to continue our search after we load the first file.
 		static std::vector<size_t> list;
 		static size_t list_index;
@@ -160,14 +162,46 @@ namespace vfs {
 		// If the list index points beyond the list,
 		// either we've run out of files or the file we searched for doesn't exist.
 		if (list_index >= list.size())
-			return FileData();
+			return std::vector<char>();
 
 		// Grab the module index for the file we want, then increment the index for next time.
 		size_t module_index = list[list_index];
 		++list_index;
 
-		// Use a pointer to the mod we're looking at to load the file data.
-		return FileData(&packages.at<1>(module_index), u8path);
+		// Load the file data.
+		Package* pkg = &packages.at<1>(module_index);
+		const Archive& arc = pkg->getArchive();
+		std::vector<char> result;
+		if (arc.is_open()) {
+			Archive::timestamp_t nil;
+			if (!arc.extract_data(u8path, result, nil)) {
+				// File not found (somehow)
+				return vector<char>();
+			}
+		}
+		else {
+			fs::path fullpath = fs::u8path(pkg->getPath());
+			fullpath /= u8path;
+			ifstream file(fullpath.c_str(), ios::binary | ios::in);
+			if (!file.is_open()) {
+				debug::error("In wc::vfs::LoadFile('", fullpath, "'):\n");
+				debug::errmore("Failed to open file.\n");
+				return vector<char>();
+			}
+			// Slurp up the file contents.
+			file.seekg(0, file.end);
+			size_t len = file.tellg();
+			file.seekg(0, file.beg);
+			result.resize(len);
+			file.read(result.data(), result.size());
+			if (!file) {
+				debug::error("In wc::vfs::LoadFile('", fullpath, "'):\n");
+				debug::errmore("Only read ", file.gcount(), " bytes out of ", len, ".\n");
+				return vector<char>();
+			}
+		}
+
+		return result;
 	}
 
 }} // namespace wc::vfs

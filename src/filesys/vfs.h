@@ -2,7 +2,6 @@
 #define HVH_WC_FILESYS_VIRTUALFILESYSTEM_H
 
 #include <vector>
-#include "filedata.h"
 
 namespace wc {
 namespace vfs {
@@ -33,14 +32,14 @@ namespace vfs {
 	void printLoadedPackages();
 
 	// LoadFile()
-	// Loads the file with the given path.  If the file does not exist, the resulting filedata will not be open (is_open() == false).
+	// Loads the file with the given path.  If the file does not exist, the returned buffer will be empty (.empty() == true).
 	// If filename is NULL, we return the next instance of the file with the same path,
-	// or a closed FileData if there are no more files with the same path.
-	// Loop example: `for (FileData file = LoadFile(<name>); file.is_open(); file = LoadFile(nullptr)) { ... }`
+	// or an empty buffer if there are no more files with the same path.
+	// Loop example: `for (vector<char> file = LoadFile(<name>); !file.empty(); file = LoadFile(nullptr)) { ... }`
 	// By default, the files will be returned in the same order that the modules were loaded (first loaded, first returned).
 	// If 'reverse_sort' is true, the files will be returned in reverse load order (last loaded, first returned).
 	// 'reverse_sort' has no effect if the filename is NULL (you're iterating a previously-sorted list).
-	FileData LoadFile(const char* u8path, bool reverse_sort = false);
+	std::vector<char> LoadFile(const char* u8path, bool reverse_sort = false);
 
 }} // namespace wc::vfs
 
