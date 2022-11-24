@@ -1,5 +1,6 @@
 #include "userconfig.h"
 #include "appconfig.h"
+#include "filesys/paths.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
@@ -27,7 +28,7 @@ namespace userconfig {
 
 void init() {
 	// Open the config file.
-	std::filesystem::path configpath = appconfig::getUserPath() / CONFIG_FILENAME;
+	std::filesystem::path configpath = wc::getUserPath() / CONFIG_FILENAME;
 	ifstream infile(configpath, ios::in | ios::binary);
 	if (!infile.is_open()) {
 		// The config file doesn't exist, so let's create an empty document to write to.
@@ -52,7 +53,7 @@ void shutdown() {
 
 	if (modified) {
 		// Open the config file to write. //
-		std::filesystem::path configpath = appconfig::getUserPath() / CONFIG_FILENAME;
+		std::filesystem::path configpath = wc::getUserPath() / CONFIG_FILENAME;
 		FILE* file = fopen_w(configpath.c_str());
 
 		ofstream outfile(configpath, ios::out | ios::binary);

@@ -63,7 +63,7 @@ namespace window {
 
 		// Create the widnow.
 		pWindow = SDL_CreateWindow(
-			appconfig::APP_NAME,
+			appconfig::AppName,
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			config.iWidth, config.iHeight,
 			flags

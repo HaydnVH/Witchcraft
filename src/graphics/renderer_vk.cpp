@@ -100,10 +100,10 @@ namespace gfx {
 		// Initialize the Vulkan instance.
 		{
 			// Application Info.
-			vk::ApplicationInfo ai(	appconfig::APP_NAME,
-				VK_MAKE_VERSION(appconfig::APP_MAJOR_VER, appconfig::APP_MINOR_VER, appconfig::APP_PATCH_VER),
-				appconfig::ENGINE_NAME,
-				VK_MAKE_VERSION(appconfig::ENGINE_MAJOR_VER, appconfig::ENGINE_MINOR_VER, appconfig::ENGINE_PATCH_VER),
+			vk::ApplicationInfo ai(	appconfig::AppName,
+				VK_MAKE_VERSION(appconfig::AppMajorVer, appconfig::AppMinorVer, appconfig::AppPatchVer),
+				appconfig::EngineName,
+				VK_MAKE_VERSION(appconfig::EngineMajorVer, appconfig::EngineMinorVer, appconfig::EnginePatchVer),
 				VK_API_VERSION_1_2);
 
 			// Neccesary layers.

@@ -1,30 +1,38 @@
+/******************************************************************************
+ * appconfig.h
+ * Part of the Witchcraft Engine 
+ * © Copyright Haydn V. Harach 2022
+ * Last modified October 2022
+ ******************************************************************************
+ * This file defines the name and version of the application,
+ * in addition to the name and version of the engine used to create it.
+ * It is intended to be modified in order to create a unique project.
+ * The information defined in this file defines where the user directory should be.
+ *****************************************************************************/
+
 #ifndef HVH_WC_APPCONFIG_H
 #define HVH_WC_APPCONFIG_H
 
 #include <filesystem>
 #include <string>
 
-namespace wc {
-namespace appconfig {
+namespace wc::appconfig {
 
-	constexpr const char* APP_NAME = "Witchcraft Project";
-	constexpr const char* COMPANY_NAME = "hvh";
-	constexpr const char* APP_VER_STR = "0.0.0";
-	constexpr const int APP_MAJOR_VER = 0;
-	constexpr const int APP_MINOR_VER = 0;
-	constexpr const int APP_PATCH_VER = 0;
+	// The following fields are intended to be modified on a per-project basis.
+	constexpr const char* AppName = "Witchcraft Project";
+	constexpr const char* CompanyName = "hvh";
+	constexpr const char* AppVer = "0.0.0";
+	constexpr const int AppMajorVer = 0;
+	constexpr const int AppMinorVer = 0;
+	constexpr const int AppPatchVer = 0;
 
-	constexpr const char* ENGINE_NAME = "Witchcraft";
-	constexpr const char* ENGINE_VER_STR = "0.12.2";
-	constexpr const int ENGINE_MAJOR_VER = 0;
-	constexpr const int ENGINE_MINOR_VER = 12;
-	constexpr const int ENGINE_PATCH_VER = 2;
+	// The following fields should not be modified unless updating the engine.
+	constexpr const char* EngineName = "Witchcraft";
+	constexpr const char* EngineVer = "0.12.2";
+	constexpr const int EngineMajorVer = 0;
+	constexpr const int EngineMinorVer = 12;
+	constexpr const int EnginePatchVer = 2;
 
-	const std::string& getInstallDir();
-	const std::string& getUserDir();
-	const std::filesystem::path& getInstallPath();
-	const std::filesystem::path& getUserPath();
-
-}}; // namespace wc::appconfig
+}; // namespace wc::appconfig
 
 #endif // HVH_WC_APPCONFIG_H

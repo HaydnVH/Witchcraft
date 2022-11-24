@@ -8,6 +8,7 @@ using namespace std;
 namespace fs = std::filesystem;
 
 #include "package.h"
+#include "paths.h"
 #include "tools/htable.hpp"
 #include "tools/stringhelper.h"
 #include "appconfig.h"
@@ -40,7 +41,7 @@ namespace vfs {
 		}
 
 		// Scan through the user data directory.
-		fs::path user_data_path = appconfig::getUserPath() / DATA_FOLDER;
+		fs::path user_data_path = wc::getUserPath() / DATA_FOLDER;
 		if (!fs::exists(user_data_path)) fs::create_directories(user_data_path);
 		for (fs::directory_iterator it(user_data_path); it != fs::directory_iterator(); ++it) {
 			// If this entry is a directory or a .wcp file...
@@ -62,7 +63,7 @@ namespace vfs {
 		}
 
 		// Scan through the install data directory.
-		fs::path install_data_path = appconfig::getInstallPath() / DATA_FOLDER;
+		fs::path install_data_path = wc::getInstallPath() / DATA_FOLDER;
 		if (!fs::exists(install_data_path)) fs::create_directories(install_data_path);
 		for (fs::directory_iterator it(install_data_path); it != fs::directory_iterator(); ++it) {
 			// If this entry is a directory or a .wcmod file...

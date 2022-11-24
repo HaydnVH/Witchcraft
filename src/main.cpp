@@ -5,6 +5,7 @@
 using namespace std;
 
 #include "appconfig.h"
+#include "filesys/paths.h"
 #include "userconfig.h"
 #include "debug.h"
 #include "filesys/vfs.h"
@@ -29,12 +30,16 @@ namespace wc {
 
 		// Initialize subsystems.
 		int startup() {
+			debug::info("Now starting ", appconfig::AppName, " ", appconfig::AppVer, ".\n");
+			debug::info("Created using ", appconfig::EngineName, " ", appconfig::EngineVer, ".\n");
+
+			if (!wc::initPaths()) return 10;
 			userconfig::init();
-			debug::init(appconfig::getUserDir().c_str());
+			debug::init(wc::getUserPath().string().c_str());
 			lua::init();
-			if (!vfs::init()) return 10;
-			if (!window::init()) return 20;
-			if (!gfx::init()) return 30;
+			if (!vfs::init()) return 20;
+			if (!window::init()) return 30;
+			if (!gfx::init()) return 40;
 
 			entity::initLua();
 
@@ -111,8 +116,6 @@ namespace wc {
 ///////////////////////////////////////////////////////////////////////////////
 // Main entry point into the program.
 ///////////////////////////////////////////////////////////////////////////////
-
-
 
 int main(int argc, char* argv[]) {
 	// Initialize services and subsystems.
