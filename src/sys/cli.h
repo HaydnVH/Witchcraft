@@ -1,0 +1,113 @@
+#ifndef WC_SYS_CLI_H
+#define WC_SYS_CLI_H
+
+#include <filesystem>
+#include <fmt/core.h>
+#include <optional>
+#include <source_location>
+#include <string>
+#include <string_view>
+
+namespace cli {
+
+  enum class MessageSeverity {
+    Info       = 0b00001,
+    Warning    = 0b00010,
+    Error      = 0b00100,
+    Fatal      = 0b01000,
+    User       = 0b10000,
+    Everything = Info | Warning | Error | Fatal | User
+  };
+
+  // These constants are used to prefix messages.
+  static constexpr const char* INFOMARK  = "INFO";
+  static constexpr const char* INFOMORE  = "  - ";
+  static constexpr const char* INFOCOLR  = "\x1b[38;2;0;255;0m";
+  static constexpr const char* WARNMARK  = "WARN";
+  static constexpr const char* WARNMORE  = "  ~ ";
+  static constexpr const char* WARNCOLR  = "\x1b[38;2;255;255;0m";
+  static constexpr const char* ERRMARK   = "ERROR";
+  static constexpr const char* ERRMORE   = "  !  ";
+  static constexpr const char* ERRCOLR   = "\x1b[38;2;255;0;0m";
+  static constexpr const char* FATALMARK = "FATAL";
+  static constexpr const char* FATALMORE = " !!! ";
+  static constexpr const char* FATALCOLR =
+      "\x1b[38;2;0;0;32m\x1b[48;2;255;60;20m";
+  static constexpr const char* USERMARK = " > ";
+  static constexpr const char* USERMORE = " - ";
+  static constexpr const char* USERCOLR = "\x1b[38;2;0;255;255m";
+
+  // These constants are used to control color.
+  static constexpr const char* CLEAR     = "\x1b[0m";
+  static constexpr const char* UL        = "\x1b[4m";
+  static constexpr const char* NOUL      = "\x1b[24m";
+  static constexpr const char* BLACK     = "\x1b[30m";
+  static constexpr const char* DARKRED   = "\x1b[31m";
+  static constexpr const char* DARKGREEN = "\x1b[32m";
+  static constexpr const char* BROWN     = "\x1b[33m";
+  static constexpr const char* DARKBLUE  = "\x1b[34m";
+  static constexpr const char* PURPLE    = "\x1b[35m";
+  static constexpr const char* DARKCYAN  = "\x1b[36m";
+  static constexpr const char* WHITE     = "\x1b[37m";
+  static constexpr const char* GREY      = "\x1b[90m";
+  static constexpr const char* RED       = "\x1b[91m";
+  static constexpr const char* GREEN     = "\x1b[92m";
+  static constexpr const char* YELLOW    = "\x1b[93m";
+  static constexpr const char* BLUE      = "\x1b[94m";
+  static constexpr const char* MAGENTA   = "\x1b[95m";
+  static constexpr const char* CYAN      = "\x1b[96m";
+  static constexpr const char* BRIGHT    = "\x1b[97m";
+
+  /// Returns a string describing the location of the caller.
+  /// Good to use as the first string passed to one of the multi-line print functions.
+  inline std::string here(std::source_location src = std::source_location::current()) {
+    return fmt::format("{}:{}",
+                       std::filesystem::path(src.file_name()).filename().string(),
+                       src.line());
+  }
+
+  /// Returns a string with the name of the calling function.
+  inline std::string caller(std::source_location src = std::source_location::current()) {
+    return src.function_name();
+  }
+
+  /// Prints a single line to the console and log without additional decoration
+  /// or formatting.
+  void printLine(MessageSeverity severity, const std::string_view message);
+  /// Prints raw output to the console and log with no newline or formatting.
+  void printRaw(MessageSeverity severity, const std::string_view message);
+
+  /// Prints a series of 'info' messages with colored prefix to the console and log.
+  void info(const std::initializer_list<const std::string_view>& messages,
+            std::source_location src = std::source_location::current());
+  /// Prints a series of 'info' messages to the console and log.
+  inline void
+    info(const std::initializer_list<const std::string_view>& messages) {
+    info(std::nullopt, messages);
+  }
+  /// Prints a single 'info' message to the console and log.
+  inline void info(const std::string_view message) { info({message}); }
+
+  /// Prints a series of 'warning' messages to the console and log.
+  void warning(const std::initializer_list<const std::string_view>& messages);
+  /// Prints a single 'warning' message to the console and log.
+  inline void warning(const std::string_view message) { warning({message}); }
+
+  /// Prints a series of 'error' messages to the console and log.
+  void error(const std::initializer_list<const std::string_view>& messages);
+  /// Prints a single 'error' message to the console and log.
+  inline void error(const std::string_view message) { error({message}); }
+
+  /// Prints a series of 'fatal' messages to the console and log.
+  void fatal(const std::initializer_list<const std::string_view>& messages);
+  /// Prints a single 'fatal' message to the console and log.
+  inline void fatal(const std::string_view message) { fatal({message}); }
+
+  /// Prints a series of 'user' messages to the console and log.
+  void user(const std::initializer_list<const std::string_view>& messages);
+  /// Prints a single 'user' message to the console and log.
+  inline void user(const std::string_view message) { user({message}); }
+
+}  // namespace cli
+
+#endif // WC_SYS_CLI_H
