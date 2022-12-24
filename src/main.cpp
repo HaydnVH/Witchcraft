@@ -35,7 +35,7 @@ namespace {
 
     //cli::info({"Hello World",
     //          fmt::format("User path: {}", wc::getUserPath().string())});
-
+    
     cli::info("Helpful Information");
     cli::warning("Could be bad? You should know!");
     cli::error("Something awful has happened.");
