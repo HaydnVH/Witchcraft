@@ -91,11 +91,12 @@ namespace cli {
             std::source_location                                 src) {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Info, srcOverride, src);
-    for (auto msg : messages) {
-      printLine(MessageSeverity::Info,
-                fmt::format(" {}{}{} {}", INFOCOLR_FG, INFOMORE, CLEAR, msg));
-    }
+    for (auto msg : messages) { infomore(lock, msg); }
     return lock;
+  }
+  void infomore(Lock&, const std::string_view message) {
+    printLine(MessageSeverity::Info, fmt::format(
+              " {}{}{} {}", INFOCOLR_FG, INFOMORE, CLEAR, message));
   }
 
   Lock warning(const std::initializer_list<const std::string_view>& messages,
@@ -103,11 +104,12 @@ namespace cli {
                std::source_location                                 src) {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Warning, srcOverride, src);
-    for (auto msg : messages) {
-      printLine(MessageSeverity::Warning,
-                fmt::format(" {}{}{} {}", WARNCOLR_FG, WARNMORE, CLEAR, msg));
-    }
+    for (auto msg : messages) { warnmore(lock, msg); }
     return lock;
+  }
+  void warnmore(Lock&, const std::string_view message) {
+    printLine(MessageSeverity::Warning, fmt::format(
+              " {}{}{} {}", WARNCOLR_FG, WARNMORE, CLEAR, message));
   }
 
   Lock error(const std::initializer_list<const std::string_view>& messages,
@@ -115,11 +117,12 @@ namespace cli {
              std::source_location                                 src) {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Error, srcOverride, src);
-    for (auto msg : messages) {
-      printLine(MessageSeverity::Error,
-                fmt::format(" {}{}{} {}", ERRCOLR_FG, ERRMORE, CLEAR, msg));
-    }
+    for (auto msg : messages) { errmore(lock, msg); }
     return lock;
+  }
+  void errmore(Lock&, const std::string_view message) {
+    printLine(MessageSeverity::Error, fmt::format(
+              " {}{}{} {}", ERRCOLR_FG, ERRMORE, CLEAR, message));
   }
 
   Lock fatal(const std::initializer_list<const std::string_view>& messages,
@@ -127,11 +130,12 @@ namespace cli {
              std::source_location                                 src) {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Fatal, srcOverride, src);
-    for (auto msg : messages) {
-      printLine(MessageSeverity::Fatal,
-                fmt::format(" {}{}{} {}", ERRCOLR_FG, FATALMORE, CLEAR, msg));
-    }
+    for (auto msg : messages) { fatalmore(lock, msg); }
     return lock;
+  }
+  void fatalmore(Lock&, const std::string_view message) {
+    printLine(MessageSeverity::Fatal, fmt::format(
+              " {}{}{} {}", ERRCOLR_FG, FATALMORE, CLEAR, message));
   }
 
   void user(const std::initializer_list<const std::string_view>& messages) {
