@@ -30,6 +30,7 @@ namespace {
     std::regex r(ANSI_ESC_REGEX_STR);
     return std::regex_replace(str, r, "");
   }
+} // namespace <anon>
 
   void printStandardPrefix(cli::MessageSeverity            severity,
                            std::optional<std::string_view> srcOverride,
@@ -92,7 +93,17 @@ namespace cli {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Info, srcOverride, src);
     for (auto msg : messages) {
-      printLine(MessageSeverity::Info,
+      if (first) {
+        if (prefix.has_value()) {
+          printLine(MessageSeverity::Info,
+                    fmt::format("{}{} [{}]: {}{}", INFOCOLR, INFOMARK, prefix.value(), CLEAR, msg));
+        } else {
+          printLine(MessageSeverity::Info,
+                    fmt::format("{}{}: {}{}", INFOCOLR, INFOMARK, CLEAR, msg));
+        }
+        first = false;
+      } else {
+        printLine(MessageSeverity::Info,
                 fmt::format(" {}{}{} {}", INFOCOLR_FG, INFOMORE, CLEAR, msg));
     }
     return lock;
@@ -104,7 +115,12 @@ namespace cli {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Warning, srcOverride, src);
     for (auto msg : messages) {
-      printLine(MessageSeverity::Warning,
+      if (first) {
+        printLine(MessageSeverity::Warning,
+                  fmt::format("{}{}{}{}", WARNCOLR, WARNMARK, CLEAR, msg));
+        first = false;
+      } else {
+        printLine(MessageSeverity::Warning,
                 fmt::format(" {}{}{} {}", WARNCOLR_FG, WARNMORE, CLEAR, msg));
     }
     return lock;
@@ -116,7 +132,12 @@ namespace cli {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Error, srcOverride, src);
     for (auto msg : messages) {
-      printLine(MessageSeverity::Error,
+      if (first) {
+        printLine(MessageSeverity::Error,
+                  fmt::format("{}{}{}{}", ERRCOLR, ERRMARK, CLEAR, msg));
+        first = false;
+      } else {
+        printLine(MessageSeverity::Error,
                 fmt::format(" {}{}{} {}", ERRCOLR_FG, ERRMORE, CLEAR, msg));
     }
     return lock;
@@ -128,7 +149,12 @@ namespace cli {
     Lock lock(cliMutex_s);
     printStandardPrefix(MessageSeverity::Fatal, srcOverride, src);
     for (auto msg : messages) {
-      printLine(MessageSeverity::Fatal,
+      if (first) {
+        printLine(MessageSeverity::Fatal,
+                  fmt::format("{}{}{}{}", FATALCOLR, FATALMARK, CLEAR, msg));
+        first = false;
+      } else {
+        printLine(MessageSeverity::Fatal,
                 fmt::format(" {}{}{} {}", ERRCOLR_FG, FATALMORE, CLEAR, msg));
     }
     return lock;

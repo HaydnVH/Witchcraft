@@ -1,6 +1,8 @@
 #ifndef WC_SYS_CLI_H
 #define WC_SYS_CLI_H
 
+#include <filesystem>
+#include <fmt/core.h>
 #include <optional>
 #include <mutex>
 #include <source_location>
@@ -71,6 +73,19 @@ namespace cli {
   static constexpr const char* MAGENTA   = "\x1b[95m";
   static constexpr const char* CYAN      = "\x1b[96m";
   static constexpr const char* BRIGHT    = "\x1b[97m";
+
+  /// Returns a string describing the location of the caller.
+  /// Good to use as the first string passed to one of the multi-line print functions.
+  inline std::string here(std::source_location src = std::source_location::current()) {
+    return fmt::format("{}:{}",
+                       std::filesystem::path(src.file_name()).filename().string(),
+                       src.line());
+  }
+
+  /// Returns a string with the name of the calling function.
+  inline std::string caller(std::source_location src = std::source_location::current()) {
+    return src.function_name();
+  }
 
   /// Prints a single line to the console and log without additional decoration
   /// or formatting.
