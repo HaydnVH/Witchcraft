@@ -9,37 +9,29 @@
  *****************************************************************************/
 
 #include <iostream>
+#include "sys/appconfig.h"
 #include "sys/cli.h"
+#include "sys/debug.h"
+#include "sys/mainloop.h"
 #include "sys/paths.h"
 
 namespace {
 
   /// Initialize services and subsystems.
-  /// Returns:
+  /// @return
   ///   0 on success, otherwise a unique integer
   ///   depending on which subsystem failed to initialize.
   int startup() {
-    // debug::info("Now starting ", appconfig::AppName, " ", appconfig::AppVer,
-    // ".\n"); debug::info("Created using ", appconfig::EngineName, " ",
-    // appconfig::EngineVer, ".\n");
+    dbg::info({fmt::format("Now starting '{}' {}", wc::APP_NAME, wc::APP_VERSION),
+               fmt::format("Created using '{}' {}", wc::ENGINE_NAME, wc::ENGINE_VERSION)});
 
-    // if (!wc::initPaths()) return 10;
     // userconfig::init();
-    // debug::init(wc::getUserPath().string().c_str());
     // lua::init();
     // if (!vfs::init()) return 20;
     // if (!window::init()) return 30;
     // if (!gfx::init()) return 40;
 
     // entity::initLua();
-
-    //cli::info({"Hello World",
-    //          fmt::format("User path: {}", wc::getUserPath().string())});
-    
-    cli::info("Helpful Information");
-    cli::warning("Could be bad? You should know!");
-    cli::error("Something awful has happened.");
-    cli::fatal("You've met with a terrible fate, haven't you?");
 
     return 0;
   }
@@ -51,7 +43,8 @@ namespace {
     // gfx::shutdown();
     // window::shutdown();
     // vfs::shutdown();
-    //  debug::showCrashReports(); debug::shutdown();
+    //cli::showCrashReports();
+    cli::shutdown();
     // userconfig::shutdown();
   }
 
@@ -67,9 +60,7 @@ int main(int /*argc*/, char** /*argv*/) {
 
   // Enter the main loop.
   if (result == 0) {
-    //	while (wc::running) {
-    //		wc::mainloop(true);
-    //	}
+    while (wc::sys::isRunning()) { wc::sys::mainLoop(true); }
   }
 
   // Shutdown services and subsystems.
