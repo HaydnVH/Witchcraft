@@ -3,7 +3,8 @@
  * Part of the Witchcraft engine by Haydn V. Harach
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. Harach 2022 - present
- ******************************************************************************
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
  * Implements the main loop of the application.
  *****************************************************************************/
 #include "mainloop.h"
@@ -24,9 +25,9 @@ namespace wc::sys {
   void mainLoop(bool /*handleWindowMessages*/) {
 
     // Handle terminal input.
-    std::string terminal_input;
-    while (cli::popInput(terminal_input)) {
-      dbg::user(terminal_input);
+    std::string terminalInput;
+    while (cli::popInput(terminalInput)) {
+      if (terminalInput == "quit") { shutDown(); }
       //lua::runString(terminal_input.c_str(), "CONSOLE", "@CLI");
     }
   }

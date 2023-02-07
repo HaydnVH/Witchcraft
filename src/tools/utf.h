@@ -1,3 +1,14 @@
+/******************************************************************************
+ * utf.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
+ * Provides a handful of functions to convert strings between UTF-8, UTF-16,
+ * and UTF-32.  These use supposedly depricated parts of the standard library,
+ * so replacing this with a proper library in the future might be a good idea.
+ *****************************************************************************/
 #ifndef WC_TOOLS_UTF_H
 #define WC_TOOLS_UTF_H
 

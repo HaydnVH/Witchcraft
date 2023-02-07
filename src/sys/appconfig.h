@@ -4,7 +4,7 @@
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. Harach 2022 - present
  * Last modified December 2022
- ******************************************************************************
+ * ---------------------------------------------------------------------------
  * Defines a handful of application-wide constants such as name and version.
  *****************************************************************************/
 #ifndef WC_SYS_APPCONFIG_H

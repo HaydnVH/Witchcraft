@@ -15,11 +15,7 @@
       "cacheVariables": {
         "CMAKE_MAKE_PROGRAM": "ninja",
         "CMAKE_C_COMPILER": "gcc",
-        "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_TOOLCHAIN_FILE": {
-          "value": "$env{HOME}/vcpkg/scripts/buildsystems/vcpkg.cmake",
-          "type": "FILEPATH"
-        }
+        "CMAKE_CXX_COMPILER": "g++"
       },
       "condition": {
         "type": "equals",
@@ -55,11 +51,7 @@
       },
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe",
-        "CMAKE_TOOLCHAIN_FILE": {
-          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-          "type": "FILEPATH"
-        }
+        "CMAKE_CXX_COMPILER": "cl.exe"
       },
       "condition": {
         "type": "equals",

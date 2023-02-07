@@ -4,7 +4,7 @@
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. Harach 2022 - present
  * Last modified December 2022
- ******************************************************************************
+ * ---------------------------------------------------------------------------
  * Defines the entrypoint into the application.
  *****************************************************************************/
 
@@ -23,7 +23,8 @@ namespace {
   ///   depending on which subsystem failed to initialize.
   int startup() {
     dbg::info({fmt::format("Now starting '{}' {}", wc::APP_NAME, wc::APP_VERSION),
-               fmt::format("Created using '{}' {}", wc::ENGINE_NAME, wc::ENGINE_VERSION)});
+               fmt::format("Created using '{}' {}", wc::ENGINE_NAME, wc::ENGINE_VERSION),
+         "¯\\_(ツ)_/¯ 🌮"});
 
     // userconfig::init();
     // lua::init();

@@ -1,10 +1,20 @@
+/******************************************************************************
+ * paths.cpp
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
+ * Creates the user and install paths.  These paths are initialized the first
+ * time they are used, so there's no need to initialize explicitly.
+ *****************************************************************************/
 #include "paths.h"
 
-#ifdef PLATFORM_WIN32
+#ifdef PLATFORM_SDL
+  #include <SDL.h>
+#elif PLATFORM_WIN32
   #include <Shlobj.h>
   #include <Windows.h>
-#elif PLATFORM_SDL
-  #include <SDL.h>
 #endif
 
 #include "appconfig.h"
@@ -40,7 +50,18 @@ const sfs::path& wc::getUserPath() {
   if (!userPathInitialized_s) {
     // Get the path where user files ought to be stored.
     // This is platform-specific.
-#ifdef PLATFORM_WIN32
+#ifdef PLATFORM_SDL
+    // In SDL we use SDL_GetPrefPath to find the user dir:
+    // "%APPDATA%/companyName/appName/" on Windows,
+    // "~/.local/share/appName/" on Linux.
+    char* prefpath = SDL_GetPrefPath(wc::COMPANY_NAME, wc::APP_NAME);
+    if (!prefpath) {
+      userPath_s.clear();
+      return userPath_s;
+    }
+    userPath_s = std::filesystem::u8path(prefpath);
+    SDL_free(prefpath);
+#elif PLATFORM_WIN32
     // In Win32 we have to use SHGetKnownFolderPath to find "%APPDATA%".
     PWSTR   str;
     HRESULT result = SHGetKnownFolderPath(FOLDERID_RoamingAppData,
@@ -55,17 +76,6 @@ const sfs::path& wc::getUserPath() {
       return userPath_s;
     }
     CoTaskMemFree(str);
-#elif PLATFORM_SDL
-    // In SDL we use SDL_GetPrefPath to find the user dir:
-    // "%APPDATA%/companyName/appName/" on Windows,
-    // "~/.local/share/appName/" on Linux.
-    char* prefpath = SDL_GetPrefPath(wc::COMPANY_NAME, wc::APP_NAME);
-    if (!prefpath) {
-      userPath_s.clear();
-      return userPath_s;
-    }
-    userPath_s = std::filesystem::u8path(prefpath);
-    SDL_free(prefpath);
 #endif
 
     userPathInitialized_s = true;

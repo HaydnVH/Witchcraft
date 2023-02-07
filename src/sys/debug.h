@@ -1,3 +1,13 @@
+/******************************************************************************
+ * debug.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
+ * Defines the interface for debugging tools provided by Witchcraft.
+ * ALL message outputs should go through here. NEVER use printf of cout!
+ *****************************************************************************/
 #ifndef WC_SYS_DEBUG_H
 #define WC_SYS_DEBUG_H
 

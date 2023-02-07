@@ -3,7 +3,8 @@
  * Part of the Witchcraft engine by Haydn V. Harach
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. Harach 2022 - present
- ******************************************************************************
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
  * Provides access to the User and Install directories,
  * where files may be read from and written to.
  *****************************************************************************/

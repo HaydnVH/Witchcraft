@@ -1,5 +1,4 @@
-﻿# CMakeList.txt : CMake project for Witchcraft, include source and define
-# project specific logic here.
+﻿# CMakeList.txt : CMake project for Witchcraft
 project (Witchcraft)
 cmake_minimum_required (VERSION 3.8)
 
@@ -15,9 +14,9 @@ add_definitions(
 
 # Platform-specific definition
 IF (WIN32)
-  add_definitions(-DPLATFORM_SDL -DSDL_MAIN_HANDLED -DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE)
-ELSE ()
-  add_definitions(-DPLATFORM_SDL)
+  add_definitions(-DPLATFORM_SDL -DPLATFORM_WIN32 -DSDL_MAIN_HANDLED -DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE)
+ELSE (UNIX)
+  add_definitions(-DPLATFORM_SDL -DPLATFORM_LINUX)
 ENDIF ()
 
 # Add source to this project's executable
@@ -32,13 +31,36 @@ add_executable (Witchcraft ${SOURCES})
 set_target_properties (Witchcraft PROPERTIES
   VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
-# Add Packages
-# --- SDL --- #
-find_package (SDL2 CONFIG REQUIRED)
-target_link_libraries (Witchcraft SDL2::SDL2)
+############### Add Packages & Dependencies #################
+
 # --- fmt --- #
-find_package (fmt CONFIG REQUIRED)
-target_link_libraries (Witchcraft fmt::fmt)
+add_subdirectory("dependencies/fmt")
+include_directories("dependencies/fmt/include")
+target_link_libraries(Witchcraft fmt)
+
+# --- Lua --- #
+#find_package (lua REQUIRED)
+#target_include_directories(Witchcraft PRIVATE ${LUA_INCLUDE_DIR})
+#target_link_libraries (Witchcraft ${LUA_LIBRARIES})
+
+# --- SDL --- #
+add_subdirectory("dependencies/sdl")
+include_directories("dependencies/sdl/include")
+target_link_libraries(Witchcraft SDL2main)
+target_link_libraries(Witchcraft SDL2)
+if (WIN32) # Move sdl2.dll over to where we need it
+add_custom_command(TARGET Witchcraft POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+  "$<TARGET_FILE_DIR:Witchcraft>/dependencies/sdl/SDL2d.dll"
+  $<TARGET_FILE_DIR:Witchcraft>)
+endif ()
+
+# --- Replxx --- #
+IF (UNIX)
+add_subdirectory("dependencies/replxx")
+include_directories("dependencies/replxx/include")
+target_link_libraries(Witchcraft replxx)
+ENDIF ()
 
 
 # Include directories

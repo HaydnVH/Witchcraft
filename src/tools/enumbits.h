@@ -1,3 +1,14 @@
+/******************************************************************************
+ * enumbits.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
+ * Use this macro to allow a class enum to be treated like a traditional
+ * bit-field.  Unfortunately direct conversion to bool isn't possible,
+ * so double-not (!!) should be used instead.
+ *****************************************************************************/
 #ifndef WC_TOOLS_ENUMBITS_H
 #define WC_TOOLS_ENUMBITS_H
 

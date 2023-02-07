@@ -3,7 +3,8 @@
  * Part of the Witchcraft engine by Haydn V. Harach
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. Harach 2022 - present
- ******************************************************************************
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
  * Provides access to the main loop and related facilities.
  *****************************************************************************/
 #ifndef WC_SYS_MAINLOOP_H

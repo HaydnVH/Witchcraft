@@ -1,3 +1,12 @@
+/******************************************************************************
+ * debug.cpp
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified December 2022
+ * ---------------------------------------------------------------------------
+ * Implements Witchcraft's debugging tools.
+ *****************************************************************************/
 #include "debug.h"
 #include "cli.h"
 
@@ -63,11 +72,11 @@ namespace {
 namespace dbg {
 
   void printLine(MessageSeverity severity, const std::string_view message) {
-    cli::print(severity, fmt::format("{}\n", message));
+    cli::print(severity, message, true);
   }
   
   void printRaw(MessageSeverity severity, const std::string_view message) {
-    cli::print(severity, message);
+    cli::print(severity, message, false);
   }
 
   Lock info(const std::initializer_list<const std::string_view>& messages,
