@@ -7,9 +7,9 @@
  * ---------------------------------------------------------------------------
  * Implements the command-line-interface system on Windows.
  *****************************************************************************/
-#ifdef PLATFORM_WIN32
 #include "cli.h"
 #include "debug.h"
+#include "tools/utf.h"
 
 #include <atomic>
 #include <fmt/core.h>
@@ -21,40 +21,52 @@
 #include <string>
 #include <sys/paths.h>
 #include <thread>
-#include "tools/utf.h"
 #include <tuple>
 #include <vector>
 
-#include <Windows.h>
+#ifdef PLATFORM_WIN32
+  #include <Windows.h>
+  #define READ(s,n) fread(s,1,n,stdin)
+  #define WRITE(s,n) fwrite(s,1,n,stdout)
+#elif PLATFORM_LINUX
+  #include <termios.h>
+  #include <unistd.h>
+  #define READ(s,n) read(STDIN_FILENO,s,n)
+  #define WRITE(s,n) write(STDOUT_FILENO,s,n)
+#endif
 
-/// Although this is technically a "global", it should only ever be 'extern'd from "debug.cpp".
-/// This mutex is used to synchronize CLI behaviour.
+/// Although this is technically a "global", it should only ever be 'extern'd
+/// from "debug.cpp". This mutex is used to synchronize CLI behaviour.
 std::mutex cliMutex_g;
 
 namespace {
 
-  bool                                      initialized_s = false;
-  std::ofstream                             logFile_s;
-  std::vector<std::string>                  crashReports_s;
-  std::queue<std::string>                   consoleQueue_s;
-  std::queue<std::tuple<dbg::MessageSeverity, std::string>>  preinitQueue_s;
-  std::string                               lastMessage_s = "";
+  bool                     initialized_s = false;
+  std::ofstream            logFile_s;
+  std::vector<std::string> crashReports_s;
+  std::queue<std::string>  consoleQueue_s;
+  std::queue<std::tuple<dbg::MessageSeverity, std::string>> preinitQueue_s;
+  std::string                                               lastMessage_s = "";
 
   struct {
     dbg::MessageSeverity stdoutFilter  = dbg::MessageSeverity::Everything;
     dbg::MessageSeverity logfileFilter = dbg::MessageSeverity::Everything;
     dbg::MessageSeverity consoleFilter = dbg::MessageSeverity::Everything;
-    bool makeConsole   = true;
-    bool allowCheats   = true;
-    bool modified      = false;
+    bool                 makeConsole   = true;
+    bool                 allowCheats   = true;
+    bool                 modified      = false;
   } myConfig;
 
   std::thread       cinThread_s;
   bool              inThreadRunning_s = true;
-  std::atomic<bool> updateInLine_s = true;
+  std::atomic<bool> updateInLine_s    = true;
 
+#ifdef PLATFORM_WIN32
   HANDLE hcout, hcin;
   DWORD  original_hcout_mode, original_hcin_mode;
+#elif PLATFORM_LINUX
+  termios originalTermios_s;
+#endif
 
   // Saves the cursor position in memory.
   constexpr const char DECSC[] = {'\x1b', '7', '\0'};
@@ -93,7 +105,8 @@ namespace {
       // it to utf-8. It wouldn't be neccesary if we could use an unbuffered cin
       // (or equivalent) which can read utf-8. Alas, even modern C++ has no
       // portable way of doing so.
-      inputstr        = "";
+      inputstr = "";
+#ifdef PLATFORM_WIN32
       DWORD numevents = 0;
       do {
 
@@ -113,6 +126,17 @@ namespace {
         // Get the new number of events waiting.
         GetNumberOfConsoleInputEvents(hcin, &numevents);
       } while (numevents > 0);
+#elif PLATFORM_LINUX
+      //std::cin >> inputstr;
+      char rawInput[1024];
+      size_t numRead = read(STDIN_FILENO, &rawInput, 1024);
+      if (numRead >= 0) {
+        rawInput[numRead] = '\0';
+      } else {
+        continue;
+      }
+      inputstr += rawInput;
+#endif
 
       if (inputstr.size() == 0) continue;
 
@@ -149,10 +173,10 @@ namespace {
           input_buffer          = &memory_buffer[current_memory_buffer];
           input_cursor          = (int)input_buffer->size();
         } else if (inputstr == "\x1b[B") {  // Down Arrow
-          current_memory_buffer =
-              std::min(current_memory_buffer + 1, (int)memory_buffer.size() - 1);
-          input_buffer = &memory_buffer[current_memory_buffer];
-          input_cursor = (int)input_buffer->size();
+          current_memory_buffer = std::min(current_memory_buffer + 1,
+                                           (int)memory_buffer.size() - 1);
+          input_buffer          = &memory_buffer[current_memory_buffer];
+          input_cursor          = (int)input_buffer->size();
         } else if (inputstr == "\x1b[C") {  // Right Arrow
           input_cursor = std::min(input_cursor + 1, (int)input_buffer->size());
         } else if (inputstr == "\x1b[D") {  // Left Arrow
@@ -188,25 +212,17 @@ namespace {
       echostr = utf32_to_utf8(*input_buffer);
       cliMutex_g.lock();
       // Move the cursor to the saved output position.
-      std::cout << DECSR;
       // Clear the console after that position.
-      std::cout << ED;
-      // Print a newline, restore the cursor position, move the cursor up by 1,
-      // and then save the cursor position.
-      // cout << "\n\x1b[u\x1b[1A\x1b[s";
       // Print the user input.
-      // if (myconfig.colorful) {
-      std::cout << dbg::USERCOLR << "$> " << dbg::CLEAR << echostr.c_str();
-      //}
-      // else {
-      //	cout << "$> " << echostr.c_str();
-      //}
+      auto formattedEchoString =
+          fmt::format("{}{}{}{}{}{}", DECSR, ED, dbg::USERCOLR, "$> ", dbg::CLEAR, echostr);
+      WRITE(formattedEchoString.c_str(), formattedEchoString.size());
+      
       // Move the cursor so it appears where our input is.
-      int cursor_dif = (int)input_buffer->size() - input_cursor;
-      if (cursor_dif > 0) {
-        char code[8];
-        snprintf(code, 8, "\x1b[%iD", cursor_dif);
-        std::cout << code;
+      int cursorDif = (int)input_buffer->size() - input_cursor;
+      if (cursorDif > 0) {
+        auto code = fmt::format("\x1b[{}D", cursorDif);
+        WRITE(code.c_str(), code.size());
       }
       cliMutex_g.unlock();
     }
@@ -227,16 +243,15 @@ namespace {
     return std::regex_replace(std::string(str), r, "");
   }
 
-
-} // namespace <anon>
+}  // namespace
 
 namespace cli {
   bool initialize() {
     // Open the log file.
     std::filesystem::path logpath = wc::getUserPath() / LOG_FILENAME;
     logFile_s.open(logpath, std::ios::out);
-    
 
+#ifdef PLATFORM_WIN32
     //	AllocConsole()
     //	freopen("CONIN$", "r", stdin);
     //	freopen("CONOUT$", "w", stdout);
@@ -266,29 +281,29 @@ namespace cli {
     mode ^= ENABLE_PROCESSED_INPUT;
     SetConsoleMode(hcin, mode);
     FlushConsoleInputBuffer(hcin);
+#elif PLATFORM_LINUX
+    // Enable raw mode processing.
+    termios raw;
+    originalTermios_s = raw;
+    tcgetattr(STDIN_FILENO, &raw);
+    raw.c_lflag &= ~(ECHO | ICANON);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+#endif
 
     // Save the initial cursor position.
-    std::cout << DECSC;
+    WRITE(DECSC, 3);
 
     // Create the input thread, then wake it up.
     cinThread_s = std::thread(terminalInputThread);
-    std::cout << WAKEUP;
+    WRITE(WAKEUP, 5);
 
     initialized_s = true;
-
-    // If we tried to send messages before the console was initialized,
-    // we should send them out now.
-    //while (!preinitQueue_s.empty()) {
-    //  auto entry = preinitQueue_s.front();
-    //  preinitQueue_s.pop();
-    //  print(std::get<0>(entry), std::get<1>(entry));
-    //}
 
     if (!logFile_s.is_open()) {
       dbg::errmore("Failed to open debug log file for writing.");
     } else {
       dbg::infomore(fmt::format("Output messages will be saved to \"{}\".",
-                            logpath.string()));
+                                logpath.string()));
     }
 
     return true;
@@ -300,19 +315,22 @@ namespace cli {
     inThreadRunning_s = false;
     // Forces an input to be placed on the terminal input stream.
     // This will wake up the thread which is waiting on stdin.
-    std::cout << WAKEUP;
+    WRITE(WAKEUP, 5);
     // Wait until the thread is finished before continuing.
     cinThread_s.join();
 
+#ifdef PLATFORM_WIN32
     SetConsoleMode(hcout, original_hcout_mode);
     SetConsoleMode(hcin, original_hcin_mode);
+#elif PLATFORM_LINUX
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios_s);
+#endif
   }
 
-  void print(dbg::MessageSeverity severity, std::string_view message, bool endl) {
+  void print(dbg::MessageSeverity severity, std::string_view message,
+             bool endl) {
     // If the console hasn't been initialized yet, initialize it.
-    if (!initialized_s) {
-      initialize();
-    }
+    if (!initialized_s) { initialize(); }
 
     // Check for repeated messages so we don't spam the console.
     if ((lastMessage_s == message) && (severity != dbg::MessageSeverity::User))
@@ -323,20 +341,19 @@ namespace cli {
     if (myConfig.makeConsole && !!(severity & myConfig.stdoutFilter)) {
       // Try to lock the mutex.
       // This will fail if it was locked during a call to `info`, `error`, etc.
-      // In that case we don't need to do anything because we're already synchronized.
+      // In that case we don't need to do anything because we're already
+      // synchronized.
       bool wasLocked = cliMutex_g.try_lock();
+      
       // Restore the cursor position to where we last output.
-      std::cout << DECSR;
       // Clear the console after the current position.
-      std::cout << ED;
       // Print the message.
-      std::cout << message;
-      if (endl) { std::cout << std::endl; }
-      //std::cout << dbg::CLEAR;
       // Save the cursor position.
-      std::cout << DECSC;
       // Alert the input thread to update its display.
-      std::cout << WAKEUP;
+      auto outString = fmt::format("{}{}{}{}{}{}", DECSR, ED, message,
+                                   (endl) ? "\n" : "", DECSC, WAKEUP);
+      WRITE(outString.c_str(), outString.size());
+      
       // Iff we locked the mutex ourselves, unlock it here.
       if (wasLocked) cliMutex_g.unlock();
     }
@@ -358,6 +375,4 @@ namespace cli {
       return true;
     }
   }
-}
-
-#endif // PLATFORM_WIN32
+}  // namespace cli

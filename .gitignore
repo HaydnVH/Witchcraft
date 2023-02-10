@@ -339,6 +339,3 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
-
-# Script-installed VCPKG and all installed dependencies
-dependencies/vcpkg/
