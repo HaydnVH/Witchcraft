@@ -7,8 +7,8 @@
  * ---------------------------------------------------------------------------
  * Defines the interface for the lua scripting engine.
  *****************************************************************************/
-#ifndef HVH_WC_LUA_SYSTEM_H
-#define HVH_WC_LUA_SYSTEM_H
+#ifndef WC_LUA_LUASYSTEM_H
+#define WC_LUA_LUASYSTEM_H
 
 #include <lua.hpp>
 
@@ -38,4 +38,4 @@ namespace wc::lua {
 
 }  // namespace wc::lua
 
-#endif  // HVH_WC_LUA_SYSTEM_H
+#endif  // HVH_LUA_LUASYSTEM_H

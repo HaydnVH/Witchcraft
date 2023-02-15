@@ -1,5 +1,5 @@
 ﻿# CMakeList.txt : CMake project for Witchcraft
-project (Witchcraft CXX)
+project (Witchcraft LANGUAGES C CXX)
 cmake_minimum_required (VERSION 3.8)
 
 # Set the C++ standard
@@ -22,7 +22,10 @@ ENDIF ()
 # Add source to this project's executable
 include_directories ("src")
 file (GLOB_RECURSE SOURCES
+  dependencies/lz4/lib/lz4.c
+  dependencies/lz4/lib/lz4hc.c
   src/*.cpp
+  src/filesys/*.cpp
   src/lua/*.cpp
   src/sys/*.cpp
 )
@@ -45,6 +48,12 @@ target_link_libraries (Witchcraft ${FMT_LIB})
 include_directories	  ("dependencies/lua/include")
 find_library		  (LUA_LIB NAMES lua_static HINTS "dependencies/lua/lib/$ENV{PRESET_NAME}")
 target_link_libraries (Witchcraft ${LUA_LIB})
+
+# --- LZ4 --- #
+include_directories	  ("dependencies/lz4/lib")
+
+# --- RapidJson --- #
+include_directories	  ("dependencies/rapidjson/include")
 
 # --- SDL --- #
 include_directories	  ("dependencies/sdl/include")

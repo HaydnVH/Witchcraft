@@ -8,6 +8,7 @@
  * Defines the entrypoint into the application.
  *****************************************************************************/
 
+#include "filesys/vfs.h"
 #include "lua/luasystem.h"
 #include "sys/appconfig.h"
 #include "sys/cli.h"
@@ -35,7 +36,7 @@ namespace {
 
     // userconfig::init();
     wc::lua::init();
-    // if (!vfs::init()) return 20;
+    if (!wc::vfs::init()) return 20;
     // if (!window::init()) return 30;
     // if (!gfx::init()) return 40;
 

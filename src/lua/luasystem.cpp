@@ -14,8 +14,7 @@
 #include <vector>
 using namespace std;
 
-// #include "filesys/vfs.h"
-// #include "tools/stringhelper.h"
+#include "filesys/vfs.h"
 #include "scripts/built/events.lua.h"
 #include "scripts/built/math2.lua.h"
 #include "scripts/built/sandbox.lua.h"
@@ -283,50 +282,52 @@ bool wc::lua::runString(const char* str, const char* env,
 }
 
 bool wc::lua::doFile(const char* filename) {
-  /*
-  string path = makestr(SCRIPT_DIR, filename, SCRIPT_EXT);
+  string path = fmt::format("{}{}{}", SCRIPT_DIR, filename, SCRIPT_EXT);
 
   // Open and load the script file.
-  vector<char> fdata = vfs::LoadFile(path.c_str(), true);
-  if (fdata.empty()) {
-      dbg::error("In wc::lua::doFile():\n");
-      dbg::errmore("Could not load script '", filename, "'.\n");
-      return false;
+  auto fdata = wc::vfs::LoadFile(path.c_str(), true);
+  if (!fdata.has_value()) {
+    dbg::error(fmt::format("Could not load script '{}'.", filename));
+    return false;
   }
 
   // Adjust the source name for debugging.
-  path = makestr('@', path);
+  path = fmt::format("@{}", path);
 
   // Load the script into lua.
-  if (luaL_loadbuffer(L, (const char*)fdata.data(), fdata.size(), path.c_str()))
-  { dbg::error("In wc::lua::doFile():\n"); dbg::errmore("Error loading
-  script:\n"); lua_pop(L, 1); return false;
+  if (luaL_loadbuffer(L, (const char*)fdata.value().data(),
+                      fdata.value().size(), path.c_str())) {
+    dbg::error({"Error loading script:", lua_tostring(L, -1)});
+    lua_pop(L, 1);
+    return false;
   }
 
   // Set up the protected environment.
   lua_getglobal(L, "setup_script_env");
   lua_pushstring(L, filename);
   if (lua_pcall(L, 1, 0, 0)) {
-      dbg::error("In wc::lua::doFile():\n");
-      dbg::errmore("Failed to set up environment for script '", filename,
-  "':\n"); dbg::errmore(lua_tostring(L, -1), '\n'); lua_pop(L, 2); // pop the
-  error and the loaded script function return false;
+    dbg::error(
+        {fmt::format("Failed to set up environment for script '{}':", filename),
+         lua_tostring(L, -1)});
+    lua_pop(L, 2);  // pop the error and the loaded script function
+    return false;
   }
 
   // Get the protected environment for the script.
   lua_getglobal(L, "SCRIPT_ENV");
-  lua_getfield(L, -1, filename); // SCRIPT_ENV[filename] is the environment used
-  by the script.
+  lua_getfield(
+      L, -1,
+      filename);  // SCRIPT_ENV[filename] is the environment used by the script.
 
-  lua_setfenv(L, -3); // pops [filename] and assigns it as the environment for
-  "-3" (the script code). lua_pop(L, 1); // pops SCRIPT_ENV.
+  lua_setupvalue(L, -3, 1);  // pops [filename] and assigns it as the
+                             // environment for "-3" (the script code).
+  lua_pop(L, 1);             // pops SCRIPT_ENV.
 
   // Actually run the script.
   if (lua_pcall(L, 0, 0, 0)) {
-      printLuaError(-1);
-      lua_pop(L, 1);
-      return false;
+    printLuaError(-1);
+    lua_pop(L, 1);
+    return false;
   }
-  */
   return true;
 }
