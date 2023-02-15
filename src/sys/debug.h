@@ -11,6 +11,8 @@
 #ifndef WC_SYS_DEBUG_H
 #define WC_SYS_DEBUG_H
 
+#include "tools/enumbits.h"
+
 #include <filesystem>
 #include <fmt/core.h>
 #include <mutex>
@@ -18,7 +20,6 @@
 #include <source_location>
 #include <string>
 #include <string_view>
-#include "tools/enumbits.h"
 
 namespace dbg {
 
@@ -64,6 +65,13 @@ namespace dbg {
   static constexpr const char* USERMARK = " > ";
   static constexpr const char* USERMORE = " - ";
   static constexpr const char* USERCOLR = "\x1b[38;2;0;255;255m";
+
+  static constexpr const char* LUAMARK = "LUA";
+  static constexpr const char* LUAMORE = "-";
+  static constexpr const char* LUACOLR =
+      "\x1b[38;2;255;0;255m\x1b[48;2;30;10;30m";
+  static constexpr const char* LUACOLR_FG = "\x1b[38;2;255;0;255m";
+  static constexpr const char* LUACOLR_BG = "\x1b[48;2;30;10;30m";
 
   // These constants are used to control color.
   static constexpr const char* CLEAR     = "\x1b[0m";
@@ -138,7 +146,8 @@ namespace dbg {
              std::optional<std::string_view> srcOverride = std::nullopt,
              std::source_location src = std::source_location::current());
   /// Prints a single 'fatal' message to the console and log.
-  inline Lock fatal(const std::string_view          message,
+  inline Lock
+      fatal(const std::string_view          message,
             std::optional<std::string_view> srcOverride = std::nullopt,
             std::source_location src = std::source_location::current()) {
     return fatal({message}, srcOverride, src);
@@ -151,6 +160,16 @@ namespace dbg {
   /// Prints a single 'user' message to the console and log.
   inline void user(const std::string_view message) { user({message}); }
 
-}  // namespace cli
+  /// Prints a series of messages from lua to the console and log.
+  void luaPrint(const std::initializer_list<const std::string_view>& messages,
+                std::optional<std::string_view> srcOverride = std::nullopt,
+                std::source_location src = std::source_location::current());
+  /// Prints a single message from lua to the console and log.
+  inline void luaPrint(const std::string_view message) { luaPrint({message}); }
+
+  /// Prints an additional message from lua to the console and log.
+  void luaPrintmore(const std::string_view message);
+
+}  // namespace dbg
 
 #endif  // WC_SYS_CLI_H

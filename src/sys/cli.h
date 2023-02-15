@@ -11,29 +11,38 @@
 #define WC_SYS_CLI_H
 
 #include "debug.h"
+
 #include <filesystem>
 #include <string>
 #include <string_view>
 
 namespace cli {
 
-  /// The name of the file where the log should be saved (in the user directory).
+  /// The name of the file where the log should be saved (in the user
+  /// directory).
   constexpr const char* LOG_FILENAME = "log.txt";
 
+  /// Initializes the CLI system and opens the log file.
+  bool initialize();
+
   /// Returns the terminal back to its default state and closes the log file.
-  /// Unlike initialization, this must be done manually before the application closes.
+  /// Unlike initialization, this must be done manually before the application
+  /// closes.
   void shutdown();
 
   /// Prints a single message.
-  /// @param severity: The severity of the message so it can be filtered by settings.
+  /// @param severity: The severity of the message so it can be filtered by
+  /// settings.
   /// @param message: The message to print.
   /// @param endl: Whether to insert an "end of line" after the message.
-  void print(dbg::MessageSeverity severity, std::string_view message, bool endl);
+  void print(dbg::MessageSeverity severity, std::string_view message,
+             bool endl);
 
   /// Gets a single line of input that the user has entered into the terminal.
   /// @param out: The string where the line of input should be stored.
-  /// @returns true if a message was popped from the queue, false if the queue was empty.
+  /// @returns true if a message was popped from the queue, false if the queue
+  /// was empty.
   bool popInput(std::string& out);
-}
+}  // namespace cli
 
-#endif // WC_SYS_CLI_H
+#endif  // WC_SYS_CLI_H

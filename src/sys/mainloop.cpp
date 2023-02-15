@@ -9,9 +9,11 @@
  *****************************************************************************/
 #include "mainloop.h"
 
-#include <string>
 #include "cli.h"
 #include "debug.h"
+#include "lua/luasystem.h"
+
+#include <string>
 
 namespace {
   bool running_s = true;
@@ -27,9 +29,9 @@ namespace wc::sys {
     // Handle terminal input.
     std::string terminalInput;
     while (cli::popInput(terminalInput)) {
-      if (terminalInput == "quit") { shutDown(); }
-      //lua::runString(terminal_input.c_str(), "CONSOLE", "@CLI");
+      // if (terminalInput == "quit") { shutDown(); }
+      lua::runString(terminalInput.c_str(), "CONSOLE", "@CLI");
     }
   }
 
-} // namespace wc::sys
+}  // namespace wc::sys

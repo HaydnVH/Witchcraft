@@ -8,12 +8,14 @@
  * Defines the entrypoint into the application.
  *****************************************************************************/
 
-#include <iostream>
+#include "lua/luasystem.h"
 #include "sys/appconfig.h"
 #include "sys/cli.h"
 #include "sys/debug.h"
 #include "sys/mainloop.h"
 #include "sys/paths.h"
+
+#include <iostream>
 
 namespace {
 
@@ -22,12 +24,17 @@ namespace {
   ///   0 on success, otherwise a unique integer
   ///   depending on which subsystem failed to initialize.
   int startup() {
-    dbg::info({fmt::format("Now starting '{}' {}", wc::APP_NAME, wc::APP_VERSION),
-               fmt::format("Created using '{}' {}", wc::ENGINE_NAME, wc::ENGINE_VERSION),
-         "¯\\_(ツ)_/¯ 🌮"});
+    cli::initialize();
+    {
+      dbg::info(
+          {fmt::format("Now starting '{}' {}", wc::APP_NAME, wc::APP_VERSION),
+           fmt::format("Created using '{}' {}", wc::ENGINE_NAME,
+                       wc::ENGINE_VERSION),
+           "¯\\_(ツ)_/¯ 🌮"});
+    }
 
     // userconfig::init();
-    // lua::init();
+    wc::lua::init();
     // if (!vfs::init()) return 20;
     // if (!window::init()) return 30;
     // if (!gfx::init()) return 40;
@@ -44,7 +51,7 @@ namespace {
     // gfx::shutdown();
     // window::shutdown();
     // vfs::shutdown();
-    //cli::showCrashReports();
+    // cli::showCrashReports();
     cli::shutdown();
     // userconfig::shutdown();
   }
@@ -56,15 +63,20 @@ namespace {
 /// @param argv: The array of arguments passed to the application (unused).
 /// @return Standard application result code.  0 on success.
 int main(int /*argc*/, char** /*argv*/) {
-  // Initialize services and subsystems.
-  int result = ::startup();
+  try {
+    // Initialize services and subsystems.
+    int result = ::startup();
 
-  // Enter the main loop.
-  if (result == 0) {
-    while (wc::sys::isRunning()) { wc::sys::mainLoop(true); }
+    // Enter the main loop.
+    if (result == 0) {
+      while (wc::sys::isRunning()) { wc::sys::mainLoop(true); }
+    }
+
+    // Shutdown services and subsystems.
+    ::shutdown(result);
+    return result;
+  } catch (const std::exception& e) {
+    std::cout << "\n" << e.what() << std::endl;
+    return 1;
   }
-
-  // Shutdown services and subsystems.
-  ::shutdown(result);
-  return result;
 }

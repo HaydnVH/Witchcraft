@@ -1,5 +1,5 @@
 ﻿# CMakeList.txt : CMake project for Witchcraft
-project (Witchcraft)
+project (Witchcraft CXX)
 cmake_minimum_required (VERSION 3.8)
 
 # Set the C++ standard
@@ -23,6 +23,7 @@ ENDIF ()
 include_directories ("src")
 file (GLOB_RECURSE SOURCES
   src/*.cpp
+  src/lua/*.cpp
   src/sys/*.cpp
 )
 add_executable (Witchcraft ${SOURCES})
@@ -31,37 +32,68 @@ add_executable (Witchcraft ${SOURCES})
 set_target_properties (Witchcraft PROPERTIES
   VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
-############### Add Packages & Dependencies #################
+# --------------------------------------------------------------------------- #
+# --------------------- # Add Packages & Dependencies # --------------------- #
+# --------------------------------------------------------------------------- #
 
 # --- fmt --- #
-add_subdirectory("dependencies/fmt")
-include_directories("dependencies/fmt/include")
-target_link_libraries(Witchcraft fmt)
+include_directories	  ("dependencies/fmt/include")
+find_library		  (FMT_LIB NAMES fmt fmtd HINTS "dependencies/fmt/lib/$ENV{PRESET_NAME}")
+target_link_libraries (Witchcraft ${FMT_LIB})
 
 # --- Lua --- #
-#find_package (lua REQUIRED)
-#target_include_directories(Witchcraft PRIVATE ${LUA_INCLUDE_DIR})
-#target_link_libraries (Witchcraft ${LUA_LIBRARIES})
+include_directories	  ("dependencies/lua/include")
+find_library		  (LUA_LIB NAMES lua_static HINTS "dependencies/lua/lib/$ENV{PRESET_NAME}")
+target_link_libraries (Witchcraft ${LUA_LIB})
 
 # --- SDL --- #
-add_subdirectory("dependencies/sdl")
-include_directories("dependencies/sdl/include")
-target_link_libraries(Witchcraft SDL2main)
-target_link_libraries(Witchcraft SDL2)
+include_directories	  ("dependencies/sdl/include")
+find_library		  (SDL_LIB NAMES SDL2 SDL2d HINTS "dependencies/sdl/lib/$ENV{PRESET_NAME}")
+find_library		  (SDLMAIN_LIB NAMES SDL2main SDL2maind HINTS "dependencies/sdl/lib/$ENV{PRESET_NAME}")
+target_link_libraries (Witchcraft ${SDL_LIB})
+target_link_libraries (Witchcraft ${SDLMAIN_LIB})
 if (WIN32) # Move sdl2.dll over to where we need it
-add_custom_command(TARGET Witchcraft POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-  "$<TARGET_FILE_DIR:Witchcraft>/dependencies/sdl/SDL2d.dll"
-  $<TARGET_FILE_DIR:Witchcraft>)
+  if (CMAKE_BUILD_TYPE MATCHES Debug)
+  add_custom_command(TARGET Witchcraft POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	"${PROJECT_SOURCE_DIR}/dependencies/sdl/lib/$ENV{PRESET_NAME}/SDL2d.dll"
+	$<TARGET_FILE_DIR:Witchcraft>)
+  else ()
+  add_custom_command(TARGET Witchcraft POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	"${PROJECT_SOURCE_DIR}/dependencies/sdl/lib/$ENV{PRESET_NAME}/SDL2.dll"
+	$<TARGET_FILE_DIR:Witchcraft>)
+  endif ()
 endif ()
 
-# --- Replxx --- #
-IF (UNIX)
-add_subdirectory("dependencies/replxx")
-include_directories("dependencies/replxx/include")
-target_link_libraries(Witchcraft replxx)
-ENDIF ()
+if (UNIX)
+  target_link_libraries (Witchcraft pthread)
+  target_link_libraries (Witchcraft dl)
+endif ()
 
+# Grab some utilities
+if (WIN32)
+  set (LUAC_EXE "windows/luac.exe")
+  set (F2H_EXE "windows/FileToHeader.exe")
+elseif (UNIX)
+  set (LUAC_EXE "linux/luac")
+  set (F2H_EXE "linux/FileToHeader")
+endif ()
+
+# Compile Lua scripts
+file (GLOB_RECURSE LUA_SCRIPTS ${PROJECT_SOURCE_DIR}/src/lua/scripts/*.lua)
+foreach(script ${LUA_SCRIPTS})
+  get_filename_component(OUTPUT_FILENAME ${script} NAME)
+  set (OUTPUT_FILENAME ${PROJECT_SOURCE_DIR}/src/lua/scripts/built/${OUTPUT_FILENAME})
+  add_custom_command(TARGET Witchcraft PRE_BUILD
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies/lua/bin
+	COMMAND ${LUAC_EXE} -o ${OUTPUT_FILENAME} ${script} 
+  )
+  add_custom_command(TARGET Witchcraft PRE_BUILD
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies/f2h/bin
+	COMMAND ${F2H_EXE} ${OUTPUT_FILENAME}
+  )
+endforeach()
 
 # Include directories
 
@@ -74,35 +106,12 @@ ENDIF ()
 #include_directories	("dependencies/lz4-dev/lib")
 #include_directories (${Vulkan_INCLUDE_DIRS})
 
-# Add source to this project's executable
-#file (GLOB_RECURSE SOURCES
-#	dependencies/flecs-3.0.3/flecs.c
-#	dependencies/lz4-dev/lz4.c
-#	dependencies/lz4-dev/lz4hc.c
-#	src/*.cpp
-#	src/sys/*.cpp
-#	src/tools/*.cpp
-#	src/ecs/*.cpp
-#	src/ecs/components/*.cpp
-#	src/ecs/systems/*.cpp
-#	src/lua/*.cpp
-#	src/graphics/*.cpp
-#)
-#add_executable (Witchcraft ${SOURCES})
-#set_target_properties (Witchcraft PROPERTIES
-#	VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-
-
-
 # Linked libraries
 #target_link_libraries (Witchcraft SDL2)
 #target_link_libraries (Witchcraft SDL2main)
 #target_link_libraries (Witchcraft lua51)
 #target_link_libraries (Witchcraft ${Vulkan_LIBRARIES})
 
-
-#target_link_libraries (Witchcraft DXGI)
-#target_link_libraries (Witchcraft d3d12)
 
 # Move .dlls over to wherever the .exe goes
 #add_custom_command(TARGET Witchcraft POST_BUILD

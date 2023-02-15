@@ -8,6 +8,7 @@
  * Implements Witchcraft's debugging tools.
  *****************************************************************************/
 #include "debug.h"
+
 #include "cli.h"
 
 #include <chrono>
@@ -44,13 +45,24 @@ namespace {
       dbg::printRaw(severity,
                     fmt::format("{}{} ", dbg::FATALCOLR, dbg::FATALMARK));
       break;
+    case dbg::MessageSeverity::User:
+      dbg::printRaw(severity, fmt::format("{}{} ", dbg::LUACOLR, dbg::LUAMARK));
+      break;
     default: break;
     }
 
     if (shouldPrintTime_s) {
+      using namespace std::chrono;
       // Print the current date and time according to the system clock.
-      auto now = std::chrono::system_clock::now();
-      dbg::printRaw(severity, fmt::format("[{:%Y-%m-%d %H:%M:%S}] ", now));
+      auto              now  = system_clock::now();
+      auto              nowt = system_clock::to_time_t(now);
+      std::stringstream datestr;
+      // We want the date and time to be according to the local timezone.
+      datestr << std::put_time(std::localtime(&nowt), "%Y-%m-%d %H:%M:");
+      // We want to display seconds, but without any decimals.
+      dbg::printRaw(severity,
+                    fmt::format("[{}{}] ", datestr.str(),
+                                fmt::format("{:%S}", now).substr(0, 2)));
     }
 
     // If 'srcOverride' was provided, print that instead of the formatted source
@@ -74,7 +86,7 @@ namespace dbg {
   void printLine(MessageSeverity severity, const std::string_view message) {
     cli::print(severity, message, true);
   }
-  
+
   void printRaw(MessageSeverity severity, const std::string_view message) {
     cli::print(severity, message, false);
   }
@@ -145,4 +157,16 @@ namespace dbg {
     }
   }
 
-}  // namespace cli
+  void luaPrint(const std::initializer_list<const std::string_view>& messages,
+                std::optional<std::string_view> srcOverride,
+                std::source_location            src) {
+    Lock lock(cliMutex_g);
+    printStandardPrefix(MessageSeverity::User, srcOverride, src);
+    for (auto msg : messages) { luaPrintmore(msg); }
+  }
+  void luaPrintmore(const std::string_view message) {
+    printLine(MessageSeverity::User,
+              fmt::format(" {}{}{} {}", LUACOLR_FG, LUAMORE, CLEAR, message));
+  }
+
+}  // namespace dbg

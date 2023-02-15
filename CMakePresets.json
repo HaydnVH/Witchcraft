@@ -29,14 +29,24 @@
       "displayName": "Linux x64 Debug",
       "description": "Target Linux (64-bit) with the Visual Studio development environment. (Debug)",
       "inherits": "linux-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "environment": {
+        "PRESET_NAME": "${presetName}"
+      }
     },
     {
       "name": "linux-x64-release",
       "displayName": "Linux x64 Release",
       "description": "Target Linux (64-bit) with the Visual Studio development environment. (RelWithDebInfo)",
       "inherits": "linux-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "environment": {
+        "PRESET_NAME": "${presetName}"
+      }
     },
     {
       "name": "windows-base",
@@ -64,14 +74,24 @@
       "displayName": "Windows x64 Debug",
       "description": "Target Windows (64-bit) with the Visual Studio development environment. (Debug)",
       "inherits": "windows-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "environment": {
+        "PRESET_NAME": "${presetName}"
+      }
     },
     {
       "name": "windows-x64-release",
       "displayName": "Windows x64 Release",
       "description": "Target Windows (64-bit) with the Visual Studio development environment. (RelWithDebInfo)",
       "inherits": "windows-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "environment": {
+        "PRESET_NAME": "${presetName}"
+      }
     }
   ]
 }

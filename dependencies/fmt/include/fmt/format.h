@@ -680,7 +680,7 @@ FMT_CONSTEXPR inline auto utf8_decode(const char* s, uint32_t* c, int* e)
   return next;
 }
 
-constexpr uint32_t invalid_code_point = ~uint32_t();
+constexpr FMT_INLINE_VARIABLE uint32_t invalid_code_point = ~uint32_t();
 
 // Invokes f(cp, sv) for every code point cp in s with sv being the string view
 // corresponding to the code point. cp is invalid_code_point on error.
@@ -798,12 +798,22 @@ using is_integer =
                   !std::is_same<T, wchar_t>::value>;
 
 #ifndef FMT_USE_FLOAT128
-#  ifdef __SIZEOF_FLOAT128__
-#    define FMT_USE_FLOAT128 1
-#  else
+#  ifdef __clang__
+// Clang emulates GCC, so it has to appear early.
+#    if FMT_HAS_INCLUDE(<quadmath.h>)
+#      define FMT_USE_FLOAT128 1
+#    endif
+#  elif defined(__GNUC__)
+// GNU C++:
+#    if defined(_GLIBCXX_USE_FLOAT128) && !defined(__STRICT_ANSI__)
+#      define FMT_USE_FLOAT128 1
+#    endif
+#  endif
+#  ifndef FMT_USE_FLOAT128
 #    define FMT_USE_FLOAT128 0
 #  endif
 #endif
+
 #if FMT_USE_FLOAT128
 using float128 = __float128;
 #else
@@ -1216,7 +1226,7 @@ FMT_CONSTEXPR auto count_digits(UInt n) -> int {
 FMT_INLINE auto do_count_digits(uint32_t n) -> int {
 // An optimization by Kendall Willets from https://bit.ly/3uOIQrB.
 // This increments the upper 32 bits (log10(T) - 1) when >= T is added.
-#  define FMT_INC(T) (((sizeof(#T) - 1ull) << 32) - T)
+#  define FMT_INC(T) (((sizeof(#  T) - 1ull) << 32) - T)
   static constexpr uint64_t table[] = {
       FMT_INC(0),          FMT_INC(0),          FMT_INC(0),           // 8
       FMT_INC(10),         FMT_INC(10),         FMT_INC(10),          // 64
@@ -4298,9 +4308,7 @@ template <> struct formatter<bytes> {
 };
 
 // group_digits_view is not derived from view because it copies the argument.
-template <typename T> struct group_digits_view {
-  T value;
-};
+template <typename T> struct group_digits_view { T value; };
 
 /**
   \rst

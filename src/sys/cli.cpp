@@ -8,6 +8,7 @@
  * Implements the command-line-interface system on Windows.
  *****************************************************************************/
 #include "cli.h"
+
 #include "debug.h"
 #include "tools/utf.h"
 
@@ -26,13 +27,13 @@
 
 #ifdef PLATFORM_WIN32
   #include <Windows.h>
-  #define READ(s,n) fread(s,1,n,stdin)
-  #define WRITE(s,n) fwrite(s,1,n,stdout)
+  #define READ(s, n)  fread(s, 1, n, stdin)
+  #define WRITE(s, n) fwrite(s, 1, n, stdout)
 #elif PLATFORM_LINUX
   #include <termios.h>
   #include <unistd.h>
-  #define READ(s,n) read(STDIN_FILENO,s,n)
-  #define WRITE(s,n) write(STDOUT_FILENO,s,n)
+  #define READ(s, n)  read(STDIN_FILENO, s, n)
+  #define WRITE(s, n) write(STDOUT_FILENO, s, n)
 #endif
 
 /// Although this is technically a "global", it should only ever be 'extern'd
@@ -127,8 +128,8 @@ namespace {
         GetNumberOfConsoleInputEvents(hcin, &numevents);
       } while (numevents > 0);
 #elif PLATFORM_LINUX
-      //std::cin >> inputstr;
-      char rawInput[1024];
+      // std::cin >> inputstr;
+      char   rawInput[1024];
       size_t numRead = read(STDIN_FILENO, &rawInput, 1024);
       if (numRead >= 0) {
         rawInput[numRead] = '\0';
@@ -148,9 +149,10 @@ namespace {
         // Convert the input buffer from utf32 to utf8.
         qstr = utf32_to_utf8(*input_buffer);
         // Push it onto the queue.
-        cliMutex_g.lock();
-        consoleQueue_s.push(move(qstr));
-        cliMutex_g.unlock();
+        {
+          std::lock_guard lock(cliMutex_g);
+          consoleQueue_s.push(move(qstr));
+        }
         // Clear the buffer and set the cursor to 0.
         if (current_memory_buffer != (int)memory_buffer.size() - 1) {
           if (memory_buffer[memory_buffer.size() - 2] != *input_buffer) {
@@ -210,21 +212,23 @@ namespace {
       }
 
       echostr = utf32_to_utf8(*input_buffer);
-      cliMutex_g.lock();
-      // Move the cursor to the saved output position.
-      // Clear the console after that position.
-      // Print the user input.
-      auto formattedEchoString =
-          fmt::format("{}{}{}{}{}{}", DECSR, ED, dbg::USERCOLR, "$> ", dbg::CLEAR, echostr);
-      WRITE(formattedEchoString.c_str(), formattedEchoString.size());
-      
-      // Move the cursor so it appears where our input is.
-      int cursorDif = (int)input_buffer->size() - input_cursor;
-      if (cursorDif > 0) {
-        auto code = fmt::format("\x1b[{}D", cursorDif);
-        WRITE(code.c_str(), code.size());
+      {
+        std::lock_guard lock(cliMutex_g);
+        // Move the cursor to the saved output position.
+        // Clear the console after that position.
+        // Print the user input.
+        auto formattedEchoString =
+            fmt::format("{}{}{}{}{}{}", DECSR, ED, dbg::USERCOLR, "$> ",
+                        dbg::CLEAR, echostr);
+        WRITE(formattedEchoString.c_str(), formattedEchoString.size());
+
+        // Move the cursor so it appears where our input is.
+        int cursorDif = (int)input_buffer->size() - input_cursor;
+        if (cursorDif > 0) {
+          auto code = fmt::format("\x1b[{}D", cursorDif);
+          WRITE(code.c_str(), code.size());
+        }
       }
-      cliMutex_g.unlock();
     }
   }
 
@@ -245,134 +249,136 @@ namespace {
 
 }  // namespace
 
-namespace cli {
-  bool initialize() {
-    // Open the log file.
-    std::filesystem::path logpath = wc::getUserPath() / LOG_FILENAME;
-    logFile_s.open(logpath, std::ios::out);
+bool cli::initialize() {
+
+  // Open the log file.
+  std::filesystem::path logpath = wc::getUserPath() / LOG_FILENAME;
+  logFile_s.open(logpath, std::ios::out);
 
 #ifdef PLATFORM_WIN32
-    //	AllocConsole()
-    //	freopen("CONIN$", "r", stdin);
-    //	freopen("CONOUT$", "w", stdout);
-    //	freopen("CONOUT$", "w", stderr);
+  //	AllocConsole()
+  //	freopen("CONIN$", "r", stdin);
+  //	freopen("CONOUT$", "w", stdout);
+  //	freopen("CONOUT$", "w", stderr);
 
-    // We want both input and output to be UTF8.
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-    // Get the handle for stdout and stdin.
-    // TODO: Make sure these actually point to a terminal.
-    hcout = GetStdHandle(STD_OUTPUT_HANDLE);
-    hcin  = GetStdHandle(STD_INPUT_HANDLE);
-    // We want to enable virtual terminal processing for stdout.
-    DWORD mode = 0;
-    GetConsoleMode(hcout, &mode);
-    original_hcout_mode = mode;
-    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hcout, mode);
-    // for stdin, we want to enable virtual terminal input,
-    // and disable line input and echoing.
-    GetConsoleMode(hcin, &mode);
-    original_hcin_mode = mode;
-    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-    mode ^= ENABLE_LINE_INPUT;
-    mode ^= ENABLE_ECHO_INPUT;
-    mode ^= ENABLE_PROCESSED_INPUT;
-    SetConsoleMode(hcin, mode);
-    FlushConsoleInputBuffer(hcin);
+  // We want both input and output to be UTF8.
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+  // Get the handle for stdout and stdin.
+  // TODO: Make sure these actually point to a terminal.
+  hcout = GetStdHandle(STD_OUTPUT_HANDLE);
+  hcin  = GetStdHandle(STD_INPUT_HANDLE);
+  // We want to enable virtual terminal processing for stdout.
+  DWORD mode = 0;
+  GetConsoleMode(hcout, &mode);
+  original_hcout_mode = mode;
+  mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  SetConsoleMode(hcout, mode);
+  // for stdin, we want to enable virtual terminal input,
+  // and disable line input and echoing.
+  GetConsoleMode(hcin, &mode);
+  original_hcin_mode = mode;
+  mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+  mode ^= ENABLE_LINE_INPUT;
+  mode ^= ENABLE_ECHO_INPUT;
+  mode ^= ENABLE_PROCESSED_INPUT;
+  SetConsoleMode(hcin, mode);
+  FlushConsoleInputBuffer(hcin);
 #elif PLATFORM_LINUX
-    // Enable raw mode processing.
-    termios raw;
-    originalTermios_s = raw;
-    tcgetattr(STDIN_FILENO, &raw);
-    raw.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  // Enable raw mode processing.
+  termios raw;
+  originalTermios_s = raw;
+  tcgetattr(STDIN_FILENO, &raw);
+  raw.c_lflag &= ~(ECHO | ICANON);
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 #endif
 
-    // Save the initial cursor position.
-    WRITE(DECSC, 3);
+  // Save the initial cursor position.
+  WRITE(DECSC, 3);
 
-    // Create the input thread, then wake it up.
-    cinThread_s = std::thread(terminalInputThread);
-    WRITE(WAKEUP, 5);
+  // Create the input thread, then wake it up.
+  cinThread_s = std::thread(terminalInputThread);
+  WRITE(WAKEUP, 5);
 
-    initialized_s = true;
+  initialized_s = true;
 
-    if (!logFile_s.is_open()) {
-      dbg::errmore("Failed to open debug log file for writing.");
-    } else {
-      dbg::infomore(fmt::format("Output messages will be saved to \"{}\".",
-                                logpath.string()));
-    }
+  if (!logFile_s.is_open()) {
+    dbg::errmore("Failed to open debug log file for writing.");
+  } else {
+    dbg::infomore(fmt::format("Output messages will be saved to \"{}\".",
+                              logpath.string()));
+  }
 
+  return true;
+}
+
+void cli::shutdown() {
+  if (!initialized_s) return;
+  // Indicate that the input thread should stop looping.
+  inThreadRunning_s = false;
+  // Forces an input to be placed on the terminal input stream.
+  // This will wake up the thread which is waiting on stdin.
+  WRITE(WAKEUP, 5);
+  // Wait until the thread is finished before continuing.
+  cinThread_s.join();
+
+#ifdef PLATFORM_WIN32
+  SetConsoleMode(hcout, original_hcout_mode);
+  SetConsoleMode(hcin, original_hcin_mode);
+#elif PLATFORM_LINUX
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios_s);
+#endif
+}
+
+void cli::print(dbg::MessageSeverity severity, std::string_view message,
+                bool endl) {
+  // If the console hasn't been initialized yet, initialize it.
+  if (!initialized_s) {
+    return;
+    // initialize();
+  }
+
+  // Check for repeated messages so we don't spam the console.
+  if ((lastMessage_s == message) && (severity != dbg::MessageSeverity::User))
+    return;
+  else
+    lastMessage_s = message;
+
+  if (myConfig.makeConsole && !!(severity & myConfig.stdoutFilter)) {
+    // Try to lock the mutex.
+    // This will fail if it was locked during a call to `info`, `error`, etc.
+    // In that case we don't need to do anything because we're already
+    // synchronized.
+    bool wasLocked = cliMutex_g.try_lock();
+
+    // Restore the cursor position to where we last output.
+    // Clear the console after the current position.
+    // Print the message.
+    // Save the cursor position.
+    // Alert the input thread to update its display.
+    auto outString = fmt::format("{}{}{}{}{}{}", DECSR, ED, message,
+                                 (endl) ? "\n" : "", DECSC, WAKEUP);
+    WRITE(outString.c_str(), outString.size());
+
+    // Iff we locked the mutex ourselves, unlock it here.
+    if (wasLocked) cliMutex_g.unlock();
+  }
+
+  if (logFile_s.is_open() && !!(severity & myConfig.logfileFilter)) {
+    logFile_s << strippedAnsi(message);
+    if (endl) { logFile_s << std::endl; }
+  }
+}
+
+bool cli::popInput(std::string& out) {
+  std::lock_guard lock(cliMutex_g);
+  if (consoleQueue_s.empty()) {
+    return false;
+  } else {
+    out = std::move(consoleQueue_s.front());
+    consoleQueue_s.pop();
+    dbg::user(out);
     return true;
   }
-
-  void shutdown() {
-    if (!initialized_s) return;
-    // Indicate that the input thread should stop looping.
-    inThreadRunning_s = false;
-    // Forces an input to be placed on the terminal input stream.
-    // This will wake up the thread which is waiting on stdin.
-    WRITE(WAKEUP, 5);
-    // Wait until the thread is finished before continuing.
-    cinThread_s.join();
-
-#ifdef PLATFORM_WIN32
-    SetConsoleMode(hcout, original_hcout_mode);
-    SetConsoleMode(hcin, original_hcin_mode);
-#elif PLATFORM_LINUX
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios_s);
-#endif
-  }
-
-  void print(dbg::MessageSeverity severity, std::string_view message,
-             bool endl) {
-    // If the console hasn't been initialized yet, initialize it.
-    if (!initialized_s) { initialize(); }
-
-    // Check for repeated messages so we don't spam the console.
-    if ((lastMessage_s == message) && (severity != dbg::MessageSeverity::User))
-      return;
-    else
-      lastMessage_s = message;
-
-    if (myConfig.makeConsole && !!(severity & myConfig.stdoutFilter)) {
-      // Try to lock the mutex.
-      // This will fail if it was locked during a call to `info`, `error`, etc.
-      // In that case we don't need to do anything because we're already
-      // synchronized.
-      bool wasLocked = cliMutex_g.try_lock();
-      
-      // Restore the cursor position to where we last output.
-      // Clear the console after the current position.
-      // Print the message.
-      // Save the cursor position.
-      // Alert the input thread to update its display.
-      auto outString = fmt::format("{}{}{}{}{}{}", DECSR, ED, message,
-                                   (endl) ? "\n" : "", DECSC, WAKEUP);
-      WRITE(outString.c_str(), outString.size());
-      
-      // Iff we locked the mutex ourselves, unlock it here.
-      if (wasLocked) cliMutex_g.unlock();
-    }
-
-    if (logFile_s.is_open() && !!(severity & myConfig.logfileFilter)) {
-      logFile_s << strippedAnsi(message);
-      if (endl) { logFile_s << std::endl; }
-    }
-  }
-
-  bool popInput(std::string& out) {
-    std::lock_guard<std::mutex> lock(cliMutex_g);
-    if (consoleQueue_s.empty()) {
-      return false;
-    } else {
-      out = std::move(consoleQueue_s.front());
-      consoleQueue_s.pop();
-      dbg::user(out);
-      return true;
-    }
-  }
-}  // namespace cli
+}
