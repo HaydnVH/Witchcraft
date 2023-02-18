@@ -14,6 +14,8 @@
 #include <cstring>
 #include <functional>
 #include <ostream>
+#include <string>
+#include <string_view>
 
 template <size_t LEN>
 struct fixedstring {
@@ -41,6 +43,11 @@ struct fixedstring {
   fixedstring(const char8_t* arg) {
     strncpy(u8_str, arg, LEN - 1);
     u8_str[LEN - 1] = '\0';
+  }
+
+  fixedstring(const std::string_view arg) {
+    strncpy(c_str, std::string(arg).c_str(), LEN - 1);
+    c_str[LEN - 1] = '\0';
   }
 
   fixedstring& operator=(const fixedstring&) = default;

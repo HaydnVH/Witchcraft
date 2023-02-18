@@ -3,9 +3,9 @@
  * Part of the Witchcraft engine by Haydn V. Harach
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. Harach 2022 - present
- * Last modified December 2022
+ * Last modified February 2023
  * ---------------------------------------------------------------------------
- * Implements the command-line-interface system on Windows.
+ * Implements the command-line-interface system.
  *****************************************************************************/
 #include "cli.h"
 
@@ -63,8 +63,8 @@ namespace {
   std::atomic<bool> updateInLine_s    = true;
 
 #ifdef PLATFORM_WIN32
-  HANDLE hcout, hcin;
-  DWORD  original_hcout_mode, original_hcin_mode;
+  HANDLE hcout_s, hcin_s;
+  DWORD  originalHcoutMode_s, originalHcinMode_s;
 #elif PLATFORM_LINUX
   termios originalTermios_s;
 #endif
@@ -87,18 +87,18 @@ namespace {
   // The main function for the console input thread.
   void terminalInputThread() {
 
-    // 'memory_buffer' remember all of the lines that we've previously input.
+    // 'memoryBuffer' remember all of the lines that we've previously input.
     // It includes the line we're currently on, so it starts with 1 entry.
-    std::vector<std::u32string> memory_buffer(1);
+    std::vector<std::u32string> memoryBuffer(1);
     // The index of the current memory buffer starts with 0.
-    int current_memory_buffer = 0;
-    // 'input_buffer' points to which memory buffer we're currently on.
-    std::u32string* input_buffer = &memory_buffer.back();
+    int currentMemoryBuffer = 0;
+    // 'inputBuffer' points to which memory buffer we're currently on.
+    std::u32string* inputBuffer = &memoryBuffer.back();
     std::u32string  temp;
-    std::string     qstr         = "";
-    std::string     echostr      = "";
-    std::string     inputstr     = "";
-    int             input_cursor = 0;
+    std::string     qstr        = "";
+    std::string     echostr     = "";
+    std::string     inputstr    = "";
+    int             inputCursor = 0;
 
     while (inThreadRunning_s) {
 
@@ -108,29 +108,22 @@ namespace {
       // portable way of doing so.
       inputstr = "";
 #ifdef PLATFORM_WIN32
-      DWORD numevents = 0;
-      do {
-
-        wchar_t wstr[32]  = L"";
-        char    mbstr[96] = "";
-        DWORD   read;
-        // Read the utf-16 console input.
-        if (ReadConsole(hcin, wstr, 32, &read, NULL) == 0) { break; }
-        // Convert it to utf-8.
-        int size = WideCharToMultiByte(CP_UTF8, 0, wstr, read, mbstr,
-                                       sizeof(mbstr), nullptr, nullptr);
-        // Stick a null terminator at the end, and append it to our input
-        // string.
-        mbstr[size] = '\0';
-        inputstr += mbstr;
-
-        // Get the new number of events waiting.
-        GetNumberOfConsoleInputEvents(hcin, &numevents);
-      } while (numevents > 0);
+      wchar_t wstr[1024]  = L"";
+      char    mbstr[2048] = "";
+      DWORD   numRead     = 0;
+      // Read the utf-16 console input.
+      if (ReadConsoleW(hcin_s, wstr, 1024, &numRead, nullptr) == 0) { break; }
+      // Convert it to utf-8.
+      int size = WideCharToMultiByte(CP_UTF8, 0, wstr, numRead, mbstr,
+                                     sizeof(mbstr), nullptr, nullptr);
+      // Stick a null terminator at the end, and append it to our input
+      // string.
+      mbstr[size] = '\0';
+      inputstr += mbstr;
 #elif PLATFORM_LINUX
       // std::cin >> inputstr;
       char   rawInput[1024];
-      size_t numRead = read(STDIN_FILENO, &rawInput, 1024);
+      size_t numRead = READ(&rawInput, 1024);
       if (numRead >= 0) {
         rawInput[numRead] = '\0';
       } else {
@@ -147,57 +140,57 @@ namespace {
       case '\n':
       case '\r':
         // Convert the input buffer from utf32 to utf8.
-        qstr = utf32_to_utf8(*input_buffer);
+        qstr = utf32_to_utf8(*inputBuffer);
         // Push it onto the queue.
         {
           std::lock_guard lock(cliMutex_g);
           consoleQueue_s.push(move(qstr));
         }
         // Clear the buffer and set the cursor to 0.
-        if (current_memory_buffer != (int)memory_buffer.size() - 1) {
-          if (memory_buffer[memory_buffer.size() - 2] != *input_buffer) {
-            memory_buffer.back() = *input_buffer;
-            memory_buffer.emplace_back();
+        if (currentMemoryBuffer != (int)memoryBuffer.size() - 1) {
+          if (memoryBuffer[memoryBuffer.size() - 2] != *inputBuffer) {
+            memoryBuffer.back() = *inputBuffer;
+            memoryBuffer.emplace_back();
           } else {
-            memory_buffer.back().clear();
+            memoryBuffer.back().clear();
           }
         } else {
-          memory_buffer.emplace_back();
+          memoryBuffer.emplace_back();
         }
-        current_memory_buffer = (int)memory_buffer.size() - 1;
-        input_buffer          = &memory_buffer[current_memory_buffer];
-        input_cursor          = 0;
+        currentMemoryBuffer = (int)memoryBuffer.size() - 1;
+        inputBuffer         = &memoryBuffer[currentMemoryBuffer];
+        inputCursor         = 0;
         break;
         // \x1b is ESC, so we're looking at an esc sequence.
       case '\x1b':
         if (inputstr == "\x1b[A") {  // Up Arrow
-          current_memory_buffer = std::max(current_memory_buffer - 1, 0);
-          input_buffer          = &memory_buffer[current_memory_buffer];
-          input_cursor          = (int)input_buffer->size();
+          currentMemoryBuffer = std::max(currentMemoryBuffer - 1, 0);
+          inputBuffer         = &memoryBuffer[currentMemoryBuffer];
+          inputCursor         = (int)inputBuffer->size();
         } else if (inputstr == "\x1b[B") {  // Down Arrow
-          current_memory_buffer = std::min(current_memory_buffer + 1,
-                                           (int)memory_buffer.size() - 1);
-          input_buffer          = &memory_buffer[current_memory_buffer];
-          input_cursor          = (int)input_buffer->size();
+          currentMemoryBuffer =
+              std::min(currentMemoryBuffer + 1, (int)memoryBuffer.size() - 1);
+          inputBuffer = &memoryBuffer[currentMemoryBuffer];
+          inputCursor = (int)inputBuffer->size();
         } else if (inputstr == "\x1b[C") {  // Right Arrow
-          input_cursor = std::min(input_cursor + 1, (int)input_buffer->size());
+          inputCursor = std::min(inputCursor + 1, (int)inputBuffer->size());
         } else if (inputstr == "\x1b[D") {  // Left Arrow
-          input_cursor = std::max(input_cursor - 1, 0);
+          inputCursor = std::max(inputCursor - 1, 0);
         } else if (inputstr == "\x1b[H") {  // Home
-          current_memory_buffer = (int)memory_buffer.size() - 1;
-          input_buffer          = &memory_buffer[current_memory_buffer];
-          input_cursor          = (int)input_buffer->size();
+          currentMemoryBuffer = (int)memoryBuffer.size() - 1;
+          inputBuffer         = &memoryBuffer[currentMemoryBuffer];
+          inputCursor         = (int)inputBuffer->size();
         } else if (inputstr == "\x1b[F") {  // End
-          input_cursor = (int)input_buffer->size();
+          inputCursor = (int)inputBuffer->size();
         }
         break;
         // 8 is backspace, and 127 is DEL.
         // Either way, it's time to go backwards.
       case 8:
       case 127:
-        if (input_buffer->size() > 0 && input_cursor > 0) {
-          input_cursor -= 1;
-          input_buffer->erase(input_cursor, 1);
+        if (inputBuffer->size() > 0 && inputCursor > 0) {
+          inputCursor -= 1;
+          inputBuffer->erase(inputCursor, 1);
         }
         break;
         // If none of the above cases triggered, this is a normal input
@@ -206,12 +199,12 @@ namespace {
         // Convert the raw input from utf8 to utf32.
         temp = utf8_to_utf32(inputstr);
         // Insert the input into the input buffer, and update the cursor.
-        input_buffer->insert(input_cursor, temp.c_str());
-        input_cursor += (int)temp.size();
+        inputBuffer->insert(inputCursor, temp.c_str());
+        inputCursor += (int)temp.size();
         break;
       }
 
-      echostr = utf32_to_utf8(*input_buffer);
+      echostr = utf32_to_utf8(*inputBuffer);
       {
         std::lock_guard lock(cliMutex_g);
         // Move the cursor to the saved output position.
@@ -223,7 +216,7 @@ namespace {
         WRITE(formattedEchoString.c_str(), formattedEchoString.size());
 
         // Move the cursor so it appears where our input is.
-        int cursorDif = (int)input_buffer->size() - input_cursor;
+        int cursorDif = (int)inputBuffer->size() - inputCursor;
         if (cursorDif > 0) {
           auto code = fmt::format("\x1b[{}D", cursorDif);
           WRITE(code.c_str(), code.size());
@@ -256,35 +249,29 @@ bool cli::initialize() {
   logFile_s.open(logpath, std::ios::out);
 
 #ifdef PLATFORM_WIN32
-  //	AllocConsole()
-  //	freopen("CONIN$", "r", stdin);
-  //	freopen("CONOUT$", "w", stdout);
-  //	freopen("CONOUT$", "w", stderr);
+  // AllocConsole()
 
   // We want both input and output to be UTF8.
   SetConsoleOutputCP(CP_UTF8);
   SetConsoleCP(CP_UTF8);
   // Get the handle for stdout and stdin.
   // TODO: Make sure these actually point to a terminal.
-  hcout = GetStdHandle(STD_OUTPUT_HANDLE);
-  hcin  = GetStdHandle(STD_INPUT_HANDLE);
+  hcout_s = GetStdHandle(STD_OUTPUT_HANDLE);
+  hcin_s  = GetStdHandle(STD_INPUT_HANDLE);
   // We want to enable virtual terminal processing for stdout.
   DWORD mode = 0;
-  GetConsoleMode(hcout, &mode);
-  original_hcout_mode = mode;
+  GetConsoleMode(hcout_s, &mode);
+  originalHcoutMode_s = mode;
   mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  SetConsoleMode(hcout, mode);
+  SetConsoleMode(hcout_s, mode);
   // for stdin, we want to enable virtual terminal input,
   // and disable line input and echoing.
-  GetConsoleMode(hcin, &mode);
-  original_hcin_mode = mode;
-  mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-  mode ^= ENABLE_LINE_INPUT;
-  mode ^= ENABLE_ECHO_INPUT;
-  mode ^= ENABLE_PROCESSED_INPUT;
-  SetConsoleMode(hcin, mode);
-  FlushConsoleInputBuffer(hcin);
+  GetConsoleMode(hcin_s, &mode);
+  originalHcinMode_s = mode;
+  mode |= (ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_VIRTUAL_TERMINAL_INPUT);
+  mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
+  SetConsoleMode(hcin_s, mode);
+  FlushConsoleInputBuffer(hcin_s);
 #elif PLATFORM_LINUX
   // Enable raw mode processing.
   termios raw;
@@ -324,8 +311,8 @@ void cli::shutdown() {
   cinThread_s.join();
 
 #ifdef PLATFORM_WIN32
-  SetConsoleMode(hcout, original_hcout_mode);
-  SetConsoleMode(hcin, original_hcin_mode);
+  SetConsoleMode(hcout_s, originalHcoutMode_s);
+  SetConsoleMode(hcin_s, originalHcinMode_s);
 #elif PLATFORM_LINUX
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios_s);
 #endif

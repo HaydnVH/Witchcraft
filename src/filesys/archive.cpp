@@ -15,7 +15,7 @@
 bool wc::Archive::open(const char* archiveName) {
 
   // If the archive is already open, close it first.
-  if (is_open()) close();
+  if (isOpen()) close();
 
   // Get the proper filepath.
   std::filesystem::path archivePath = std::filesystem::u8path(archiveName);
@@ -99,13 +99,13 @@ bool wc::Archive::open(const char* archiveName) {
 
 void wc::Archive::close() {
   // If the file isn't open, we have nothing to close.
-  if (!is_open()) return;
+  if (!isOpen()) return;
 
   // If the archive has been modified, we update the file's header and
   // dictionary.
   if (modified_) {
 
-    dictionary_.shrink_to_fit();
+    dictionary_.shrinkToFit();
     header_.numfiles = (uint32_t)dictionary_.size();
 
     // Update the archive header.
@@ -145,7 +145,7 @@ void wc::Archive::close() {
 
 void wc::Archive::rebuild() {
   // Make sure the archive is open.
-  if (!is_open()) return;
+  if (!isOpen()) return;
 
   // Create a new temporary archive.
   std::filesystem::path tempPath =
@@ -159,7 +159,7 @@ void wc::Archive::rebuild() {
   // Next we go through all of our files.
   for (uint32_t i = 0; i < header_.numfiles; ++i) {
     // Allocate a buffer large enough to store the file contents.
-    void* buffer = malloc(fileInfos_[i].size_compressed);
+    void* buffer = malloc(fileInfos_[i].sizeCompressed);
     if (buffer == nullptr) {
       dbg::error("Memory allocation failure while rebuilding archive.");
       continue;
@@ -167,15 +167,15 @@ void wc::Archive::rebuild() {
 
     // Read the file into memory.
     file_.seekg(fileInfos_[i].offset);
-    file_.read((char*)buffer, fileInfos_[i].size_compressed);
+    file_.read((char*)buffer, fileInfos_[i].sizeCompressed);
 
     // Write the file to the temporary archive.
     tempFile.seekg(newback);
-    tempFile.write((const char*)buffer, fileInfos_[i].size_compressed);
+    tempFile.write((const char*)buffer, fileInfos_[i].sizeCompressed);
 
     // Keep track of where the file is now.
     fileInfos_[i].offset = newback;
-    newback += fileInfos_[i].size_compressed;
+    newback += fileInfos_[i].sizeCompressed;
 
     // Clear up the memory we used.
     free(buffer);
@@ -204,40 +204,39 @@ void wc::Archive::rebuild() {
   file_.open(myPath);
 }
 
-int wc::Archive::erase_file(const char* path) {
+int wc::Archive::eraseFile(const char* path) {
   // Make sure the archive is open.
-  if (!is_open()) return -1;
+  if (!isOpen()) return -1;
 
   // Find the index of the file we're looking for.
   fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
-  size_t index = dictionary_.find(fixedpath, true);
-  if (index == SIZE_MAX) { return -1; }
 
-  dictionary_.erase_found();
+  auto it = dictionary_.find(fixedpath);
+  if (!*it) return -1;
+  it->erase();
   modified_     = true;
   filesDeleted_ = true;
 
-  return (int)index;
+  return (int)it->index();
 }
 
-bool wc::Archive::file_exists(const char* path) const {
+bool wc::Archive::fileExists(const char* path) const {
   // Make sure the archive is open.
-  if (!is_open()) return false;
+  if (!isOpen()) return false;
 
   // Look for the file.
   fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
-  size_t                                  index = dictionary_.find(fixedpath);
-  return (index != SIZE_MAX);
+  return dictionary_.find(fixedpath)->exists();
 }
 
-bool wc::Archive::extract_data(const char* path, std::vector<char>& buffer,
-                               timestamp_t& timestamp) {
+bool wc::Archive::extractData(const char* path, std::vector<char>& buffer,
+                              timestamp_t& timestamp) {
   // Make sure the archive is open.
-  if (!is_open()) { return false; }
+  if (!isOpen()) { return false; }
 
   // Search for the file we're looking for.
   fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
-  size_t                                  index = dictionary_.find(fixedpath);
+  size_t index = dictionary_.find(fixedpath)->index();
   if (index == SIZE_MAX) {
     dbg::errmore(fmt::format("Failed to find file '{}'.", path));
     return false;
@@ -245,7 +244,7 @@ bool wc::Archive::extract_data(const char* path, std::vector<char>& buffer,
 
   // Fetch the file's information and resize the buffer accordingly.
   const FileInfo& info = fileInfos_[index];
-  buffer.resize(info.size_uncompressed);
+  buffer.resize(info.sizeUncompressed);
   timestamp = info.timestamp;
 
   // Seek to the file data's location in the archive.
@@ -258,17 +257,17 @@ bool wc::Archive::extract_data(const char* path, std::vector<char>& buffer,
   // If the file is not compressed, we can load it straight into memory.
   if (!(info.flags & FILEFLAG_COMPRESSED)) {
     // Load the file contents straight into memory.
-    file_.read(buffer.data(), info.size_uncompressed);
+    file_.read(buffer.data(), info.sizeUncompressed);
   }
   // Otherwise, the file has been compressed using LZ4.
   // LZ4 default and LZ4 HC are both decompressed using the same function,
   // so the file info doesn't need to know which was used for compression.
   else {
-    std::vector<char> compressed_buffer(info.size_compressed);
-    file_.read(compressed_buffer.data(), info.size_compressed);
+    std::vector<char> compressed_buffer(info.sizeCompressed);
+    file_.read(compressed_buffer.data(), info.sizeCompressed);
     int result =
         LZ4_decompress_safe(compressed_buffer.data(), buffer.data(),
-                            info.size_compressed, info.size_uncompressed);
+                            info.sizeCompressed, info.sizeUncompressed);
     if (result < 0) {
       dbg::error({fmt::format("Failed to decompress data for '{}'.", path),
                   "source stream is malformed."});
@@ -280,12 +279,12 @@ bool wc::Archive::extract_data(const char* path, std::vector<char>& buffer,
   return true;
 }
 
-void wc::Archive::extract_file(const char* path, const char* dstfilename) {
+void wc::Archive::extractFile(const char* path, const char* dstfilename) {
   // Extract the file data.
   uint32_t          size = 0;
   timestamp_t       timestamp;
   std::vector<char> buffer;
-  if (!extract_data(path, buffer, timestamp)) { return; }
+  if (!extractData(path, buffer, timestamp)) { return; }
 
   // Create the directory where we'll place the file.
   std::filesystem::path dstPath = std::filesystem::u8path(dstfilename);
@@ -314,11 +313,11 @@ void wc::Archive::extract_file(const char* path, const char* dstfilename) {
   }
 }
 
-bool wc::Archive::insert_data(const char* path, void* buffer, int32_t size,
-                              timestamp_t timestamp, ReplaceEnum replace,
-                              CompressEnum compress) {
+bool wc::Archive::insertData(const char* path, void* buffer, int32_t size,
+                             timestamp_t timestamp, ReplaceEnum replace,
+                             CompressEnum compress) {
   // Make sure the archive is open.
-  if (!is_open()) return false;
+  if (!isOpen()) return false;
 
   // Copy the file's path and convert backslashes to forward slashes.
   // Functions like extract and exists will simply fail if given backslashes.
@@ -328,29 +327,29 @@ bool wc::Archive::insert_data(const char* path, void* buffer, int32_t size,
   }
 
   // Create a dictionary entry for the new file.
-  FileInfo newinfo          = {};
-  newinfo.offset            = header_.back;
-  newinfo.size_compressed   = size;
-  newinfo.size_uncompressed = size;
-  newinfo.timestamp         = timestamp;
+  FileInfo newinfo         = {};
+  newinfo.offset           = header_.back;
+  newinfo.sizeCompressed   = size;
+  newinfo.sizeUncompressed = size;
+  newinfo.timestamp        = timestamp;
 
   // Handle file compression.
   std::vector<char> compressed_buffer(LZ4_compressBound(size));
   if (compress != DO_NOT_COMPRESS) {
     if (compress == COMPRESS_FAST) {
-      newinfo.size_compressed =
+      newinfo.sizeCompressed =
           LZ4_compress_default((const char*)buffer, compressed_buffer.data(),
                                size, (int)compressed_buffer.size());
     } else if (compress == COMPRESS_SMALL) {
-      newinfo.size_compressed =
+      newinfo.sizeCompressed =
           LZ4_compress_HC((const char*)buffer, compressed_buffer.data(), size,
                           (int)compressed_buffer.size(), 9);
     }
     // Compression failed
-    if (newinfo.size_compressed <= 0) {
+    if (newinfo.sizeCompressed <= 0) {
       dbg::warning({fmt::format("Failed to compress file '{}',", path),
                     "Will store uncompressed."});
-      newinfo.size_compressed = size;
+      newinfo.sizeCompressed = size;
     }
     // Compression success
     else {
@@ -360,10 +359,10 @@ bool wc::Archive::insert_data(const char* path, void* buffer, int32_t size,
   }
 
   // Find the file we're looking for.
-  size_t index = dictionary_.find(newpath);
+  size_t index = dictionary_.find(newpath)->index();
   if (index == SIZE_MAX) {
     dictionary_.insert(newpath, newinfo);
-    index = dictionary_.find(newpath);
+    index = dictionary_.find(newpath)->index();
   } else {
     // The specified file is already in this archive, so use 'replace' to
     // decide what to do.
@@ -385,19 +384,19 @@ bool wc::Archive::insert_data(const char* path, void* buffer, int32_t size,
   }
 
   // If the new file has a non-zero size,
-  if (newinfo.size_compressed > 0) {
+  if (newinfo.sizeCompressed > 0) {
     // We write the file contents.
     file_.seekg(header_.back);
-    file_.write((const char*)buffer, newinfo.size_compressed);
-    header_.back += newinfo.size_compressed;
+    file_.write((const char*)buffer, newinfo.sizeCompressed);
+    header_.back += newinfo.sizeCompressed;
   }
 
   modified_ = true;
   return true;
 }
 
-bool wc::Archive::insert_file(const char* path, const char* srcfilename,
-                              ReplaceEnum replace, CompressEnum compress) {
+bool wc::Archive::insertFile(const char* path, const char* srcfilename,
+                             ReplaceEnum replace, CompressEnum compress) {
   // Make sure the path isn't too long.
   if (strlen(path) > (Archive::FILEPATH_FIXEDLEN - 1)) {
     dbg::error({fmt::format("Failed to insert '{}',", path),
@@ -433,8 +432,8 @@ bool wc::Archive::insert_file(const char* path, const char* srcfilename,
   }
 
   // Insert the file into the archive.
-  return insert_data(path, buffer.data(), (uint32_t)buffer.size(), timestamp,
-                     replace, compress);
+  return insertData(path, buffer.data(), (uint32_t)buffer.size(), timestamp,
+                    replace, compress);
 }
 
 void recursive_pack(wc::Archive& archive, const std::filesystem::path& parent,
@@ -453,15 +452,15 @@ void recursive_pack(wc::Archive& archive, const std::filesystem::path& parent,
                      compress);
     // Path is a file, so we insert it into the archive.
     else if (std::filesystem::is_regular_file(it->path()))
-      archive.insert_file((child / it->path().filename()).string().c_str(),
-                          it->path().string().c_str(), replace, compress);
+      archive.insertFile((child / it->path().filename()).string().c_str(),
+                         it->path().string().c_str(), replace, compress);
   }
 }
 
 void wc::Archive::pack(const char* srcfolder, ReplaceEnum replace,
                        CompressEnum compress) {
   // Make sure the archive is open.
-  if (!is_open()) return;
+  if (!isOpen()) return;
 
   std::filesystem::path srcpath = std::filesystem::u8path(srcfolder);
   if (!std::filesystem::exists(srcpath)) {
@@ -478,7 +477,7 @@ void wc::Archive::pack(const char* srcfolder, ReplaceEnum replace,
 
 void wc::Archive::unpack(const char* dstfolder) {
   // Make sure the archive is open.
-  if (!is_open()) return;
+  if (!isOpen()) return;
 
   std::filesystem::path dstpath = std::filesystem::u8path(dstfolder);
   if (!std::filesystem::exists(dstpath))
@@ -494,7 +493,7 @@ void wc::Archive::unpack(const char* dstfolder) {
   for (size_t i = 0; i < header_.numfiles; ++i) {
     // and extract it to disk.
     fixedstring<Archive::FILEPATH_FIXEDLEN>& entry = filePaths_[i];
-    extract_file(entry.c_str, (dstpath / entry.c_str).string().c_str());
+    extractFile(entry.c_str, (dstpath / entry.c_str).string().c_str());
   }
 }
 
@@ -506,8 +505,8 @@ void wc::Archive::merge(const char* othername, ReplaceEnum replace) {
   for (size_t i = 0; i < other.header_.numfiles; ++i) {
     fixedstring<64> entry = other.filePaths_[i];
     timestamp_t     timestamp;
-    other.extract_data(entry.c_str, buffer, timestamp);
-    insert_data(entry.c_str, buffer.data(), (uint32_t)buffer.size(), timestamp,
-                replace);
+    other.extractData(entry.c_str, buffer, timestamp);
+    insertData(entry.c_str, buffer.data(), (uint32_t)buffer.size(), timestamp,
+               replace);
   }
 }

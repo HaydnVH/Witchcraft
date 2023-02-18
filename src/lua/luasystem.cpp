@@ -19,6 +19,7 @@ using namespace std;
 #include "scripts/built/math2.lua.h"
 #include "scripts/built/sandbox.lua.h"
 #include "sys/debug.h"
+#include "sys/mainloop.h"
 #include "tools/strtoken.h"
 
 namespace {
@@ -237,6 +238,17 @@ bool wc::lua::init() {
   }
   lua_pop(L, 1);  // Pop _G
 
+  // Some functions to put in the console.
+  lua_getglobal(L, "CONSOLE_PROTECTED");
+  {
+    lua_pushcfunction(L, [](lua_State* L) {
+      wc::sys::shutDown();
+      return 0;
+    });
+    lua_setfield(L, -2, "quit");
+  }
+  lua_pop(L, 1);
+
   return true;
 }
 
@@ -285,18 +297,21 @@ bool wc::lua::doFile(const char* filename) {
   string path = fmt::format("{}{}{}", SCRIPT_DIR, filename, SCRIPT_EXT);
 
   // Open and load the script file.
-  auto fdata = wc::vfs::LoadFile(path.c_str(), true);
-  if (!fdata.has_value()) {
-    dbg::error(fmt::format("Could not load script '{}'.", filename));
+  auto loadResult = wc::vfs::getFile(path.c_str()).loadHighest();
+  auto fdata      = loadResult.value<std::vector<char>>();
+  if (loadResult.isError() || !fdata) {
+    dbg::error({fmt::format("Could not load script '{}'.", filename),
+                loadResult.message()});
     return false;
   }
+  if (loadResult.isWarning()) { dbg::warning(loadResult.message()); }
 
   // Adjust the source name for debugging.
   path = fmt::format("@{}", path);
 
   // Load the script into lua.
-  if (luaL_loadbuffer(L, (const char*)fdata.value().data(),
-                      fdata.value().size(), path.c_str())) {
+  if (luaL_loadbuffer(L, (const char*)fdata->data(), fdata->size(),
+                      path.c_str())) {
     dbg::error({"Error loading script:", lua_tostring(L, -1)});
     lua_pop(L, 1);
     return false;

@@ -2,7 +2,7 @@
  * A Hash Table implementation utilizing a Struct-Of-Arrays
  * by Haydn V. Harach
  * Created October 2019
- * Modified January 2022
+ * Modified February 2023
  *
  * By storing a lightweight hashmap alongside a struct-of-arrays, memory
  * efficiency is improved compared to a traditional hash table.
@@ -16,20 +16,20 @@
 namespace hvh {
 
   template <typename KeyT, typename... ItemTs>
-  class htable: public soa<KeyT, ItemTs...> {
+  class Table: public Soa<KeyT, ItemTs...> {
   public:
-    // htable()
+    // Table()
     // Default constructor for a hash table.
     // Initial size, capacity, and hashmap size are 0.
     // Complexity: O(1).
-    htable() {}
-    // htable(...)
+    Table() {}
+    // Table(...)
     // Constructs a hash table using a list of tuples.
     // Initializes the table with the entries from the list; the leftmost item
     // is the key. Complexity: O(n).
-    htable(const std::initializer_list<std::tuple<KeyT, ItemTs...>>& initlist) {
-      reserve(initlist.size());
-      for (auto& entry : initlist) {
+    Table(const std::initializer_list<std::tuple<KeyT, ItemTs...>>& initList) {
+      reserve(initList.size());
+      for (auto& entry : initList) {
         std::apply(
             [this](const KeyT& key, const ItemTs&... items) {
               this->insert(key, items...);
@@ -37,27 +37,27 @@ namespace hvh {
             entry);
       }
     }
-    // htable(&& rhs)
+    // Table(&& rhs)
     // Move constructor for a hash table.
     // Moves the entries from the rhs hash table into ourselves.
     // Complexity: O(1).
-    htable(htable<KeyT, ItemTs...>&& other) { swap(*this, other); }
-    // htable(const& rhs)
+    Table(Table<KeyT, ItemTs...>&& other) { swap(*this, other); }
+    // Table(const& rhs)
     // Copy constructor for a hash table.
     // Initializes the hash table as a copy of rhs.
     // Complexity: O(n).
-    htable(const htable<KeyT, ItemTs...>& other) {
+    Table(const Table<KeyT, ItemTs...>& other) {
       reserve(other.capacity());
-      memcpy(hashmap, other.hashmap, sizeof(uint32_t) * hashcapacity);
-      _soa_base<KeyT, ItemTs...>&       base      = *this;
-      const _soa_base<KeyT, ItemTs...>& otherbase = other;
+      memcpy(hashMap_, other.hashMap_, sizeof(uint32_t) * hashCapacity_);
+      impl::SoaBase<KeyT, ItemTs...>&       base      = *this;
+      const impl::SoaBase<KeyT, ItemTs...>& otherbase = other;
       base.copy(otherbase);
     }
     // operator = (&& rhs)
     // Move-assignment operator for a hash table.
     // Moves the entries from the rhs hash table into ourselves, replacing old
     // contents. Complexity: O(1).
-    htable<KeyT, ItemTs...>& operator=(htable&& other) {
+    Table<KeyT, ItemTs...>& operator=(Table&& other) {
       swap(*this, other);
       return *this;
     }
@@ -65,33 +65,32 @@ namespace hvh {
     // Copy-assignment operator for a hash table.
     // Copies the entries from the rhs hash table into ourselves, replacing old
     // contents. Complexity: O(n).
-    htable<KeyT, ItemTs...>& operator=(htable other) {
+    Table<KeyT, ItemTs...>& operator=(Table other) {
       swap(*this, other);
       return *this;
     }
-    // ~htable()
+    // ~Table()
     // Destructor for a hash table.
     // Calls the destructor for all contained keys and items, then frees held
     // memory. Complexity: O(n).
-    ~htable() {
-      _soa_base<KeyT, ItemTs...>& base = *this;
-      base.destruct_range(0, this->mysize);
+    ~Table() {
+      impl::SoaBase<KeyT, ItemTs...>& base = *this;
+      base.destructRange(0, this->size_);
       base.nullify();
-      this->mysize     = 0;
-      this->mycapacity = 0;
-      if (hashmap) _soa_aligned_free(hashmap);
+      this->size_     = 0;
+      this->capacity_ = 0;
+      if (hashMap_) SoaAlignedFree(hashMap_);
     }
 
     // swap(lhs, rhs)
     // swaps the contents of two htables.
     // Complexity: O(1).
-    friend inline void swap(htable<KeyT, ItemTs...>& lhs,
-                            htable<KeyT, ItemTs...>& rhs) {
-      std::swap(lhs.hashmap, rhs.hashmap);
-      std::swap(lhs.hashcapacity, rhs.hashcapacity);
-      std::swap(lhs.hashcursor, rhs.hashcursor);
-      soa<KeyT, ItemTs...>& lhsbase = lhs;
-      soa<KeyT, ItemTs...>& rhsbase = rhs;
+    friend inline void swap(Table<KeyT, ItemTs...>& lhs,
+                            Table<KeyT, ItemTs...>& rhs) {
+      std::swap(lhs.hashMap_, rhs.hashMap_);
+      std::swap(lhs.hashCapacity_, rhs.hashCapacity_);
+      Soa<KeyT, ItemTs...>& lhsbase = lhs;
+      Soa<KeyT, ItemTs...>& rhsbase = rhs;
       swap(lhsbase, rhsbase);
     }
 
@@ -100,10 +99,9 @@ namespace hvh {
     // The capacity of the hash table is unchanged.
     // Complexity: O(n).
     inline void clear() {
-      memset(hashmap, INDEXNUL, sizeof(uint32_t) * hashcapacity);
-      soa<KeyT, ItemTs...>& base = *this;
+      memset(hashMap_, INDEXNUL, sizeof(uint32_t) * hashCapacity_);
+      Soa<KeyT, ItemTs...>& base = *this;
       base.clear();
-      hashcursor = SIZE_MAX;
     }
 
     // rehash()
@@ -111,24 +109,23 @@ namespace hvh {
     // Called automatically if the table is resized, and can be used to clear up
     // deleted indices in the map. Complexity: O(n).
     void rehash() {
-      memset(hashmap, INDEXNUL, sizeof(uint32_t) * hashcapacity);
-      for (size_t i = 0; i < this->mysize; ++i) {
+      memset(hashMap_, INDEXNUL, sizeof(uint32_t) * hashCapacity_);
+      for (size_t i = 0; i < this->size_; ++i) {
         // Get the hash for this key.
         size_t hash =
-            std::hash<KeyT> {}(this->template at<0>(i)) % hashcapacity;
+            std::hash<KeyT> {}(this->template at<0>(i)) % hashCapacity_;
         // Figure out where to put it.
         while (1) {
           // If this spot is NULL or DELETED, we can put our reference here.
-          uint32_t index = hashmap[hash];
+          uint32_t index = hashMap_[hash];
           if (index == INDEXNUL || index == INDEXDEL) {
-            hashmap[hash] = (uint32_t)i;
+            hashMap_[hash] = (uint32_t)i;
             break;
           }
           // Otherwise, keep looking.
-          hash_inc(hash);
+          hashInc_(hash);
         }
       }
-      hashcursor = SIZE_MAX;
     }
 
     // reserve(n)
@@ -144,31 +141,31 @@ namespace hvh {
       if (newsize == 0) newsize = 16;
 
       // We can't shrink the actual memory.
-      if (newsize <= this->mycapacity) return true;
+      if (newsize <= this->capacity_) return true;
 
       // Hash capacity needs to be odd and just greater than double the list
       // capacity, but it also needs to conform to 16-byte alignment.
-      hashcapacity       = newsize + newsize + 4;
-      size_t htable_size = hashcapacity * sizeof(uint32_t);
-      --hashcapacity;
+      hashCapacity_      = newsize + newsize + 4;
+      size_t htable_size = hashCapacity_ * sizeof(uint32_t);
+      --hashCapacity_;
 
       // Remember the old memory so we can free it.
-      void* oldmem = hashmap;
+      void* oldmem = hashMap_;
 
       // Allocate new memory.
-      _soa_base<KeyT, ItemTs...>& base         = *this;
-      void*                       alloc_result = _soa_aligned_malloc(
-          16, (base.size_per_entry() * newsize) + htable_size);
+      impl::SoaBase<KeyT, ItemTs...>& base = *this;
+      void*                           alloc_result =
+          SoaAlignedMalloc(16, (base.sizePerEntry() * newsize) + htable_size);
       if (!alloc_result) return false;
 
-      hashmap = (uint32_t*)alloc_result;
+      hashMap_ = (uint32_t*)alloc_result;
 
       // Copy the old data into the new memory.
-      this->mycapacity = newsize;
-      base.divy_buffer(((char*)alloc_result) + htable_size);
+      this->capacity_ = newsize;
+      base.divyBuffer(((char*)alloc_result) + htable_size);
 
       // Free the old memory.
-      if (oldmem) _soa_aligned_free(oldmem);
+      if (oldmem) SoaAlignedFree(oldmem);
       rehash();
       return true;
     }
@@ -177,44 +174,44 @@ namespace hvh {
     // Shrinks the capacity of the hash table to the smallest possible size
     // capable of holding the existing entries. Returns false if a memory
     // allocation error occurs, true otherwise. Complexity: O(n).
-    bool shrink_to_fit() {
+    bool shrinkToFit() {
       // For alignment, we must have a multiple of 16 items.
-      size_t newsize = this->mysize;
+      size_t newsize = this->size_;
       if (newsize % 16 != 0) newsize += 16 - (newsize % 16);
 
       // If the container is already as small as it can be, bail out now.
-      if (newsize == this->mycapacity) return true;
+      if (newsize == this->capacity_) return true;
 
       // Remember the old memory so we can free it.
-      _soa_base<KeyT, ItemTs...>& base   = *this;
-      void*                       oldmem = hashmap;
+      impl::SoaBase<KeyT, ItemTs...>& base   = *this;
+      void*                           oldmem = hashMap_;
 
       if (newsize > 0) {
         // Hash capacity needs to be odd and just greater than double the list
         // capacity, but it also needs to conform to 16-byte memory alignment.
-        hashcapacity       = newsize + newsize + 4;
-        size_t htable_size = hashcapacity * sizeof(uint32_t);
-        --hashcapacity;
+        hashCapacity_      = newsize + newsize + 4;
+        size_t htable_size = hashCapacity_ * sizeof(uint32_t);
+        --hashCapacity_;
 
         // Allocate new memory.
-        void* alloc_result = _soa_aligned_malloc(
-            16, (base.size_per_entry() * newsize) + htable_size);
+        void* alloc_result =
+            SoaAlignedMalloc(16, (base.sizePerEntry() * newsize) + htable_size);
         if (!alloc_result) return false;
 
-        hashmap = (uint32_t*)alloc_result;
+        hashMap_ = (uint32_t*)alloc_result;
 
         // Copy the old data into the new memory.
-        this->mycapacity = newsize;
-        base.divy_buffer(((char*)alloc_result) + htable_size);
+        this->capacity_ = newsize;
+        base.divyBuffer(((char*)alloc_result) + htable_size);
       } else {
         base.nullify();
-        this->mycapacity = 0;
-        hashcapacity     = 0;
-        hashmap          = nullptr;
+        this->capacity_ = 0;
+        hashCapacity_   = 0;
+        hashMap_        = nullptr;
       }
 
       // Free the old memory.
-      if (oldmem) _soa_aligned_free(oldmem);
+      if (oldmem) SoaAlignedFree(oldmem);
       rehash();
       return true;
     }
@@ -226,23 +223,23 @@ namespace hvh {
     // otherwise. Complexity: O(1) amortized.
     template <typename... Ts>
     bool insert(const KeyT& key, Ts&&... items) {
-      if (this->mysize == max_size()) return false;
-      if (this->mysize == this->mycapacity) {
-        if (!reserve(this->mycapacity * 2)) return false;
+      if (this->size_ == maxSize()) return false;
+      if (this->size_ == this->capacity_) {
+        if (!reserve(this->capacity_ * 2)) return false;
       }
       // Get the hash for the key.
-      size_t hash = std::hash<KeyT> {}(key) % hashcapacity;
+      size_t hash = std::hash<KeyT> {}(key) % hashCapacity_;
       // Look through the table for a place to put it...
       while (1) {
-        uint32_t index = hashmap[hash];
+        uint32_t index = hashMap_[hash];
         if (index == INDEXNUL || index == INDEXDEL) {
-          index                      = (uint32_t)this->mysize;
-          soa<KeyT, ItemTs...>& base = *this;
-          base.push_back(key, std::forward<Ts>(items)...);
-          hashmap[hash] = index;
+          index                      = (uint32_t)this->size_;
+          Soa<KeyT, ItemTs...>& base = *this;
+          base.pushBack(key, std::forward<Ts>(items)...);
+          hashMap_[hash] = index;
           break;
         }
-        hash_inc(hash);
+        hashInc_(hash);
       }
       return true;
     }
@@ -254,110 +251,50 @@ namespace hvh {
     // otherwise. Complexity: O(1) amortized.
     template <typename... CTypes>
     bool emplace(const KeyT& key, CTypes&&... cargs) {
-      if (this->mysize == max_size()) return false;
-      if (this->mysize == this->mycapacity) {
-        if (!reserve(this->mycapacity * 2)) return false;
+      if (this->size_ == maxSize()) return false;
+      if (this->size_ == this->capacity_) {
+        if (!reserve(this->capacity_ * 2)) return false;
       }
       // Get the hash for the key.
-      size_t hash = std::hash<KeyT> {}(key) % hashcapacity;
+      size_t hash = std::hash<KeyT> {}(key) % hashCapacity_;
       // Look through the table for a place to put it...
       while (1) {
-        uint32_t index = hashmap[hash];
+        uint32_t index = hashMap_[hash];
         if (index == INDEXNUL || index == INDEXDEL) {
-          index                      = (uint32_t)this->mysize;
-          soa<KeyT, ItemTs...>& base = *this;
-          base.emplace_back(key, std::forward<CTypes>(cargs)...);
-          hashmap[hash] = index;
+          index                      = (uint32_t)this->size_;
+          Soa<KeyT, ItemTs...>& base = *this;
+          base.emplaceBack(key, std::forward<CTypes>(cargs)...);
+          hashMap_[hash] = index;
           break;
         }
-        hash_inc(hash);
+        hashInc_(hash);
       }
       return true;
     }
 
-    // insert_sorted<K>(key, items...)
+    // insertSorted<K>(key, items...)
     // Inserts a new entry into the hash table sorted according to the Kth
     // array. Possibly useful if the data needs to be sorted for some reason
     // other than searching. Returns false if a memory allocation failure occurs
     // in reserve(), true otherwise. Complexity: O(n).
     template <size_t K>
-    bool insert_sorted(const KeyT& key, const ItemTs&... items) {
-      if (this->mysize == max_size()) return false;
-      if (this->mysize == this->mycapacity) {
-        if (!reserve(this->mycapacity * 2)) return false;
+    bool insertSorted(const KeyT& key, const ItemTs&... items) {
+      if (this->size_ == maxSize()) return false;
+      if (this->size_ == this->capacity_) {
+        if (!reserve(this->capacity_ * 2)) return false;
       }
-      soa<KeyT, ItemTs...>& base = *this;
-      size_t where = base.template lower_bound_row<K>(key, items...);
+      Soa<KeyT, ItemTs...>& base = *this;
+      size_t where = base.template lowerBoundRow<K>(key, items...);
       base.insert(where, key, items...);
       rehash();
     }
 
-    // find(key, restart)
+    // find(key)
     // Searches for the entry with the indicated key.
-    // Returns the index of the found entry, or SIZE_MAX if the key could not be
-    // found. If 'restart' is true, find will get the first entry with the
-    // matching key. If 'restart' is false, find will get the next entry with
-    // the matching key after the entry previously found by 'find'. To iterate
-    // over every entry with a given key in the table, use the following loop
-    // template: `for (size_t i = find(key, true); i != SIZE_MAX; i = find(key,
-    // false)) { ... }` The returned index can be used with 'at' or 'data' to
-    // access the items inside the table. Complexity: O(1) amortized.
-    size_t find(const KeyT& key, bool restart = true) {
-      if (this->mysize == 0) return SIZE_MAX;
-      if (restart) hashcursor = std::hash<KeyT> {}(key) % hashcapacity;
-      else {
-        if (hashcursor >= hashcapacity) return SIZE_MAX;
-        hash_inc(hashcursor);
-      }
-      while (1) {
-        uint32_t index = hashmap[hashcursor];
-        if (index == INDEXNUL) return SIZE_MAX;
-        if (index != INDEXDEL && this->template at<0>(index) == key)
-          return (size_t)index;
-        hash_inc(hashcursor);
-      }
-      return SIZE_MAX;
-    }
-
-    // find(key) const
-    // Searches for the entry with the indicated key.
-    // Returns the index of the found entry, or SIZE_MAX if the key could not be
-    // found. The returned index can be used with 'at' or 'data' to access the
-    // items inside the table. Complexity: O(1) amortized.
-    size_t find(const KeyT& key) const {
-      if (this->mysize == 0) return SIZE_MAX;
-      size_t hash = std::hash<KeyT> {}(key) % hashcapacity;
-      while (1) {
-        uint32_t index = hashmap[hash];
-        if (index == INDEXNUL) return SIZE_MAX;
-        if (index != INDEXDEL && this->template at<0>(index) == key)
-          return (size_t)index;
-        hash_inc(hash);
-      }
-    }
-
-    // find(key, restart, hashc) const
-    // Searches for the entry with the indicated key.
-    // Returns the index of the found entry, or SIZE_MAX if the key could not be
-    // found. The returned index can be used with 'at' or 'data' to access the
-    // items inside the table. This version allows iterating over multiple items
-    // like the regular 'find', but uses an external hash cursor to maintain
-    // const-compatible. Complexity: O(1) amortized.
-    size_t find(const KeyT& key, bool restart, size_t& hashc) const {
-      if (this->mysize == 0) return SIZE_MAX;
-      if (restart) hashc = std::hash<KeyT> {}(key) % hashcapacity;
-      else {
-        if (hashc >= hashcapacity) return SIZE_MAX;
-        hash_inc(hashc);
-      }
-      while (1) {
-        uint32_t index = hashmap[hashc];
-        if (index == INDEXNUL) return SIZE_MAX;
-        if (index != INDEXDEL && this->template at<0>(index) == key)
-          return (size_t)index;
-        hash_inc(hashc);
-      }
-    }
+    // Returns a FindProxy object which can provide an iterator to access
+    // the found entry.
+    auto find(const KeyT& key) { return FindProxy(*this, key); }
+    auto find(const KeyT& key) const { return ConstFindProxy(*this, key); }
 
     // count(key)
     // Returns the number of entries in the table which have the indicated key.
@@ -365,92 +302,54 @@ namespace hvh {
     // Complexity: O(1) amortized.
     inline size_t count(const KeyT& key) const {
       size_t result = 0;
-      size_t hashc  = SIZE_MAX;
-      for (size_t index = find(key, true, hashc); index != SIZE_MAX;
-           index        = find(key, false, hashc)) {
-        ++result;
-      }
+      for (auto& i : find(key)) { ++result; }
       return result;
     }
 
     // swap_entries(first, second)
     // Swaps the position of two entries and repairs the hashes for each.
     // Complexity: O(1) amortized.
-    void swap_entries(size_t first, size_t second) {
+    void swapEntries(size_t first, size_t second) {
       // Swap the two entries.
-      soa<KeyT, ItemTs...>& base = *this;
-      base.swap_entries(first, second);
+      Soa<KeyT, ItemTs...>& base = *this;
+      base.swapEntries(first, second);
 
       // Find the hash position for the first entry.
       size_t hash =
-          std::hash<KeyT> {}(this->template at<0>(first)) % hashcapacity;
-      size_t first_hashpos = SIZE_MAX;
+          std::hash<KeyT> {}(this->template at<0>(first)) % hashCapacity_;
+      size_t firstHashPos = SIZE_MAX;
       while (1) {
-        uint32_t index = hashmap[hash];
+        uint32_t index = hashMap_[hash];
         if (index == (uint32_t)first) {
-          first_hashpos = hash;
+          firstHashPos = hash;
           break;
         }
         if (index == INDEXNUL) {
           // ERROR! We can't repair the link!
           break;
         }
-        hash_inc(hash);
+        hashInc_(hash);
       }
 
       // Find the hash position for the second entry.
-      hash = std::hash<KeyT> {}(this->template at<0>(second)) % hashcapacity;
-      size_t second_hashpos = SIZE_MAX;
+      hash = std::hash<KeyT> {}(this->template at<0>(second)) % hashCapacity_;
+      size_t secondHashPos = SIZE_MAX;
       while (1) {
-        uint32_t index = hashmap[hash];
+        uint32_t index = hashMap_[hash];
         if (index == (uint32_t)second) {
-          second_hashpos = hash;
+          secondHashPos = hash;
           break;
         }
         if (index == INDEXNUL) {
           // ERROR! We can't repair the link!
           break;
         }
-        hash_inc(hash);
+        hashInc_(hash);
       }
 
       // Swap the hash positions.
-      hashmap[first_hashpos]  = (uint32_t)second;
-      hashmap[second_hashpos] = (uint32_t)first;
-    }
-
-    // erase_found()
-    // Erases the entry which was found by the last call to 'find'.
-    // If the last call to 'find' did not find its goal, the table is unchanged.
-    // Returns the number of items erased (0 or 1).
-    // Complexity: O(1) amortized.
-    size_t erase_found() {
-      if (hashcursor >= hashcapacity) return 0;
-      uint32_t index = hashmap[hashcursor];
-      if (index == INDEXNUL || index == INDEXDEL) return 0;
-      soa<KeyT, ItemTs...>& base = *this;
-      base.erase_swap(index);
-      hashmap[hashcursor] = INDEXDEL;
-
-      // Get the hash of the key that we just moved into the deleted item's
-      // place.
-      size_t hash =
-          std::hash<KeyT> {}(this->template at<0>(index)) % hashcapacity;
-      // Scan through looking for the reference so we can repair it.
-      while (1) {
-        uint32_t newindex = hashmap[hash];
-        if (newindex == this->mysize) {
-          // Repair the link.
-          hashmap[hash] = index;
-          break;
-        }
-        if (newindex == INDEXNUL) {
-          // ERROR! We can't repair the link!
-          break;
-        }
-        hash_inc(hash);
-      }
-      return 1;
+      hashMap_[firstHashPos]  = (uint32_t)second;
+      hashMap_[secondHashPos] = (uint32_t)first;
     }
 
     // erase(key)
@@ -458,58 +357,29 @@ namespace hvh {
     // If no entries have the indicated key, the table is unchanged.
     // Returns the number of items erased (0 or 1).
     // Complexity: O(1) amortized.
-    inline size_t erase(const KeyT& key) {
-      find(key, true);
-      return erase_found();
-    }
-    // erase_all(key)
+    inline size_t erase(const KeyT& key) { return find(key).erase(); }
+
+    // eraseAll(key)
     // Erases all entries with the indicated key from the table.
     // If no entries have the indicated key, the table is unchanged.
     // Returns the number of items erased.
     // Complexity: O(1) amortized.
-    inline size_t erase_all(const KeyT& key) {
+    inline size_t eraseAll(const KeyT& key) {
       size_t result = 0;
-      for (size_t index = find(key, true); index != SIZE_MAX;
-           index        = find(key, false)) {
-        result += erase_found();
-      }
+      for (auto it : find(key)) { result += it.erase(); }
       return result;
     }
 
-    // erase_found_sorted()
-    // Erases the entry which was found by the last call to 'find',
-    // maintaining the order of the data.
-    // Returns the number of items erased (0 or 1).
-    // Complexity: O(n).
-    size_t erase_found_sorted() {
-      if (hashcursor >= hashcapacity) return 0;
-      uint32_t index = hashmap[hashcursor];
-      if (index == INDEXNUL || index == INDEXDEL) return 0;
-      soa<KeyT, ItemTs...>& base = *this;
-      base.erase_shift(index);
-      hashmap[hashcursor] = INDEXDEL;
-      rehash();
-      return 1;
-    }
-    // erase_sorted(key)
-    // Finds the entry with the indicated key and erases it, maintaining the
-    // order of the data. If no entries have the indicated key, the table is
-    // unchanged. Returns the number of items erased (0 or 1). Complexity: O(n).
-    inline size_t erase_sorted(const KeyT& key) {
-      find(key, true);
-      return erase_found_sorted();
-    }
-
-    // max_size()
+    // maxSize()
     // Returns the greatest number of entries that this hash table could
     // theoretically hold. Does not account for running out of memory.
-    inline constexpr size_t max_size() const { return UINT_MAX - 2; }
+    inline constexpr size_t maxSize() const { return UINT_MAX - 2; }
 
-    // see_map()
+    // seeMap()
     // Used for debugging to see if there are any big clumps in the hash map.
-    const uint32_t* see_map(size_t& cap) {
-      cap = hashcapacity;
-      return hashmap;
+    const uint32_t* seeMap(size_t& cap) {
+      cap = hashCapacity_;
+      return hashMap_;
     }
 
     // serialize()
@@ -519,10 +389,10 @@ namespace hvh {
     // buffer. This function should be used in tandem with 'deserialize' to save
     // and load a container to disk.
     void* serialize(size_t& num_bytes) {
-      shrink_to_fit();
-      num_bytes = (this->size_per_entry() * this->mycapacity) +
-                  (sizeof(uint32_t) * hashcapacity);
-      return hashmap;
+      shrinkToFit();
+      num_bytes = (this->sizePerEntry() * this->capacity_) +
+                  (sizeof(uint32_t) * hashCapacity_);
+      return hashMap_;
     }
 
     // deserialize(n)
@@ -535,10 +405,10 @@ namespace hvh {
     // a container to disk.
     void* deserialize(size_t num_elements, size_t& num_bytes) {
       reserve(num_elements);
-      num_bytes = (this->size_per_entry() * this->mycapacity) +
-                  (sizeof(uint32_t) * hashcapacity);
-      this->mysize = num_elements;
-      return hashmap;
+      num_bytes = (this->sizePerEntry() * this->capacity_) +
+                  (sizeof(uint32_t) * hashCapacity_);
+      this->size_ = num_elements;
+      return hashMap_;
     }
 
     // sort<K>()
@@ -549,32 +419,262 @@ namespace hvh {
     template <size_t K>
     size_t sort() {
       size_t result =
-          this->quicksort(this->template data<K>(), 0, this->mysize - 1);
+          this->quicksort(this->template data<K>(), 0, this->size_ - 1);
       rehash();
       return result;
     }
 
+    /// FindProxy
+    /// This object is returned by find() and provides iterator access to
+    /// what was found.  It can be used in a range-based for loop.
+    struct FindProxy {
+      FindProxy(Table& table, const KeyT& key):
+          tbl_(table), key_(key),
+          begin_(*this, std::hash<KeyT> {}(key_) % tbl_.hashCapacity_),
+          end_(*this, 0) {}
+
+      struct Iterator {
+
+        Iterator(FindProxy& find, size_t cursor):
+            fh_(find), cur_(cursor), index_(0) {
+          update();
+        }
+
+        Iterator& operator++() {
+          hashInc(cur_);
+          update();
+          return *this;
+        }
+        Iterator operator++(int) {
+          Iterator tmp = *this;
+          ++(*this);
+          return tmp;
+        }
+
+        friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
+          return (lhs.cur_ == rhs.cur_);
+        }
+        friend bool operator!=(const Iterator& lhs, const Iterator& rhs) {
+          return (lhs.cur_ != rhs.cur_);
+        }
+
+        Iterator& operator*() { return *this; }
+        Iterator* operator->() { return this; }
+
+        bool   exists() const { return (index_ != SIZE_MAX); }
+               operator bool() const { return exists(); }
+        size_t index() const { return index_; }
+        auto   row() const { return fh_.tbl_.makeRowTuple(index_); }
+        template <size_t K>
+        auto& get() const {
+          return fh_.tbl_.template at<K>(index_);
+        }
+
+        size_t erase() {
+          // If the current index isn't valid, don't erase anything!
+          if (index_ == SIZE_MAX || index_ == INDEXNUL || index_ == INDEXDEL)
+            return 0;
+
+          // Swap the entry with the rear of the list and erase it.
+          Soa<KeyT, ItemTs...>& base = fh_.tbl_;
+          base.eraseSwap(index_);
+          fh_.tbl_.hashMap_[cur_] = INDEXDEL;
+
+          // Get the hash of the key that we just moved into the deleted item's
+          // place.
+          size_t hash = std::hash<KeyT> {}(fh_.tbl_.template at<0>(index_)) %
+                        fh_.tbl_.hashCapacity_;
+          // Scan through looking for the reference so we can repair it.
+          while (1) {
+            uint32_t newindex = fh_.tbl_.hashMap_[hash];
+            if (newindex == fh_.tbl_.size_) {
+              // Repair the link.
+              fh_.tbl_.hashMap_[hash] = (uint32_t)index_;
+              break;
+            }
+            if (newindex == INDEXDEL) {
+              // Error! Can't repair the link!
+              break;
+            }
+            hashInc(hash);
+          }
+          return 1;
+        }
+
+        size_t eraseSorted() {
+          // If the current index isn't valid, don't erase anything!
+          if (index_ == SIZE_MAX || index_ == INDEXNUL || index_ == INDEXDEL)
+            return 0;
+
+          // Erase the entry and shift further entries back by 1.
+          Soa<KeyT, ItemTs...>& base = *this;
+          base.eraseShift(index_);
+          fh_.tbl_.hashMap_[cur_] = INDEXDEL;
+          fh_.tbl_.rehash();
+          cur_   = SIZE_MAX;
+          index_ = SIZE_MAX;
+        }
+
+      private:
+        FindProxy& fh_;
+        size_t     cur_;
+        size_t     index_;
+
+        void hashInc(size_t& h) {
+          if (h == SIZE_MAX) return;
+          h = ((h + 2) % fh_.tbl_.hashCapacity_);
+        }
+
+        void update() {
+          if (cur_ >= fh_.tbl_.hashCapacity_) {
+            index_ = SIZE_MAX;
+            cur_   = SIZE_MAX;
+            return;
+          }
+          while (1) {
+            uint32_t index = fh_.tbl_.hashMap_[cur_];
+            if (index == INDEXNUL) {
+              index_ = (int)SIZE_MAX;
+              cur_   = SIZE_MAX;
+              return;
+            }
+            if (index != INDEXDEL &&
+                fh_.tbl_.template at<0>(index) == fh_.key_) {
+              index_ = (size_t)index;
+              return;
+            }
+            hashInc(cur_);
+          }
+        }
+      };
+
+      Iterator begin() { return begin_; }
+      Iterator end() { return end_; }
+
+      const Iterator& operator*() { return begin_; }
+      Iterator*       operator->() { return &begin_; }
+
+    private:
+      Table&      tbl_;
+      const KeyT& key_;
+      Iterator    begin_;
+      Iterator    end_;
+    };
+
+    /// ConstFindProxy
+    /// This object is returned by find() and provides iterator access to
+    /// what was found.  It can be used in a range-based for loop.
+    struct ConstFindProxy {
+      ConstFindProxy(const Table& table, const KeyT& key):
+          tbl_(table), key_(key),
+          begin_(*this, (tbl_.hashCapacity_ > 0) ?
+                            std::hash<KeyT> {}(key_) % tbl_.hashCapacity_ :
+                            SIZE_MAX),
+          end_(*this, SIZE_MAX) {}
+
+      struct Iterator {
+
+        Iterator(ConstFindProxy& find, size_t cursor):
+            fh_(find), cur_(cursor), index_(0) {
+          update();
+        }
+
+        Iterator& operator++() {
+          hashInc(cur_);
+          update();
+          return *this;
+        }
+        Iterator operator++(int) {
+          Iterator tmp = *this;
+          ++(*this);
+          return tmp;
+        }
+
+        friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
+          return (lhs.cur_ == rhs.cur_);
+        }
+        friend bool operator!=(const Iterator& lhs, const Iterator& rhs) {
+          return (lhs.cur_ != rhs.cur_);
+        }
+
+        const Iterator& operator*() const { return *this; }
+        const Iterator* operator->() const { return this; }
+
+        bool   exists() const { return (index_ != SIZE_MAX); }
+               operator bool() const { return exists(); }
+        size_t index() const { return index_; }
+        auto   row() const { return fh_.tbl_.makeRowTuple(index_); }
+        template <size_t K>
+        const auto& get() const {
+          return fh_.tbl_.template at<K>(index_);
+        }
+
+      private:
+        ConstFindProxy& fh_;
+        size_t          cur_;
+        size_t          index_;
+
+        void hashInc(size_t& h) {
+          if (h == SIZE_MAX) return;
+          h = ((h + 2) % fh_.tbl_.hashCapacity_);
+        }
+
+        void update() {
+          if (cur_ >= fh_.tbl_.hashCapacity_) {
+            index_ = SIZE_MAX;
+            cur_   = SIZE_MAX;
+            return;
+          }
+          while (1) {
+            uint32_t index = fh_.tbl_.hashMap_[cur_];
+            if (index == INDEXNUL) {
+              index_ = (int)SIZE_MAX;
+              cur_   = SIZE_MAX;
+              return;
+            }
+            if (index != INDEXDEL &&
+                fh_.tbl_.template at<0>(index) == fh_.key_) {
+              index_ = (size_t)index;
+              return;
+            }
+            hashInc(cur_);
+          }
+        }
+      };
+
+      Iterator begin() { return begin_; }
+      Iterator end() { return end_; }
+
+      const Iterator& operator*() const { return begin_; }
+      const Iterator* operator->() const { return &begin_; }
+
+    private:
+      const Table& tbl_;
+      const KeyT&  key_;
+      Iterator     begin_;
+      Iterator     end_;
+    };
+
   protected:
-    inline void hash_inc(size_t& h) const { h = ((h + 2) % hashcapacity); }
+    inline void hashInc_(size_t& h) const { h = ((h + 2) % hashCapacity_); }
 
     static const uint32_t INDEXNUL = UINT_MAX;
     static const uint32_t INDEXDEL = UINT_MAX - 1;
 
-    uint32_t* hashmap      = nullptr;
-    size_t    hashcapacity = 0;
-    size_t    hashcursor   = SIZE_MAX;
+    uint32_t* hashMap_      = nullptr;
+    size_t    hashCapacity_ = 0;
 
     // Ban certain inherited methods.
     //	using soa<KeyT, ItemTs...>::clear;
     //	using soa<KeyT, ItemTs...>::reserve;
     //	using soa<KeyT, ItemTs...>::shrink_to_fit;
-    using soa<KeyT, ItemTs...>::resize;
-    using soa<KeyT, ItemTs...>::push_back;
-    using soa<KeyT, ItemTs...>::emplace_back;
-    using soa<KeyT, ItemTs...>::pop_back;
+    using Soa<KeyT, ItemTs...>::resize;
+    using Soa<KeyT, ItemTs...>::pushBack;
+    using Soa<KeyT, ItemTs...>::emplaceBack;
+    using Soa<KeyT, ItemTs...>::popBack;
     //	using soa<KeyT, ItemTs...>::insert;
-    using soa<KeyT, ItemTs...>::erase_swap;
-    using soa<KeyT, ItemTs...>::erase_shift;
+    using Soa<KeyT, ItemTs...>::eraseSwap;
+    using Soa<KeyT, ItemTs...>::eraseShift;
     //	using soa<KeyT, ItemTs...>::swap;
     //	using soa<KeyT, ItemTs...>::swap_entries;
   };

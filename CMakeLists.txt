@@ -31,10 +31,6 @@ file (GLOB_RECURSE SOURCES
 )
 add_executable (Witchcraft ${SOURCES})
 
-# Set the CWD for Visual Studio debugging (we want it to be the project root)
-set_target_properties (Witchcraft PROPERTIES
-  VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-
 # --------------------------------------------------------------------------- #
 # --------------------- # Add Packages & Dependencies # --------------------- #
 # --------------------------------------------------------------------------- #
@@ -103,6 +99,13 @@ foreach(script ${LUA_SCRIPTS})
 	COMMAND ${F2H_EXE} ${OUTPUT_FILENAME}
   )
 endforeach()
+
+# Create symlinks so the "$install/data" directory can be found
+add_custom_command(TARGET Witchcraft POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+  "${PROJECT_SOURCE_DIR}/data"
+  "$<TARGET_FILE_DIR:Witchcraft>/data"
+)
 
 # Include directories
 

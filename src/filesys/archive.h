@@ -59,36 +59,36 @@ namespace wc {
     void rebuild();
 
     // Returns whether or not the archive in question is open/valid.
-    bool is_open() const { return (file_.is_open()); }
+    bool isOpen() const { return (file_.is_open()); }
 
     // Checks to see if a file exists in the archive.
-    bool file_exists(const char* path) const;
+    bool fileExists(const char* path) const;
 
     // Finds the file and extracts it to an in-memory buffer.
     // 'buffer' will be resized, and it will contain the file data.
-    bool extract_data(const char* path, std::vector<char>& buffer,
-                      timestamp_t& timestamp);
+    bool extractData(const char* path, std::vector<char>& buffer,
+                     timestamp_t& timestamp);
 
     // Finds the file and extracts it to a file on disc.
-    void extract_file(const char* path, const char* dstfilename);
+    void extractFile(const char* path, const char* dstfilename);
 
     // Takes a region of memory and, treating it like a single contiguous file,
     // inserts it into the archive.
-    bool insert_data(const char* path, void* buffer, int32_t size,
-                     timestamp_t  timestamp,
-                     ReplaceEnum  replace  = REPLACE_IF_NEWER,
-                     CompressEnum compress = COMPRESS_FAST);
+    bool insertData(const char* path, void* buffer, int32_t size,
+                    timestamp_t  timestamp,
+                    ReplaceEnum  replace  = REPLACE_IF_NEWER,
+                    CompressEnum compress = COMPRESS_FAST);
 
     // Opens a file on disc and inserts its entire contents into the archive.
-    bool insert_file(const char* path, const char* srcfilename,
-                     ReplaceEnum  replace  = REPLACE_IF_NEWER,
-                     CompressEnum compress = COMPRESS_FAST);
+    bool insertFile(const char* path, const char* srcfilename,
+                    ReplaceEnum  replace  = REPLACE_IF_NEWER,
+                    CompressEnum compress = COMPRESS_FAST);
 
     // Erases a file from the archive.
     // All it really does is remove the file's information from the dictionary,
     // and flag the instance as dirty. When the archive is closed, if one or
     // more files have been deleted, the archive is rebuilt.
-    int erase_file(const char* path);
+    int eraseFile(const char* path);
 
     // Searches a folder recursively and adds every file found to the archive.
     void pack(const char* srcfolder, ReplaceEnum replace = REPLACE_IF_NEWER,
@@ -101,21 +101,10 @@ namespace wc {
     void merge(const char* othername, ReplaceEnum = REPLACE_IF_NEWER);
 
     // Get the number of files in the archive.
-    uint32_t num_files() const { return header_.numfiles; }
+    uint32_t numFiles() const { return header_.numfiles; }
 
-    // Iterate over every file in the archive.
-    // Returns false when there are no more files to check.
-    // Usage: for (bool exists = a.iterate_files(fname, true); exists; exists =
-    // a.iterate_files(fname, false)) { ... }
-    bool iterate_files(fixedstring<64>& fname, bool restart = true) const {
-      static uint32_t i = 0;
-      if (restart) i = 0;
-      if (i >= header_.numfiles) return false;
-
-      fname = dictionary_.at<0>(i);
-      ++i;
-      return true;
-    }
+    auto begin() { return dictionary_.begin(); }
+    auto end() { return dictionary_.end(); }
 
   private:
     static constexpr const char*    MAGIC             = "WCARCHV";
@@ -123,36 +112,43 @@ namespace wc {
     static constexpr const size_t   FILEPATH_FIXEDLEN = 64;
 
     struct Header {
-      char magic[8] = {};  // This is set to a predefined string and used to
-                           // ensure that the file type is correct.
-      uint64_t back = 0;  // This points to the beginning of the dictionary, and
-                          // defines the file data region.
+      // This is set to a predefined string and used to ensure that the file
+      // type is correct.
+      char magic[8] = {};
+      // This points to the beginning of the dictionary, and defines the file
+      // data region.
+      uint64_t back     = 0;
       uint32_t flags    = 0;
       uint32_t numfiles = 0;
-      uint16_t version =
-          0;  // Which version of this software was used to create the archive?
-      char reserved[38] =
-          {};  // Reserved in case we need it for future versions without having
-               // to break compatability.
+      // Which version of this software was used to create the archive?
+      uint16_t version = 0;
+
+    private:
+      // Reserved in case we need it for future versions without having to break
+      // compatability.
+      char reserved[38] = {};
+
     } header_;
 
     struct FileInfo {
-      uint64_t offset = 0;  // Where, relative to the beginning of the archive,
-                            // is the file located?
-      timestamp_t timestamp;  // When was the file created before we added it to
-                              // the archive?
-      int32_t size_compressed =
-          0;  // How many bytes in the archive itself does the file take?
-      int32_t size_uncompressed =
-          0;  // How many bytes large will the file be after we decompress it?
-              // If this if equal to 'size_compressed', the file is
-              // uncompressed.
+      // Where, relative to the beginning of the archive, is the file located?
+      uint64_t offset = 0;
+      // When was the file created before we added it to the archive?
+      timestamp_t timestamp;
+      // How many bytes in the archive itself does the file take?
+      int32_t sizeCompressed = 0;
+      // How many bytes large will the file be after we decompress it?
+      // If this if equal to 'size_compressed', the file is uncompressed.
+      int32_t sizeUncompressed = 0;
+
       uint32_t flags = 0;
-      char     reserved[4] =
-          {};  // Reserved for future use.  May or may not actually use.
+
+    private:
+      // Reserved for future use.  May or may not actually use.
+      char reserved[4] = {};
     };
 
-    hvh::htable<fixedstring<FILEPATH_FIXEDLEN>, FileInfo> dictionary_;
+    hvh::Table<fixedstring<FILEPATH_FIXEDLEN>, FileInfo> dictionary_;
     fixedstring<FILEPATH_FIXEDLEN>* const& filePaths_ = dictionary_.data<0>();
     FileInfo* const&                       fileInfos_ = dictionary_.data<1>();
 

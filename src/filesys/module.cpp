@@ -1,42 +1,42 @@
-#include "package.h"
+#include "module.h"
 
 #include <filesystem>
 #include <fmt/core.h>
 #include <fstream>
-using namespace std;
-namespace fs = std::filesystem;
+namespace sfs = std::filesystem;
 
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 using namespace rapidjson;
 
 #include "sys/debug.h"
+#include "sys/paths.h"
 
 // #include "tools/stringhelper.h"
 
 namespace {
 
-  const hvh::htable<fixedstring<64>> reservedFilenames_s = {
-      wc::PACKAGEINFO_FILENAME, "readme.txt", "splash.png", "config.json",
+  const hvh::Table<fixedstring<64>> reservedFilenames_s = {
+      wc::MODINFO_FILENAME, "readme.txt", "splash.png", "config.json",
       "load_order.json"};
 
 }  // namespace
 
-bool wc::Package::open(const std::string_view u8path) {
+wc::Result wc::Module::open(const std::filesystem::path& myPath) {
 
-  // Create the path, and make sure something exists there.
-  fs::path myPath = fs::u8path(u8path);
-  if (!fs::exists(myPath)) {
-    dbg::error(fmt::format("'{}' does not exist.", u8path));
-    return false;
+  // Make sure something exists there.
+  if (!sfs::exists(myPath)) {
+    return Result::error(
+        fmt::format("'{}' does not exist.", trimPathStr(myPath)));
   }
 
-  vector<char> modinfo;
+  std::optional<std::string> warnMsg = std::nullopt;
+  std::vector<char>          modinfo;
 
   // Check to see if the path points to a directory or a file.
   // If it's a file, we'l try to open it like an archive.
-  if (fs::is_directory(myPath)) {
-    ifstream file(myPath / PACKAGEINFO_FILENAME, ios::binary);
+  if (sfs::is_directory(myPath)) {
+    std::ifstream file(myPath / MODINFO_FILENAME, std::ios::binary);
     if (file.is_open()) {
       file.seekg(0, file.end);
       size_t len = file.tellg();
@@ -49,27 +49,27 @@ bool wc::Package::open(const std::string_view u8path) {
       }
     }
     // modinfo = FileData(mypath, PACKAGEINFO_FILENAME);
-  } else if (fs::is_regular_file(myPath)) {
+  } else if (sfs::is_regular_file(myPath)) {
     if (archive_.open(myPath.string().c_str())) {
       Archive::timestamp_t nil;
-      archive_.extract_data(PACKAGEINFO_FILENAME, modinfo, nil);
+      archive_.extractData(MODINFO_FILENAME, modinfo, nil);
     }
   }
 
   name_ = myPath.filename().string();
 
   if (modinfo.empty()) {
-    dbg::warning(
-        fmt::format("Failed to open '{}/{}'.", u8path, PACKAGEINFO_FILENAME));
+    warnMsg = fmt::format("Failed to open '{}/{}'.", trimPathStr(myPath),
+                          MODINFO_FILENAME);
   } else {
     // Parse the file contents as json.
     Document doc;
     doc.Parse((char*)modinfo.data(), modinfo.size());
     if (doc.HasParseError() || !doc.IsObject()) {
-      dbg::warning(fmt::format("Failed to parse '{}/{}'.", u8path,
-                               PACKAGEINFO_FILENAME));
+      warnMsg = fmt::format("Failed to parse '{}/{}'.", trimPathStr(myPath),
+                            MODINFO_FILENAME);
     } else {
-      // Weve found and correctly parsed modinfo.json,
+      // We've found and correctly parsed module.json,
       // by this point we can confidently say that we're looking at a module.
       if (doc.HasMember("name")) { name_ = doc["name"].GetString(); }
       if (doc.HasMember("author")) { author_ = doc["author"].GetString(); }
@@ -84,14 +84,16 @@ bool wc::Package::open(const std::string_view u8path) {
   }
 
   // Timestamp is used to sort modules which have equal priority.
-  timestamp_ = fs::last_write_time(myPath).time_since_epoch().count();
+  timestamp_ = sfs::last_write_time(myPath).time_since_epoch().count();
 
-  path_  = u8path;
+  path_  = myPath;
   found_ = true;
-  return true;
+  if (warnMsg.has_value()) return Result::warning(warnMsg.value());
+  else
+    return Result::success();
 }
 
-void wc::Package::close() {
+void wc::Module::close() {
   archive_.close();
   fileTable_.clear();
   loaded_ = false;
@@ -105,22 +107,22 @@ void wc::Package::close() {
   found_     = false;
 }
 
-void loadFileListRecursive(hvh::htable<fixedstring<64>>& fileList,
-                           const fs::path& parent, fs::path dir) {
+void loadFileListRecursive(hvh::Table<fixedstring<64>>& fileList,
+                           const sfs::path& parent, sfs::path dir) {
   // Loop through each entry in this directory...
-  for (fs::directory_iterator it(parent / dir); it != fs::directory_iterator();
-       ++it) {
+  for (sfs::directory_iterator it(parent / dir);
+       it != sfs::directory_iterator(); ++it) {
     // Entry doesn't exist (somehow..?)
-    if (!fs::exists(it->path())) continue;
+    if (!sfs::exists(it->path())) continue;
 
     // Entry is a directory (recursion time!)
-    if (fs::is_directory(it->path())) {
+    if (sfs::is_directory(it->path())) {
       loadFileListRecursive(fileList, parent, dir / it->path().filename());
       continue;
     }
 
     // Make sure it's a file and not a symlink or pipe or something.
-    if (!fs::is_regular_file(it->path())) { continue; }
+    if (!sfs::is_regular_file(it->path())) { continue; }
 
     // Make sure the path isn't too long (and also turn it into a fixedstring).
     std::string filePath = (dir / it->path().filename()).string();
@@ -142,28 +144,50 @@ void loadFileListRecursive(hvh::htable<fixedstring<64>>& fileList,
   }
 }
 
-void wc::Package::loadFileList() {
+wc::Result wc::Module::loadFileList() {
 
   if (!found_) {
-    dbg::error("Trying to load package before opening it.\n");
-    return;
+    return Result::error("Trying to load module before opening it.");
   }
 
   if (loaded_) {
-    dbg::errmore("Trying to load package more than once.\n");
-    return;
+    return Result::error("Trying to load module more than once.");
   }
 
-  if (archive_.is_open()) {
-    fileTable_.reserve(archive_.num_files());
+  if (archive_.isOpen()) {
+    fileTable_.reserve(archive_.numFiles());
 
-    fixedstring<64> fname;
-    for (bool exists = archive_.iterate_files(fname, true); exists;
-         exists      = archive_.iterate_files(fname, false)) {
-      fileTable_.insert(fname);
-    }
+    for (auto& it : archive_) { fileTable_.insert(it.get<0>()); }
   } else {
     loadFileListRecursive(fileTable_, path_, "");
   }
   loaded_ = true;
+  return Result::success();
+}
+
+wc::Result wc::Module::loadFile(const fixedstring<64>& filename) {
+  std::vector<char> fileData;
+  if (archive_.isOpen()) {
+    Archive::timestamp_t nil;
+    if (!archive_.extractData(filename.c_str, fileData, nil)) {
+      return Result::error("File not found in archive, somehow.");
+    }
+  } else {
+    sfs::path fullPath = getPath();
+    fullPath /= filename.c_str;
+    std::ifstream file(fullPath, std::ios::binary | std::ios::in);
+    if (!file.is_open()) { return Result::error("Failed to open file."); }
+    // Slurp up the file contents.
+    file.seekg(0, file.end);
+    size_t len = file.tellg();
+    file.seekg(0, file.beg);
+    fileData.resize(len);
+    file.read(fileData.data(), fileData.size());
+    if (!file) {
+      return Result::error(
+          fmt::format("Only read {} bytes out of {}.", file.gcount(), len));
+    }
+  }
+
+  return Result::success(fileData);
 }
