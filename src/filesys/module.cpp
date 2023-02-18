@@ -1,3 +1,12 @@
+/******************************************************************************
+ * module.cpp
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
+ * Module objects are the heart and soul of Witchcraft's modability.
+ *****************************************************************************/
 #include "module.h"
 
 #include <filesystem>
@@ -16,7 +25,7 @@ using namespace rapidjson;
 
 namespace {
 
-  const hvh::Table<fixedstring<64>> reservedFilenames_s = {
+  const hvh::Table<FixedString<64>> reservedFilenames_s = {
       wc::MODINFO_FILENAME, "readme.txt", "splash.png", "config.json",
       "load_order.json"};
 
@@ -107,7 +116,7 @@ void wc::Module::close() {
   found_     = false;
 }
 
-void loadFileListRecursive(hvh::Table<fixedstring<64>>& fileList,
+void loadFileListRecursive(hvh::Table<FixedString<64>>& fileList,
                            const sfs::path& parent, sfs::path dir) {
   // Loop through each entry in this directory...
   for (sfs::directory_iterator it(parent / dir);
@@ -124,10 +133,10 @@ void loadFileListRecursive(hvh::Table<fixedstring<64>>& fileList,
     // Make sure it's a file and not a symlink or pipe or something.
     if (!sfs::is_regular_file(it->path())) { continue; }
 
-    // Make sure the path isn't too long (and also turn it into a fixedstring).
+    // Make sure the path isn't too long (and also turn it into a FixedString).
     std::string filePath = (dir / it->path().filename()).string();
     if (filePath.size() > 63) { continue; }
-    fixedstring<64> myPath = filePath.c_str();
+    FixedString<64> myPath = filePath.c_str();
 
     // Remove backslashes from the path, and ensure the file isn't reserved.
     for (int i = 0; myPath.c_str[i] != '\0'; ++i) {
@@ -165,7 +174,7 @@ wc::Result wc::Module::loadFileList() {
   return Result::success();
 }
 
-wc::Result wc::Module::loadFile(const fixedstring<64>& filename) {
+wc::Result wc::Module::loadFile(const FixedString<64>& filename) {
   std::vector<char> fileData;
   if (archive_.isOpen()) {
     Archive::timestamp_t nil;

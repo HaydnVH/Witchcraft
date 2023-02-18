@@ -13,7 +13,7 @@
 #ifndef WC_FILESYS_VFS_H
 #define WC_FILESYS_VFS_H
 
-#include "tools/result.hpp"
+#include "tools/result.h"
 
 #include <optional>
 #include <string>

@@ -27,8 +27,8 @@ namespace sfs = std::filesystem;
 
 namespace {
 
-  hvh::Table<fixedstring<64>, wc::Module> modules;
-  hvh::Table<fixedstring<64>, size_t>     files;
+  hvh::Table<FixedString<64>, wc::Module> modules;
+  hvh::Table<FixedString<64>, size_t>     files;
 
   size_t loadModule(size_t moduleIndex) {
     wc::Module& pkg = modules.at<1>(moduleIndex);

@@ -1,13 +1,16 @@
-/* htable.hpp
- * A Hash Table implementation utilizing a Struct-Of-Arrays
- * by Haydn V. Harach
- * Created October 2019
- * Modified February 2023
- *
+/******************************************************************************
+ * htable.hpp
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2019 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
+ * A Hash Table implementation utilizing a Struct-Of-Arrays.
  * By storing a lightweight hashmap alongside a struct-of-arrays, memory
  * efficiency is improved compared to a traditional hash table.
- * In addition, this table can store more than 1 item types.
- */
+ * Any number of items per entry can be stored, and multiple entries with
+ * the same key can be present in the table simultaneously.
+ *****************************************************************************/
 #ifndef HVH_TOOLS_HASHTABLESOA_H
 #define HVH_TOOLS_HASHTABLESOA_H
 

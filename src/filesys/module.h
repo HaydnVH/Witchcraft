@@ -1,10 +1,19 @@
+/******************************************************************************
+ * module.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
+ * Module objects are the heart and soul of Witchcraft's modability.
+ *****************************************************************************/
 #ifndef HVH_WC_FILESYS_MODULE_H
 #define HVH_WC_FILESYS_MODULE_H
 
 #include "archive.h"
 #include "tools/fixedstring.h"
 #include "tools/htable.hpp"
-#include "tools/result.hpp"
+#include "tools/result.h"
 
 #include <filesystem>
 #include <optional>
@@ -33,7 +42,7 @@ namespace wc {
     /// @param filename The name of the file to search for.
     /// @return An 'std::vector<char>' containing the file's binary data,
     /// or an error message if the operation was unsuccessful.
-    wc::Result loadFile(const fixedstring<64>& filename);
+    wc::Result loadFile(const FixedString<64>& filename);
 
     inline const std::string& getName() const { return name_; }
     inline const std::string& getAuthor() const { return author_; }
@@ -44,7 +53,7 @@ namespace wc {
     inline bool  isLoaded() { return loaded_; }
 
     // Get the file table for this module.
-    inline const hvh::Table<fixedstring<64>>& getFileTable() const {
+    inline const hvh::Table<FixedString<64>>& getFileTable() const {
       return fileTable_;
     }
     // Get the archive for this module.
@@ -87,7 +96,7 @@ namespace wc {
     uint64_t timestamp_ = 0;
     float    priority_  = 0.0f;
 
-    hvh::Table<fixedstring<64>> fileTable_;
+    hvh::Table<FixedString<64>> fileTable_;
 
     bool enabled_ = false;
     bool found_   = false;

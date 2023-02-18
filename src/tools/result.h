@@ -1,5 +1,5 @@
 /******************************************************************************
- * result.hpp
+ * result.h
  * Part of the Witchcraft engine by Haydn V. Harach
  * https://github.com/HaydnVH/Witchcraft
  * (C) Haydn V. February 2023 - present

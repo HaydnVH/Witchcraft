@@ -1,4 +1,12 @@
-﻿# CMakeList.txt : CMake project for Witchcraft
+﻿###############################################################################
+# CMakeLists.txt
+# Part of the Witchcraft engine by Haydn V. Harach
+# https://github.com/HaydnVH/Witchcraft
+# (C) Haydn V. Harach 2022 - present
+# Last modified February 2023
+# ----------------------------------------------------------------------------
+# Builds the engine.
+###############################################################################
 project (Witchcraft LANGUAGES C CXX)
 cmake_minimum_required (VERSION 3.8)
 

@@ -1,12 +1,14 @@
-/* fixedstring.h
+/******************************************************************************
+ * FixedString.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2019 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
  * A string which contains exactly the specified number of bytes.
- * by Haydn V. Harach
- * October 2019
- * Last modified September 2022 to add support for C++20's char8_t.
- *
  * By union'ing the characters of the string with a series of 64-bit integers,
  * it becomes trivial to perform operations such as comparisons and hashing.
- */
+ *****************************************************************************/
 #ifndef HVH_TOOLKIT_FIXEDSTRING_H
 #define HVH_TOOLKIT_FIXEDSTRING_H
 
@@ -18,7 +20,7 @@
 #include <string_view>
 
 template <size_t LEN>
-struct fixedstring {
+struct FixedString {
 
   static_assert(LEN > 0, "Length of a fixed string cannot be 0.");
   static_assert((LEN % 8) == 0,
@@ -31,43 +33,43 @@ struct fixedstring {
     uint64_t raw[NUMINTS];
   };
 
-  fixedstring()                   = default;
-  fixedstring(const fixedstring&) = default;
-  fixedstring(fixedstring&&)      = default;
+  FixedString()                   = default;
+  FixedString(const FixedString&) = default;
+  FixedString(FixedString&&)      = default;
 
-  fixedstring(const char* arg) {
+  FixedString(const char* arg) {
     strncpy(c_str, arg, LEN - 1);
     c_str[LEN - 1] = '\0';
   }
 
-  fixedstring(const char8_t* arg) {
+  FixedString(const char8_t* arg) {
     strncpy(u8_str, arg, LEN - 1);
     u8_str[LEN - 1] = '\0';
   }
 
-  fixedstring(const std::string_view arg) {
+  FixedString(const std::string_view arg) {
     strncpy(c_str, std::string(arg).c_str(), LEN - 1);
     c_str[LEN - 1] = '\0';
   }
 
-  fixedstring& operator=(const fixedstring&) = default;
-  fixedstring& operator=(fixedstring&&)      = default;
+  FixedString& operator=(const FixedString&) = default;
+  FixedString& operator=(FixedString&&)      = default;
 
-  inline bool operator==(const fixedstring& rhs) const {
+  inline bool operator==(const FixedString& rhs) const {
     for (size_t i = 0; i < NUMINTS; ++i) {
       if (raw[i] != rhs.raw[i]) return false;
     }
     return true;
   }
 
-  inline bool operator!=(const fixedstring& rhs) const {
+  inline bool operator!=(const FixedString& rhs) const {
     return (!(*this == rhs));
   }
 
   // Warning: This is not a lexicographical comparison!
   // It is deterministic, but has nothing to do with the characters of the
   // string.
-  inline bool operator<(const fixedstring& rhs) const {
+  inline bool operator<(const FixedString& rhs) const {
     for (size_t i = 0; i < NUMINTS; ++i) {
       if (raw[i] < rhs.raw[i]) return true;
       if (raw[i] > rhs.raw[i]) return false;
@@ -75,19 +77,19 @@ struct fixedstring {
     return false;
   }
 
-  friend void swap(fixedstring& lhs, fixedstring& rhs) {
+  friend void swap(FixedString& lhs, FixedString& rhs) {
     for (size_t i = 0; i < NUMINTS; ++i) { std::swap(lhs.raw[i], rhs.raw[i]); }
   }
 };
 
-// Specialization so we can use fixedstring with std::hash.
+// Specialization so we can use FixedString with std::hash.
 // TODO: Better hash function?
 namespace std {
   template <size_t LEN>
-  struct hash<fixedstring<LEN>> {
-    size_t operator()(const fixedstring<LEN>& x) const {
+  struct hash<FixedString<LEN>> {
+    size_t operator()(const FixedString<LEN>& x) const {
       uint64_t result = 0;
-      for (size_t i = 0; i < fixedstring<LEN>::NUMINTS; ++i) {
+      for (size_t i = 0; i < FixedString<LEN>::NUMINTS; ++i) {
         result += x.raw[i];
       }
       return (size_t)result;
@@ -97,7 +99,7 @@ namespace std {
 
 // Overloading the '<<' operator so fixed strings can easily be used with cout.
 template <size_t LEN>
-inline std::ostream& operator<<(std::ostream& os, fixedstring<LEN> str) {
+inline std::ostream& operator<<(std::ostream& os, FixedString<LEN> str) {
   os << str.c_str;
   return os;
 }

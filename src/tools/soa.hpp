@@ -1,14 +1,14 @@
-/* soa.hpp
- * Struct-Of-Arrays template class
- * by Haydn V. Harach
- * Created October 2019
- * Modified February 2023
- *
+/******************************************************************************
+ * soa.hpp
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2019 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
  * Implements a Struct-Of-Arrays container class to store and manage a series
  * of contiguous arrays which are stored back-to-back in memory.
  * The interface is designed to be similar to that of std::vector.
- */
-
+ *****************************************************************************/
 #ifndef HVH_TOOLS_STRUCTOFARRAYS_H
 #define HVH_TOOLS_STRUCTOFARRAYS_H
 

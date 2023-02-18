@@ -1,3 +1,12 @@
+/******************************************************************************
+ * Archive.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
+ * This is a custom archive format which has been optimized for loading speeds.
+ *****************************************************************************/
 #include "archive.h"
 
 #include "sys/debug.h"
@@ -209,7 +218,7 @@ int wc::Archive::eraseFile(const char* path) {
   if (!isOpen()) return -1;
 
   // Find the index of the file we're looking for.
-  fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
+  FixedString<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
 
   auto it = dictionary_.find(fixedpath);
   if (!*it) return -1;
@@ -225,7 +234,7 @@ bool wc::Archive::fileExists(const char* path) const {
   if (!isOpen()) return false;
 
   // Look for the file.
-  fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
+  FixedString<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
   return dictionary_.find(fixedpath)->exists();
 }
 
@@ -235,7 +244,7 @@ bool wc::Archive::extractData(const char* path, std::vector<char>& buffer,
   if (!isOpen()) { return false; }
 
   // Search for the file we're looking for.
-  fixedstring<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
+  FixedString<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
   size_t index = dictionary_.find(fixedpath)->index();
   if (index == SIZE_MAX) {
     dbg::errmore(fmt::format("Failed to find file '{}'.", path));
@@ -321,7 +330,7 @@ bool wc::Archive::insertData(const char* path, void* buffer, int32_t size,
 
   // Copy the file's path and convert backslashes to forward slashes.
   // Functions like extract and exists will simply fail if given backslashes.
-  fixedstring<FILEPATH_FIXEDLEN> newpath(path);
+  FixedString<FILEPATH_FIXEDLEN> newpath(path);
   for (int i = 0; newpath.c_str[i] != '\0'; ++i) {
     if (newpath.c_str[i] == '\\') { newpath.c_str[i] = '/'; }
   }
@@ -492,7 +501,7 @@ void wc::Archive::unpack(const char* dstfolder) {
   // Go through each file in the archive,
   for (size_t i = 0; i < header_.numfiles; ++i) {
     // and extract it to disk.
-    fixedstring<Archive::FILEPATH_FIXEDLEN>& entry = filePaths_[i];
+    FixedString<Archive::FILEPATH_FIXEDLEN>& entry = filePaths_[i];
     extractFile(entry.c_str, (dstpath / entry.c_str).string().c_str());
   }
 }
@@ -503,7 +512,7 @@ void wc::Archive::merge(const char* othername, ReplaceEnum replace) {
 
   std::vector<char> buffer;
   for (size_t i = 0; i < other.header_.numfiles; ++i) {
-    fixedstring<64> entry = other.filePaths_[i];
+    FixedString<64> entry = other.filePaths_[i];
     timestamp_t     timestamp;
     other.extractData(entry.c_str, buffer, timestamp);
     insertData(entry.c_str, buffer.data(), (uint32_t)buffer.size(), timestamp,

@@ -7,6 +7,7 @@
  * ---------------------------------------------------------------------------
  * Adds a handful of useful functions for splitting a string up into "tokens".
  * Can respectect quotations and tags.
+ * TODO: Replace this with an iterator-like system.
  *****************************************************************************/
 #ifndef WC_TOOLS_STRTOKEN_H
 #define WC_TOOLS_STRTOKEN_H

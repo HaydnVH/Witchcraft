@@ -1,3 +1,20 @@
+/******************************************************************************
+ * Archive.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. Harach 2022 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
+ * This is a custom archive format which has been optimized for loading speeds.
+ * The compression algorithm of choice is LZ4, and files are compressed
+ * individually in order to allow for random access.
+ * TODO:
+ *   - Add unit tests.
+ *   - Pack multiple small files together into blocks.
+ *   - Profile to ensure it's actually faster than uncompressed/zip/7z/etc.
+ *   - Create a standalone utility for creating and extracting archives.
+ *   - Add dictionary capabilities to improve compression ratio.
+ *****************************************************************************/
 #ifndef WC_FILESYS_ARCHIVE_H
 #define WC_FILESYS_ARCHIVE_H
 
@@ -148,8 +165,8 @@ namespace wc {
       char reserved[4] = {};
     };
 
-    hvh::Table<fixedstring<FILEPATH_FIXEDLEN>, FileInfo> dictionary_;
-    fixedstring<FILEPATH_FIXEDLEN>* const& filePaths_ = dictionary_.data<0>();
+    hvh::Table<FixedString<FILEPATH_FIXEDLEN>, FileInfo> dictionary_;
+    FixedString<FILEPATH_FIXEDLEN>* const& filePaths_ = dictionary_.data<0>();
     FileInfo* const&                       fileInfos_ = dictionary_.data<1>();
 
     std::fstream file_;
