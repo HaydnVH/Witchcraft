@@ -10,6 +10,8 @@
 #ifndef WC_LUA_LUASYSTEM_H
 #define WC_LUA_LUASYSTEM_H
 
+#include "tools/result.h"
+
 #include <lua.hpp>
 
 namespace wc::lua {
@@ -22,19 +24,19 @@ namespace wc::lua {
   // Returns nullptr on failure (if run before Init).
   lua_State* getState();
 
-  // Execute a lua file.
-  // Returns true on success, false on failure.
-  bool doFile(const char* filename);
+  /// Execute a lua file.
+  /// @return An empty Result which may contain an error message.
+  wc::Result doFile(const char* filename);
 
-  // Execute each instance of a given file found in the virtual filesystem.
-  // Returns true on success, false on failure.
-  bool doEachFile(const char* filename);
+  /// Execute each instance of a given file found in the virtual filesystem.
+  /// @return An empty Result which may contain an error message.
+  wc::Result doEachFile(const char* filename);
 
-  // Executes the lua source code 'src' within the environment 'env'.
-  // If 'env' is null, 'src' will run in _G.
-  // Returns true on success, false on failure.
-  bool runString(const char* src, const char* env,
-                 const char* sourcename = nullptr);
+  /// Executes the lua source code 'src' within the environment 'env'.
+  /// If 'env' is null, 'src' will run in _G.
+  /// @return an empty Result which may contain an error message.
+  wc::Result runString(const char* src, const char* env,
+                       const char* sourcename = nullptr);
 
 }  // namespace wc::lua
 

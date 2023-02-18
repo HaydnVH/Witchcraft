@@ -142,9 +142,9 @@ bool wc::lua::init() {
   // This runs the script properly in a protected environment.
   lua_pushcfunction(L, [](lua_State* L) {
     const char* filename = luaL_checkstring(L, 1);
-    bool        result   = doFile(filename);
-    lua_pushboolean(L, result);
-    return 1;
+    wc::Result  result   = doFile(filename);
+    if (result.isError()) { return luaL_error(L, result.message().c_str()); }
+    return 0;
   });
   lua_setfield(L, -2, "dofile");
 
@@ -199,7 +199,6 @@ bool wc::lua::init() {
   // scripts.
   lua_getglobal(L, "_G");
   {
-
     // require(scriptname)
     // Exexute a file as a lua script only if it has not been run before,
     // then return a readonly reference to its environment table.
@@ -212,7 +211,10 @@ bool wc::lua::init() {
       // If it's not a table, call 'dofile' to run it.
       if (!lua_istable(L, -1)) {
         lua_pop(L, 1);
-        doFile(filename);
+        auto result = doFile(filename);
+        if (result.isError()) {
+          return luaL_error(L, result.message().c_str());
+        }
         lua_getfield(L, -1, filename);
         // If it's still not a table, something failed.
         if (!lua_istable(L, -1)) {
@@ -254,30 +256,30 @@ bool wc::lua::init() {
 
 lua_State* wc::lua::getState() { return L; }
 
-bool wc::lua::runString(const char* str, const char* env,
-                        const char* sourcename) {
+wc::Result wc::lua::runString(const char* str, const char* env,
+                              const char* sourcename) {
   if (sourcename) {
     if (luaL_loadbuffer(L, str, strlen(str), sourcename)) {
       printLuaError(-1);
       lua_pop(L, 1);
-      return false;
+      return wc::Result::error();
     }
   } else {
     if (luaL_loadstring(L, str)) {
       printLuaError(-1);
       lua_pop(L, 1);
-      return false;
+      return wc::Result::error();
     }
   }
 
   if (env) {
     int pushes = getToTable(env, false, false);
     if (pushes == -1) {
-      dbg::error({"Attempting to run Lua string in an environment "
-                  "which does not exist.",
-                  fmt::format("Requested environment: '{}'.", env)});
+      std::string errMsg = fmt::format("Attempting to run Lua string in an "
+                                       "environment '{}' which does not exist.",
+                                       env);
       lua_pop(L, 1);
-      return false;
+      return wc::Result::error(std::move(errMsg));
     }
 
     lua_setupvalue(L, -(pushes + 1), 1);
@@ -287,24 +289,24 @@ bool wc::lua::runString(const char* str, const char* env,
   if (lua_pcall(L, 0, 0, 0)) {
     printLuaError(-1);
     lua_pop(L, 1);
-    return false;
+    return wc::Result::error();
   }
 
-  return true;
+  return wc::Result::success();
 }
 
-bool wc::lua::doFile(const char* filename) {
+wc::Result wc::lua::doFile(const char* filename) {
   string path = fmt::format("{}{}{}", SCRIPT_DIR, filename, SCRIPT_EXT);
 
   // Open and load the script file.
   auto loadResult = wc::vfs::getFile(path.c_str()).loadHighest();
   auto fdata      = loadResult.value<std::vector<char>>();
+  std::optional<std::string> warnMsg = std::nullopt;
   if (loadResult.isError() || !fdata) {
-    dbg::error({fmt::format("Could not load script '{}'.", filename),
-                loadResult.message()});
-    return false;
+    return Result::error(fmt::format("Failed to load '{}.lua'; {}", filename,
+                                     loadResult.message()));
   }
-  if (loadResult.isWarning()) { dbg::warning(loadResult.message()); }
+  if (loadResult.isWarning()) { warnMsg = loadResult.message(); }
 
   // Adjust the source name for debugging.
   path = fmt::format("@{}", path);
@@ -312,20 +314,21 @@ bool wc::lua::doFile(const char* filename) {
   // Load the script into lua.
   if (luaL_loadbuffer(L, (const char*)fdata->data(), fdata->size(),
                       path.c_str())) {
-    dbg::error({"Error loading script:", lua_tostring(L, -1)});
+    std::string errMsg = fmt::format("Failed to load '{}.lua'; {}", filename,
+                                     lua_tostring(L, -1));
     lua_pop(L, 1);
-    return false;
+    return Result::error(std::move(errMsg));
   }
 
   // Set up the protected environment.
   lua_getglobal(L, "setup_script_env");
   lua_pushstring(L, filename);
   if (lua_pcall(L, 1, 0, 0)) {
-    dbg::error(
-        {fmt::format("Failed to set up environment for script '{}':", filename),
-         lua_tostring(L, -1)});
+    std::string errMsg =
+        fmt::format("Failed to set up environment for script '{}.lua'; {}",
+                    filename, lua_tostring(L, -1));
     lua_pop(L, 2);  // pop the error and the loaded script function
-    return false;
+    return Result::error(std::move(errMsg));
   }
 
   // Get the protected environment for the script.
@@ -342,7 +345,7 @@ bool wc::lua::doFile(const char* filename) {
   if (lua_pcall(L, 0, 0, 0)) {
     printLuaError(-1);
     lua_pop(L, 1);
-    return false;
+    return wc::Result::warning();
   }
-  return true;
+  return wc::Result::success();
 }

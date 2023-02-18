@@ -36,13 +36,13 @@ namespace wc {
     }
 
     /// Indicates that an error has occured and passes along useful info.
-    static Result error(const std::string_view msg) {
+    static Result error(const std::string_view msg = "") {
       return Result(ResultStatus::error, msg, impl::nullany);
     }
 
     /// Indicates that a non-critical error has occured,
     /// passing along useful info and a usable object.
-    static Result warning(const std::string_view msg,
+    static Result warning(const std::string_view msg = "",
                           const std::any&        val = impl::nullany) {
       return Result(ResultStatus::warning, msg, val);
     }
