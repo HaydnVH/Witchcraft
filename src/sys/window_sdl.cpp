@@ -8,8 +8,10 @@
  * Implementation for the window system on SDL-based platforms.
  *****************************************************************************/
 #ifdef PLATFORM_SDL
+
   #include "appconfig.h"
   #include "debug.h"
+  #include "settings.h"
   #include "window.h"
 
   #include <SDL.h>
@@ -24,9 +26,9 @@ namespace {
       bool bEnabled    = false;
       bool bBorderless = true;
       int  iWidth = 0, iHeight = 0;
-    } fullscreen;
+    } fs;
     bool modified = false;
-  } settings;
+  } settings_s;
 
 }  // namespace
 
@@ -37,7 +39,14 @@ bool wc::window::init() {
     return false;
   }
 
-  // TODO: Load settings
+  wc::settings::read("Window.iWidth", settings_s.iWidth);
+  wc::settings::read("Window.iHeight", settings_s.iHeight);
+  wc::settings::read("Window.bMaximized", settings_s.bMaximized);
+  wc::settings::read("Window.Fullscreen.bEnabled", settings_s.fs.bEnabled);
+  wc::settings::read("Window.Fullscreen.bBorderless",
+                     settings_s.fs.bBorderless);
+  wc::settings::read("Window.Fullscreen.iWidth", settings_s.fs.iWidth);
+  wc::settings::read("Window.Fullscreen.iHeight", settings_s.fs.iHeight);
 
   SDL_Init(SDL_INIT_VIDEO);
 
@@ -45,24 +54,31 @@ bool wc::window::init() {
   #ifdef RENDERER_VULKAN
   flags |= SDL_WINDOW_VULKAN;
   #endif
-  if (settings.bMaximized) { flags |= SDL_WINDOW_MAXIMIZED; }
+  if (settings_s.bMaximized) { flags |= SDL_WINDOW_MAXIMIZED; }
   window_s = SDL_CreateWindow(wc::APP_NAME, SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED, settings.iWidth,
-                              settings.iHeight, flags);
+                              SDL_WINDOWPOS_UNDEFINED, settings_s.iWidth,
+                              settings_s.iHeight, flags);
   if (!window_s) {
     dbg::fatal({"Failed to create window.", SDL_GetError()});
     return false;
   }
 
-  dbg::info(fmt::format("Window opened; dimensions {} x {}.", settings.iWidth,
-                        settings.iHeight));
+  dbg::info(fmt::format("Window opened; dimensions {} x {}.", settings_s.iWidth,
+                        settings_s.iHeight));
   return true;
 }
 
 void wc::window::shutdown() {
   if (window_s) SDL_DestroyWindow(window_s);
 
-  // TODO: Save settings.
+  wc::settings::write("Window.iWidth", settings_s.iWidth);
+  wc::settings::write("Window.iHeight", settings_s.iHeight);
+  wc::settings::write("Window.bMaximized", settings_s.bMaximized);
+  wc::settings::write("Window.Fullscreen.bEnabled", settings_s.fs.bEnabled);
+  wc::settings::write("Window.Fullscreen.bBorderless",
+                      settings_s.fs.bBorderless);
+  wc::settings::write("Window.Fullscreen.iWidth", settings_s.fs.iWidth);
+  wc::settings::write("Window.Fullscreen.iHeight", settings_s.fs.iHeight);
 }
 
 bool wc::window::handleMessages() {
@@ -73,12 +89,12 @@ bool wc::window::handleMessages() {
     case SDL_WINDOWEVENT: {
       switch (e.window.event) {
       case SDL_WINDOWEVENT_RESIZED:
-        settings.modified = true;
-        settings.bMaximized =
+        settings_s.modified = true;
+        settings_s.bMaximized =
             SDL_GetWindowFlags(window_s) & SDL_WINDOW_MAXIMIZED;
-        if (!settings.bMaximized) {
-          settings.iWidth  = e.window.data1;
-          settings.iHeight = e.window.data2;
+        if (!settings_s.bMaximized) {
+          settings_s.iWidth  = e.window.data1;
+          settings_s.iHeight = e.window.data2;
         }
         dbg::infomore(fmt::format("Window resized to {} x {}", e.window.data1,
                                   e.window.data2));

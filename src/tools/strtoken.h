@@ -16,6 +16,142 @@
 #include <string>
 #include <string_view>
 
+class Tokenizer {
+public:
+  Tokenizer(std::string_view str, std::string_view quotes = "'\"",
+            std::string_view delimiters = " \t\n\v\f\r"):
+      inputString_(str),
+      quotes_(quotes), delimiters_(delimiters) {}
+
+  struct Iterator {
+  public:
+    Iterator(Tokenizer& parent, std::string_view startingState):
+        parent_(parent), str_(startingState) {
+      next();
+    }
+
+    const std::string_view  operator*() { return result_; }
+    const std::string_view* operator->() { return &result_; }
+
+    Iterator& operator++() {
+      next();
+      return *this;
+    }
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
+      return lhs.result_ == rhs.result_;
+    }
+    friend bool operator!=(const Iterator& lhs, const Iterator& rhs) {
+      return lhs.result_ != rhs.result_;
+    }
+
+  private:
+    void next() {
+      // If we're not inside a quote, clean up the front of the string.
+      if (quoteState_ == ' ') {
+        bool empty = true;
+        // Scan through the string...
+        for (size_t i = 0; i < str_.size(); ++i) {
+          // Until we hit something that isn't a delimiter.
+          if (parent_.delimiters_.find(str_[i]) == std::string::npos) {
+            // If what we found is a matched quote, we need to go 1 further.
+            if (parent_.isMatchedQuote(str_, i)) {
+              quoteState_ = str_[i];
+              ++i;
+            }
+            // Trim the front of the string.
+            if (i != 0) { str_ = std::string_view(&str_[i], str_.size() - 1); }
+            empty = false;
+            break;
+          }
+        }
+        // If the string is oops all delimiters, we get rid of it.
+        if (empty) { str_ = std::string_view(); }
+      }
+
+      for (size_t i = 0; i < str_.size(); ++i) {
+        if (quoteState_ == ' ') {
+          // If the current character is a matched quote...
+          if (parent_.isMatchedQuote(str_, i)) {
+            quoteState_ = str_[i];
+            result_     = std::string_view(&str_[0], i);
+            str_        = std::string_view(&str_[i + 1], str_.size() - (i + 1));
+            return;
+          }
+          // If the character is a delimiter...
+          if (parent_.delimiters_.find(str_[i]) != std::string::npos) {
+            result_ = std::string_view(&str_[0], i);
+            if (i + 1 < str_.size()) {
+              str_ = std::string_view(&str_[i + 1], str_.size() - (i + 1));
+            } else {
+              str_ = std::string_view();
+            }
+            return;
+          }
+        }
+        // If the current character is the end of the quote we're in...
+        else if (str_[i] == quoteState_) {
+          quoteState_ = ' ';
+          result_     = std::string_view(&str_[0], i);
+          if (i + 1 < str_.size()) {
+            str_ = std::string_view(&str_[i + 1], str_.size() - (i + 1));
+          } else {
+            str_ = std::string_view();
+          }
+          return;
+        }
+      }
+      // If we've reached this far, then we're at the end of the string.
+      result_     = str_;
+      str_        = std::string_view();
+      quoteState_ = ' ';
+      return;
+    }
+
+    Tokenizer&       parent_;
+    std::string_view str_;
+    std::string_view result_;
+    char             quoteState_ = ' ';
+  };
+
+  Iterator begin() { return Iterator(*this, inputString_); }
+  Iterator end() { return Iterator(*this, std::string_view()); }
+
+protected:
+  bool isMatchedQuote(std::string_view str, size_t pos) {
+    if (pos >= str.size() || quotes_.find(str[pos]) == std::string::npos)
+      return false;
+
+    char quotemark = str[pos];
+    if (str.find(quotemark, pos + 1) != std::string::npos) return true;
+    else
+      return false;
+  }
+
+  bool isMatchedTag(std::string_view str, size_t pos, char tagbegin,
+                    char tagend) {
+    if (pos >= str.size() || str[pos] != tagbegin) return false;
+
+    char quotestate = ' ';
+    for (size_t i = 0; i < str.size(); ++i) {
+      if (quotestate == ' ') {
+        if (str[i] == tagend) return true;
+        if (isMatchedQuote(str, i)) quotestate = str[i];
+      } else if (str[i] == quotestate)
+        quotestate = ' ';
+    }
+  }
+
+  std::string_view inputString_;
+  std::string_view quotes_;
+  std::string_view delimiters_;
+};
+
 namespace impl {
   /* isMatchedQuote is a helper function used by strToken.
    * It returns true if the spot at `pos` in `str` is a quotation mark which has

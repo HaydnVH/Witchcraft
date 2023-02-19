@@ -15,6 +15,7 @@
 #include "sys/debug.h"
 #include "sys/mainloop.h"
 #include "sys/paths.h"
+#include "sys/settings.h"
 #include "sys/window.h"
 
 #include <iostream>
@@ -35,7 +36,7 @@ namespace {
            "¯\\_(ツ)_/¯ 🌮"});
     }
 
-    // userconfig::init();
+    wc::settings::init();
     wc::lua::init();
     if (!wc::vfs::init()) return 20;
     if (!wc::window::init()) return 30;
@@ -55,7 +56,7 @@ namespace {
     wc::vfs::shutdown();
     // cli::showCrashReports();
     cli::shutdown();
-    // userconfig::shutdown();
+    wc::settings::shutdown();
   }
 
 }  // namespace
