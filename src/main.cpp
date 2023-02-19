@@ -15,6 +15,7 @@
 #include "sys/debug.h"
 #include "sys/mainloop.h"
 #include "sys/paths.h"
+#include "sys/window.h"
 
 #include <iostream>
 
@@ -37,7 +38,7 @@ namespace {
     // userconfig::init();
     wc::lua::init();
     if (!wc::vfs::init()) return 20;
-    // if (!window::init()) return 30;
+    if (!wc::window::init()) return 30;
     // if (!gfx::init()) return 40;
 
     // entity::initLua();
@@ -50,8 +51,8 @@ namespace {
   void shutdown(int startupResult) {
 
     // gfx::shutdown();
-    // window::shutdown();
-    // vfs::shutdown();
+    wc::window::shutdown();
+    wc::vfs::shutdown();
     // cli::showCrashReports();
     cli::shutdown();
     // userconfig::shutdown();

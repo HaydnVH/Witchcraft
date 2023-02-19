@@ -12,6 +12,7 @@
 #include "cli.h"
 #include "debug.h"
 #include "lua/luasystem.h"
+#include "window.h"
 
 #include <string>
 
@@ -24,7 +25,9 @@ namespace wc::sys {
   bool isRunning() { return running_s; }
   void shutDown() { running_s = false; }
 
-  void mainLoop(bool /*handleWindowMessages*/) {
+  void mainLoop(bool handleWindowMessages) {
+
+    if (handleWindowMessages) { running_s = window::handleMessages(); }
 
     // Handle terminal input.
     std::string terminalInput;

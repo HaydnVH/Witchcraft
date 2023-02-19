@@ -275,8 +275,8 @@ bool cli::initialize() {
 #elif PLATFORM_LINUX
   // Enable raw mode processing.
   termios raw;
-  originalTermios_s = raw;
   tcgetattr(STDIN_FILENO, &raw);
+  originalTermios_s = raw;
   raw.c_lflag &= ~(ECHO | ICANON);
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 #endif
