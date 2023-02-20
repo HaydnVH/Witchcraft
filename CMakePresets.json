@@ -22,6 +22,10 @@
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
       },
+      "environment": {
+        "PRESET_NAME": "${presetName}",
+        "BUILD_LOCATION": "${sourceDir}/out/build/${presetName}"
+      },
       "vendor": { "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": { "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}" } }
     },
     {
@@ -31,9 +35,6 @@
       "inherits": "linux-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
-      },
-      "environment": {
-        "PRESET_NAME": "${presetName}"
       }
     },
     {
@@ -43,9 +44,6 @@
       "inherits": "linux-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
-      },
-      "environment": {
-        "PRESET_NAME": "${presetName}"
       }
     },
     {
@@ -67,6 +65,10 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      },
+      "environment": {
+        "PRESET_NAME": "${presetName}",
+        "BUILD_LOCATION": "${sourceDir}/out/build/${presetName}"
       }
     },
     {
@@ -76,9 +78,6 @@
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
-      },
-      "environment": {
-        "PRESET_NAME": "${presetName}"
       }
     },
     {
@@ -88,9 +87,6 @@
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
-      },
-      "environment": {
-        "PRESET_NAME": "${presetName}"
       }
     }
   ]

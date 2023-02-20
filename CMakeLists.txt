@@ -7,13 +7,12 @@
 # ----------------------------------------------------------------------------
 # Builds the engine.
 ###############################################################################
-project (Witchcraft LANGUAGES C CXX)
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.19...3.26)
+project (Witchcraft VERSION 0.14 
+					DESCRIPTION "A game engine written by Haydn V. Harach"
+					LANGUAGES C CXX)
 
-# Set the C++ standard
-set (CMAKE_CXX_STANDARD 20)
-set (CMAKE_CXX_STANDARD_REQUIRED YES)
-set (CMAKE_CXX_EXTENSIONS OFF)
+find_package(Vulkan REQUIRED)
 
 # Set some universal definitions
 add_definitions(
@@ -21,94 +20,26 @@ add_definitions(
   -DRENDERER_VULKAN -DVULKAN_HPP_NO_EXCEPTIONS)
 
 # Platform-specific definition
-IF (WIN32)
-  add_definitions(-DPLATFORM_SDL -DPLATFORM_WIN32 -DSDL_MAIN_HANDLED -DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE)
-ELSE (UNIX)
-  add_definitions(-DPLATFORM_SDL -DPLATFORM_LINUX)
-ENDIF ()
-
-# Add source to this project's executable
-include_directories ("src")
-file (GLOB_RECURSE SOURCES
-  dependencies/lz4/lib/lz4.c
-  dependencies/lz4/lib/lz4hc.c
-  src/*.cpp
-  src/filesys/*.cpp
-  src/lua/*.cpp
-  src/sys/*.cpp
-)
-add_executable (Witchcraft ${SOURCES})
-
-# --------------------------------------------------------------------------- #
-# --------------------- # Add Packages & Dependencies # --------------------- #
-# --------------------------------------------------------------------------- #
-
-# --- fmt --- #
-include_directories	  ("dependencies/fmt/include")
-find_library		  (FMT_LIB NAMES fmt fmtd HINTS "dependencies/fmt/lib/$ENV{PRESET_NAME}")
-target_link_libraries (Witchcraft ${FMT_LIB})
-
-# --- Lua --- #
-include_directories	  ("dependencies/lua/include")
-find_library		  (LUA_LIB NAMES lua_static HINTS "dependencies/lua/lib/$ENV{PRESET_NAME}")
-target_link_libraries (Witchcraft ${LUA_LIB})
-
-# --- LZ4 --- #
-include_directories	  ("dependencies/lz4/lib")
-
-# --- RapidJson --- #
-include_directories	  ("dependencies/rapidjson/include")
-
-# --- SDL --- #
-include_directories	  ("dependencies/sdl/include")
-find_library		  (SDL_LIB NAMES SDL2 SDL2d HINTS "dependencies/sdl/lib/$ENV{PRESET_NAME}")
-find_library		  (SDLMAIN_LIB NAMES SDL2main SDL2maind HINTS "dependencies/sdl/lib/$ENV{PRESET_NAME}")
-target_link_libraries (Witchcraft ${SDL_LIB})
-target_link_libraries (Witchcraft ${SDLMAIN_LIB})
-if (WIN32) # Move sdl2.dll over to where we need it
-  if (CMAKE_BUILD_TYPE MATCHES Debug)
-  add_custom_command(TARGET Witchcraft POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	"${PROJECT_SOURCE_DIR}/dependencies/sdl/lib/$ENV{PRESET_NAME}/SDL2d.dll"
-	$<TARGET_FILE_DIR:Witchcraft>)
-  else ()
-  add_custom_command(TARGET Witchcraft POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	"${PROJECT_SOURCE_DIR}/dependencies/sdl/lib/$ENV{PRESET_NAME}/SDL2.dll"
-	$<TARGET_FILE_DIR:Witchcraft>)
-  endif ()
-endif ()
-
-if (UNIX)
-  target_link_libraries (Witchcraft pthread)
-  target_link_libraries (Witchcraft dl)
-endif ()
-
-# Grab some utilities
 if (WIN32)
-  set (LUAC_EXE "windows/luac.exe")
-  set (F2H_EXE "windows/FileToHeader.exe")
+  add_definitions(-DPLATFORM_SDL -DPLATFORM_WIN32 -DSDL_MAIN_HANDLED -DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_UNICODE -DUNICODE)
 elseif (UNIX)
-  set (LUAC_EXE "linux/luac")
-  set (F2H_EXE "linux/FileToHeader")
+  add_definitions(-DPLATFORM_SDL -DPLATFORM_LINUX)
 endif ()
 
-# Compile Lua scripts
-file (GLOB_RECURSE LUA_SCRIPTS ${PROJECT_SOURCE_DIR}/src/lua/scripts/*.lua)
-foreach(script ${LUA_SCRIPTS})
-  get_filename_component(OUTPUT_FILENAME ${script} NAME)
-  set (OUTPUT_FILENAME ${PROJECT_SOURCE_DIR}/src/lua/scripts/built/${OUTPUT_FILENAME})
-  add_custom_command(TARGET Witchcraft PRE_BUILD
-	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies/lua/bin
-	COMMAND ${LUAC_EXE} -o ${OUTPUT_FILENAME} ${script} 
-  )
-  add_custom_command(TARGET Witchcraft PRE_BUILD
-	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/dependencies/f2h/bin
-	COMMAND ${F2H_EXE} ${OUTPUT_FILENAME}
-  )
-endforeach()
+# Create our executible and define some properties
+add_executable(Witchcraft)
+set_target_properties(Witchcraft PROPERTIES CXX_STANDARD 20
+											CXX_STANDARD_REQUIRED true
+											CXX_EXTENSIONS false)
 
-# Create symlinks so the "$install/data" directory can be found
+# Add our source files
+target_include_directories(Witchcraft PRIVATE "src")
+add_subdirectory("src")
+
+# Add our dependencies
+add_subdirectory(dependencies)
+
+# Create symlinks so the "$INSTALL/data" directory can be found.
 add_custom_command(TARGET Witchcraft POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E create_symlink
   "${PROJECT_SOURCE_DIR}/data"

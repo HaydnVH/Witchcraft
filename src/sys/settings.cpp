@@ -73,22 +73,23 @@ rj::Value* followPath(const std::string_view path, bool mayCreate) {
   for (auto& it : Tokenizer(path, "", ".")) {
     std::string token(it);
     if (current) {
-      if (current->HasMember(token.c_str())) {
-        current = &((*current)[token.c_str()]);
-        if (!current->IsObject()) return nullptr;
-      } else {
-        if (mayCreate) {
-          current->AddMember(
-              rj::Value(token.c_str(), doc_s.GetAllocator()).Move(),
-              rj::Value(rj::kObjectType).Move(), doc_s.GetAllocator());
+      if (current->IsObject()) {
+        if (current->HasMember(token.c_str())) {
           current = &((*current)[token.c_str()]);
-        } else
-          return nullptr;
-      }
+        } else {
+          if (mayCreate) {
+            current->AddMember(
+                rj::Value(token.c_str(), doc_s.GetAllocator()).Move(),
+                rj::Value(rj::kObjectType).Move(), doc_s.GetAllocator());
+            current = &((*current)[token.c_str()]);
+          } else
+            return nullptr;
+        }
+      } else
+        return nullptr;
     } else {
       if (doc_s.HasMember(token.c_str())) {
         current = &doc_s[token.c_str()];
-        if (!current->IsObject()) return nullptr;
       } else {
         if (mayCreate) {
           doc_s.AddMember(rj::Value(token.c_str(), doc_s.GetAllocator()).Move(),
@@ -110,8 +111,10 @@ bool wc::settings::exists(const std::string_view path) {
 template <>
 bool wc::settings::read<bool>(const std::string_view path, bool& outVal) {
   rj::Value* object = followPath(path, false);
-  if (!object) return false;
-  if (!object->IsBool()) return false;
+  if (!object)
+    return false;
+  if (!object->IsBool())
+    return false;
   outVal = object->GetBool();
   return true;
 }
@@ -119,8 +122,10 @@ bool wc::settings::read<bool>(const std::string_view path, bool& outVal) {
 template <>
 bool wc::settings::read<int>(const std::string_view path, int& outVal) {
   rj::Value* object = followPath(path, false);
-  if (!object) return false;
-  if (!object->IsInt()) return false;
+  if (!object)
+    return false;
+  if (!object->IsInt())
+    return false;
   outVal = object->GetInt();
   return true;
 }
@@ -128,8 +133,10 @@ bool wc::settings::read<int>(const std::string_view path, int& outVal) {
 template <>
 bool wc::settings::read<float>(const std::string_view path, float& outVal) {
   rj::Value* object = followPath(path, false);
-  if (!object) return false;
-  if (!object->IsFloat()) return false;
+  if (!object)
+    return false;
+  if (!object->IsFloat())
+    return false;
   outVal = object->GetFloat();
   return true;
 }
@@ -138,8 +145,10 @@ template <>
 bool wc::settings::read<std::string>(const std::string_view path,
                                      std::string&           outVal) {
   rj::Value* object = followPath(path, false);
-  if (!object) return false;
-  if (!object->IsString()) return false;
+  if (!object)
+    return false;
+  if (!object->IsString())
+    return false;
   outVal = object->GetString();
   return true;
 }
@@ -147,7 +156,8 @@ bool wc::settings::read<std::string>(const std::string_view path,
 bool chopTail(const std::string_view path, std::string_view& outTailless,
               std::string_view& outTail) {
   auto pos = path.find_last_of(".");
-  if (pos == std::string::npos) return false;
+  if (pos == std::string::npos)
+    return false;
   outTailless = std::string_view(&path[0], pos);
   outTail     = std::string_view(&path[pos + 1], path.size() - (pos + 1));
   return true;
@@ -158,8 +168,11 @@ void wc::settings::write<bool>(const std::string_view path, const bool& val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
-  if (!object) return;
-  while (object->HasMember(tail.data())) { object->RemoveMember(tail.data()); }
+  if (!object)
+    return;
+  while (object->HasMember(tail.data())) {
+    object->RemoveMember(tail.data());
+  }
   object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(), val,
                     doc_s.GetAllocator());
   modified_s = true;
@@ -170,8 +183,11 @@ void wc::settings::write<int>(const std::string_view path, const int& val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
-  if (!object) return;
-  while (object->HasMember(tail.data())) { object->RemoveMember(tail.data()); }
+  if (!object)
+    return;
+  while (object->HasMember(tail.data())) {
+    object->RemoveMember(tail.data());
+  }
   object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(), val,
                     doc_s.GetAllocator());
   modified_s = true;
@@ -182,8 +198,11 @@ void wc::settings::write<float>(const std::string_view path, const float& val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
-  if (!object) return;
-  while (object->HasMember(tail.data())) { object->RemoveMember(tail.data()); }
+  if (!object)
+    return;
+  while (object->HasMember(tail.data())) {
+    object->RemoveMember(tail.data());
+  }
   object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(), val,
                     doc_s.GetAllocator());
   modified_s = true;
@@ -195,8 +214,11 @@ void wc::settings::write<std::string_view>(const std::string_view  path,
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
-  if (!object) return;
-  while (object->HasMember(tail.data())) { object->RemoveMember(tail.data()); }
+  if (!object)
+    return;
+  while (object->HasMember(tail.data())) {
+    object->RemoveMember(tail.data());
+  }
   object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(),
                     rj::Value(val.data(), doc_s.GetAllocator()).Move(),
                     doc_s.GetAllocator());

@@ -44,7 +44,7 @@ namespace wc {
   /// incremented for minor fixes and patches.
   constexpr const int ENGINE_PATCHVER = 0;
   /// The version of the application, in string form.
-  constexpr const char* ENGINE_VERSION = "0.13.0";
+  constexpr const char* ENGINE_VERSION = "0.14.0";
 
 }  // namespace wc
 

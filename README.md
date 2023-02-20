@@ -8,7 +8,9 @@ Download this repository, open it in Visual Studio as a cmake project, and build
 
 ## Dependencies
 
-The Witchcraft project depends on a number of other projects.  The 'dependencies' directory of this repository contains public headers and pre-built binary libraries.  If a dependency has a compatible license, its source repository will be included in the WithcraftDependencies repo and built from source to produce the binaries used here.  A library with an incompatible license whch provides pre-built binary libraries will be included in the 'dependencies' folder of this repo, but not in the WitchcraftDependencies repo.  Ideally, this repository should contain everything needed to build and run Witchcraft without needing to directly build any dependencies.
+The Vulkan SDK MUST be installed.  The newest version of the SDK as of the time of this writing is 1.3.239.0.  On Windows, simply download and run the installer provided by LunarG here: https://vulkan.lunarg.com/. On Linux, instructions for installing the SDK on Ubuntu using `apt` can be found here: https://vulkan.lunarg.com/doc/view/latest/linux/getting_started_ubuntu.html.
+
+The 'dependencies' directory of this repository contains public headers and pre-built binary libraries.  If a dependency has a compatible license, its source repository will be included in the WithcraftDependencies repo and built from source to produce the binaries used here.  A library with an incompatible license whch provides pre-built binary libraries will be included in the 'dependencies' folder of this repo, but not in the WitchcraftDependencies repo.  Ideally, this repository should contain everything needed to build and run Witchcraft without needing to directly build any dependencies.
 
 ## License
 

@@ -15,9 +15,9 @@
 using namespace std;
 
 #include "filesys/vfs.h"
-#include "scripts/built/events.lua.h"
-#include "scripts/built/math2.lua.h"
-#include "scripts/built/sandbox.lua.h"
+#include "scripts_inc/events.lua.h"
+#include "scripts_inc/math2.lua.h"
+#include "scripts_inc/sandbox.lua.h"
 #include "sys/debug.h"
 #include "sys/mainloop.h"
 #include "tools/strtoken.h"
@@ -96,10 +96,12 @@ bool wc::lua::init() {
     lua_call(L, 2, 1);               // call '_G.debug.getinfo(2, "Sl")'
     if (lua_istable(L, -1)) {
       lua_getfield(L, -1, "short_src");
-      if (lua_isstring(L, -1)) shortSrc = lua_tostring(L, -1);
+      if (lua_isstring(L, -1))
+        shortSrc = lua_tostring(L, -1);
       lua_pop(L, 1);
       lua_getfield(L, -1, "currentline");
-      if (lua_isnumber(L, -1)) currentLine = lua_tointeger(L, -1);
+      if (lua_isnumber(L, -1))
+        currentLine = lua_tointeger(L, -1);
       lua_pop(L, 1);
       dbg::luaPrint({}, fmt::format("{}:{}", shortSrc, currentLine));
     } else {
@@ -143,7 +145,9 @@ bool wc::lua::init() {
   lua_pushcfunction(L, [](lua_State* L) {
     const char* filename = luaL_checkstring(L, 1);
     wc::Result  result   = doFile(filename);
-    if (result.isError()) { return luaL_error(L, result.message().c_str()); }
+    if (result.isError()) {
+      return luaL_error(L, result.message().c_str());
+    }
     return 0;
   });
   lua_setfield(L, -2, "dofile");
@@ -156,8 +160,8 @@ bool wc::lua::init() {
   lua_pop(L, 1);
 
   // Run core scripts here.
-  if (luaL_loadbuffer(L, (const char*)FILE_math2_lua_DATA, FILE_math2_lua_SIZE,
-                      "@math2")) {
+  if (luaL_loadbuffer(L, (const char*)FILE_math2_luac_DATA,
+                      FILE_math2_luac_SIZE, "@math2")) {
     printLuaError(-1);
     lua_pop(L, 1);
     return false;
@@ -169,8 +173,8 @@ bool wc::lua::init() {
     dbg::infomore("Successfully ran math2.lua");
   }
 
-  if (luaL_loadbuffer(L, (const char*)FILE_sandbox_lua_DATA,
-                      FILE_sandbox_lua_SIZE, "@sandbox")) {
+  if (luaL_loadbuffer(L, (const char*)FILE_sandbox_luac_DATA,
+                      FILE_sandbox_luac_SIZE, "@sandbox")) {
     printLuaError(-1);
     lua_pop(L, 1);
     return false;
@@ -182,8 +186,8 @@ bool wc::lua::init() {
     dbg::infomore("Successfully ran sandbox.lua");
   }
 
-  if (luaL_loadbuffer(L, (const char*)FILE_events_lua_DATA,
-                      FILE_events_lua_SIZE, "@events")) {
+  if (luaL_loadbuffer(L, (const char*)FILE_events_luac_DATA,
+                      FILE_events_luac_SIZE, "@events")) {
     printLuaError(-1);
     lua_pop(L, 1);
     return false;
@@ -306,7 +310,9 @@ wc::Result wc::lua::doFile(const char* filename) {
     return Result::error(fmt::format("Failed to load '{}.lua'; {}", filename,
                                      loadResult.message()));
   }
-  if (loadResult.isWarning()) { warnMsg = loadResult.message(); }
+  if (loadResult.isWarning()) {
+    warnMsg = loadResult.message();
+  }
 
   // Adjust the source name for debugging.
   path = fmt::format("@{}", path);
@@ -333,9 +339,9 @@ wc::Result wc::lua::doFile(const char* filename) {
 
   // Get the protected environment for the script.
   lua_getglobal(L, "SCRIPT_ENV");
-  lua_getfield(
-      L, -1,
-      filename);  // SCRIPT_ENV[filename] is the environment used by the script.
+  lua_getfield(L, -1,
+               filename);  // SCRIPT_ENV[filename] is the environment used by
+                           // the script.
 
   lua_setupvalue(L, -3, 1);  // pops [filename] and assigns it as the
                              // environment for "-3" (the script code).

@@ -339,3 +339,6 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+# CMake User Presets
+CMakeUserPresets.json
