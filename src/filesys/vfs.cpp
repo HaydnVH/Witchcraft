@@ -51,7 +51,8 @@ bool wc::vfs::init() {
 
   // Scan through the user data directory.
   sfs::path userDataPath = wc::getUserPath() / DATA_FOLDER;
-  if (!sfs::exists(userDataPath)) sfs::create_directories(userDataPath);
+  if (!sfs::exists(userDataPath))
+    sfs::create_directories(userDataPath);
   for (sfs::directory_iterator it(userDataPath);
        it != sfs::directory_iterator(); ++it) {
     // If this entry is a directory or a .wcmod file...
@@ -63,11 +64,11 @@ bool wc::vfs::init() {
       if (openResult.isError()) {
         dbg::error({fmt::format("'{}' is not a valid package.",
                                 trimPathStr(it->path())),
-                    openResult.message()});
+                    openResult.getMessage()});
         continue;
       }
       if (openResult.isWarning() && openResult.hasMessage())
-        dbg::warnmore(openResult.message());
+        dbg::warnmore(openResult.getMessage());
       if (modules.count(mod.getName().c_str()) > 0)
         dbg::infomore("A package with this name is already present.");
       else
@@ -92,11 +93,11 @@ bool wc::vfs::init() {
         if (openResult.isError()) {
           dbg::error({fmt::format("'{}' is not a valid package.",
                                   trimPathStr(it->path())),
-                      openResult.message()});
+                      openResult.getMessage()});
           continue;
         }
         if (openResult.isWarning() && openResult.hasMessage())
-          dbg::warnmore(openResult.message());
+          dbg::warnmore(openResult.getMessage());
         if (modules.count(mod.getName().c_str()) > 0)
           dbg::infomore("A package with this name is already present.");
         else
@@ -128,15 +129,17 @@ bool wc::vfs::init() {
 
 void wc::vfs::shutdown() {
 
-  for (auto& it : modules) { it.get<1>().close(); }
+  for (auto& it : modules) {
+    it.get<1>().close();
+  }
   modules.clear();
   files.clear();
 }
 
 bool wc::vfs::isInitialized() { return (modules.size() > 0); }
 
-wc::vfs::FileProxy wc::vfs::getFile(const std::string_view filename,
-                                    bool                   reverseSort) {
+wc::vfs::FileProxy
+    wc::vfs::getFile(const std::string_view filename, bool reverseSort) {
   std::vector<size_t> list;
   list.reserve(files.count(filename));
   // Get the module indices from the map and save them in the list.
@@ -153,10 +156,11 @@ wc::vfs::FileProxy wc::vfs::getFile(const std::string_view filename,
   return wc::vfs::FileProxy(filename, std::move(list), reverseSort);
 }
 
-wc::Result wc::vfs::FileProxy::Iterator::load() {
+wc::Result::Value<std::vector<char>> wc::vfs::FileProxy::Iterator::load() {
   // If the list index points beyond the list,
   // either we've run out of files or the file we searched for doesn't exist.
-  if (proxy_.list_.size() <= 0) return Result::error("File not found.");
+  if (proxy_.list_.size() <= 0)
+    return Result::error("File not found.");
 
   if (listIndex_ >= proxy_.list_.size())
     return Result::error("Iterator out of bounds.");

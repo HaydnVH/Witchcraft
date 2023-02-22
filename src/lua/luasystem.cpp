@@ -144,9 +144,9 @@ bool wc::lua::init() {
   // This runs the script properly in a protected environment.
   lua_pushcfunction(L, [](lua_State* L) {
     const char* filename = luaL_checkstring(L, 1);
-    wc::Result  result   = doFile(filename);
+    auto        result   = doFile(filename);
     if (result.isError()) {
-      return luaL_error(L, result.message().c_str());
+      return luaL_error(L, result.getMessage().c_str());
     }
     return 0;
   });
@@ -217,7 +217,7 @@ bool wc::lua::init() {
         lua_pop(L, 1);
         auto result = doFile(filename);
         if (result.isError()) {
-          return luaL_error(L, result.message().c_str());
+          return luaL_error(L, result.getMessage().c_str());
         }
         lua_getfield(L, -1, filename);
         // If it's still not a table, something failed.
@@ -260,8 +260,8 @@ bool wc::lua::init() {
 
 lua_State* wc::lua::getState() { return L; }
 
-wc::Result wc::lua::runString(const char* str, const char* env,
-                              const char* sourcename) {
+wc::Result::Empty wc::lua::runString(const char* str, const char* env,
+                                     const char* sourcename) {
   if (sourcename) {
     if (luaL_loadbuffer(L, str, strlen(str), sourcename)) {
       printLuaError(-1);
@@ -299,26 +299,27 @@ wc::Result wc::lua::runString(const char* str, const char* env,
   return wc::Result::success();
 }
 
-wc::Result wc::lua::doFile(const char* filename) {
+wc::Result::Empty wc::lua::doFile(const char* filename) {
   string path = fmt::format("{}{}{}", SCRIPT_DIR, filename, SCRIPT_EXT);
 
   // Open and load the script file.
   auto loadResult = wc::vfs::getFile(path.c_str()).loadHighest();
-  auto fdata      = loadResult.value<std::vector<char>>();
-  std::optional<std::string> warnMsg = std::nullopt;
-  if (loadResult.isError() || !fdata) {
+  if (loadResult.isError() || !loadResult.hasValue()) {
     return Result::error(fmt::format("Failed to load '{}.lua'; {}", filename,
-                                     loadResult.message()));
+                                     loadResult.getMessage()));
   }
+  auto&                      fdata   = loadResult.getValue();
+  std::optional<std::string> warnMsg = std::nullopt;
+
   if (loadResult.isWarning()) {
-    warnMsg = loadResult.message();
+    warnMsg = loadResult.getMessage();
   }
 
   // Adjust the source name for debugging.
   path = fmt::format("@{}", path);
 
   // Load the script into lua.
-  if (luaL_loadbuffer(L, (const char*)fdata->data(), fdata->size(),
+  if (luaL_loadbuffer(L, (const char*)fdata.data(), fdata.size(),
                       path.c_str())) {
     std::string errMsg = fmt::format("Failed to load '{}.lua'; {}", filename,
                                      lua_tostring(L, -1));

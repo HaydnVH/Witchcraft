@@ -28,7 +28,7 @@ namespace wc {
     /// Attempts to open the module associated with the given path.
     /// This does not load the files inside the module!
     /// @return An empty Result which may hold an error/warning message.
-    wc::Result open(const std::filesystem::path& path);
+    wc::Result::Empty open(const std::filesystem::path& path);
 
     /// Closes the archive (if one exists) and frees resources.
     void close();
@@ -36,13 +36,14 @@ namespace wc {
     /// This does the heavy lifting of setting up the list of files in this
     /// package.
     /// @return An empty Result which may hold an error/warning message.
-    wc::Result loadFileList();
+    wc::Result::Empty loadFileList();
 
     /// Load an actual file from this module.
     /// @param filename The name of the file to search for.
     /// @return An 'std::vector<char>' containing the file's binary data,
     /// or an error message if the operation was unsuccessful.
-    wc::Result loadFile(const FixedString<64>& filename);
+    wc::Result::Value<std::vector<char>>
+        loadFile(const FixedString<64>& filename);
 
     inline const std::string& getName() const { return name_; }
     inline const std::string& getAuthor() const { return author_; }
@@ -61,10 +62,13 @@ namespace wc {
 
     inline bool operator<(const Module& rhs) {
       // Compare priority first.
-      if (priority_ < rhs.priority_) return true;
-      if (priority_ > rhs.priority_) return false;
+      if (priority_ < rhs.priority_)
+        return true;
+      if (priority_ > rhs.priority_)
+        return false;
       // If priority is equal, compare timestamp.
-      if (timestamp_ < rhs.timestamp_) return true;
+      if (timestamp_ < rhs.timestamp_)
+        return true;
       return false;
     }
 

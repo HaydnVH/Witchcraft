@@ -5,97 +5,77 @@
  * (C) Haydn V. February 2023 - present
  * Last modified February 2023
  * ---------------------------------------------------------------------------
- * Provides a useful template class for returning either a value or an error
+ * Provides a useful template system for returning either a value or an error
  * message from a function.
  *****************************************************************************/
 #ifndef WC_TOOLS_RESULT_HPP
 #define WC_TOOLS_RESULT_HPP
 
-#include <any>
+#include <optional>
 #include <string>
 #include <string_view>
 
-namespace wc {
+namespace wc::Result {
+  enum class Status { unknown, success, warning, error };
 
-  namespace impl {
-    const std::any nullany {};
+  /// An empty result; contains only a status and (possibly) a message.
+  class Empty {
+  public:
+    Empty() = default;
+    Empty(Status status, const std::string_view msg):
+        status_(status), msg_(msg) {}
+
+    bool               isSuccess() const { return status_ == Status::success; }
+    bool               isWarning() const { return status_ == Status::warning; }
+    bool               isError() const { return status_ == Status::error; }
+    bool               hasMessage() const { return msg_ != ""; }
+    const std::string& getMessage() const { return msg_; }
+
+  protected:
+    Status      status_ = Status::unknown;
+    std::string msg_    = "";
+  };
+
+  /// A result which may or may not contain a value.
+  template <typename T>
+  class Value: public Empty {
+  public:
+    Value() = default;
+    Value(Status status, const T& val, const std::string_view msg):
+        Empty(status, msg), val_(val) {}
+    Value(const Empty& empty): Empty(empty), val_(std::nullopt) {}
+
+    bool     hasValue() const { return val_.has_value(); }
+    const T& getValue() const { return val_.value(); }
+    T&       getValue() { return val_.value(); }
+
+  protected:
+    std::optional<T> val_ = std::nullopt;
+  };
+
+  /// @return a successful result with a value.
+  template <typename T>
+  static auto success(const T& val) {
+    return Value<T>(Status::success, val, "");
+  }
+  /// @return a successful result with no value.
+  static Empty success() { return Empty(Status::success, ""); }
+
+  /// @return a warning result with a value and a message.
+  template <typename T>
+  static auto warning(const T& val, const std::string_view msg = "") {
+    return Value<T>(Status::warning, val, msg);
+  }
+  /// @return a warning result with only a message.
+  static Empty warning(const std::string_view msg = "") {
+    return Empty(Status::warning, "");
   }
 
-  class Result {
-  public:
-    Result() = default;
-    enum class ResultStatus { unknown, success, warning, error };
+  /// @return an error result with a message.
+  static Empty error(const std::string_view msg = "") {
+    return Empty(Status::error, msg);
+  }
 
-    /// Return a value successfully.
-    static Result success(const std::any& val = impl::nullany) {
-      return Result(ResultStatus::success, "", val);
-    }
-    /// Return a value successfully.
-    static Result success(std::any&& val) {
-      return Result(ResultStatus::success, "", std::move(val));
-    }
-
-    /// Indicates that an error has occured and passes along useful info.
-    static Result error(const std::string_view msg = "") {
-      return Result(ResultStatus::error, msg, impl::nullany);
-    }
-
-    /// Indicates that a non-critical error has occured,
-    /// passing along useful info and a usable object.
-    static Result warning(const std::string_view msg = "",
-                          const std::any&        val = impl::nullany) {
-      return Result(ResultStatus::warning, msg, val);
-    }
-    /// Indicates that a non-critical error has occured,
-    /// passing along useful info and a usable object.
-    static Result warning(const std::string_view msg, std::any&& val) {
-      return Result(ResultStatus::warning, msg, std::move(val));
-    }
-
-    /// @return true if the result has a message, false otherwise.
-    bool hasMessage() { return (message_ != ""); }
-    /// @return the message associated with the result.
-    const std::string& message() { return message_; }
-
-    /// @return true if the result has a value, false otherwise.
-    bool hasValue() { return value_.has_value(); }
-
-    /// @return true if the result's value is compatible with the indicated
-    /// type.
-    template <typename T>
-    bool isValue() {
-      return (std::any_cast<T>(&value_) != nullptr);
-    }
-
-    /// @return A pointer to the value associated with the result.
-    /// If there is no value, or if the value's type is incompatible,
-    /// a null pointer is returned insted.
-    template <typename T>
-    T* value() {
-      return std::any_cast<T>(&value_);
-    }
-
-    /// @return true if the result is a success.
-    bool isSuccess() { return status_ == ResultStatus::success; }
-    /// @return true if the result is a warning.
-    bool isWarning() { return status_ == ResultStatus::warning; }
-    /// @return true if the result is an error.
-    bool isError() { return status_ == ResultStatus::error; }
-
-    operator bool() { return isSuccess(); }
-
-  private:
-    Result(ResultStatus status, const std::string_view msg,
-           const std::any& val):
-        status_(status),
-        message_(msg), value_(val) {}
-    Result(ResultStatus status, const std::string_view msg, std::any&& val):
-        status_(status), message_(msg), value_(std::move(val)) {}
-
-    ResultStatus status_  = ResultStatus::unknown;
-    std::string  message_ = "";
-    std::any     value_   = impl::nullany;
-  };
-}  // namespace wc
+}  // namespace wc::Result
 
 #endif  // WC_TOOLS_RESULT_HPP

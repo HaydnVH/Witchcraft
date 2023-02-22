@@ -31,7 +31,7 @@ namespace {
 
 }  // namespace
 
-wc::Result wc::Module::open(const std::filesystem::path& myPath) {
+wc::Result::Empty wc::Module::open(const std::filesystem::path& myPath) {
 
   // Make sure something exists there.
   if (!sfs::exists(myPath)) {
@@ -80,15 +80,21 @@ wc::Result wc::Module::open(const std::filesystem::path& myPath) {
     } else {
       // We've found and correctly parsed module.json,
       // by this point we can confidently say that we're looking at a module.
-      if (doc.HasMember("name")) { name_ = doc["name"].GetString(); }
-      if (doc.HasMember("author")) { author_ = doc["author"].GetString(); }
+      if (doc.HasMember("name")) {
+        name_ = doc["name"].GetString();
+      }
+      if (doc.HasMember("author")) {
+        author_ = doc["author"].GetString();
+      }
       if (doc.HasMember("category")) {
         category_ = doc["category"].GetString();
       }
       if (doc.HasMember("description")) {
         description_ = doc["description"].GetString();
       }
-      if (doc.HasMember("priority")) { priority_ = doc["priority"].GetFloat(); }
+      if (doc.HasMember("priority")) {
+        priority_ = doc["priority"].GetFloat();
+      }
     }
   }
 
@@ -97,7 +103,8 @@ wc::Result wc::Module::open(const std::filesystem::path& myPath) {
 
   path_  = myPath;
   found_ = true;
-  if (warnMsg.has_value()) return Result::warning(warnMsg.value());
+  if (warnMsg.has_value())
+    return Result::warning(warnMsg.value());
   else
     return Result::success();
 }
@@ -122,7 +129,8 @@ void loadFileListRecursive(hvh::Table<FixedString<64>>& fileList,
   for (sfs::directory_iterator it(parent / dir);
        it != sfs::directory_iterator(); ++it) {
     // Entry doesn't exist (somehow..?)
-    if (!sfs::exists(it->path())) continue;
+    if (!sfs::exists(it->path()))
+      continue;
 
     // Entry is a directory (recursion time!)
     if (sfs::is_directory(it->path())) {
@@ -131,29 +139,39 @@ void loadFileListRecursive(hvh::Table<FixedString<64>>& fileList,
     }
 
     // Make sure it's a file and not a symlink or pipe or something.
-    if (!sfs::is_regular_file(it->path())) { continue; }
+    if (!sfs::is_regular_file(it->path())) {
+      continue;
+    }
 
     // Make sure the path isn't too long (and also turn it into a FixedString).
     std::string filePath = (dir / it->path().filename()).string();
-    if (filePath.size() > 63) { continue; }
+    if (filePath.size() > 63) {
+      continue;
+    }
     FixedString<64> myPath = filePath.c_str();
 
     // Remove backslashes from the path, and ensure the file isn't reserved.
     for (int i = 0; myPath.c_str[i] != '\0'; ++i) {
-      if (myPath.c_str[i] == '\\') { myPath.c_str[i] = '/'; }
+      if (myPath.c_str[i] == '\\') {
+        myPath.c_str[i] = '/';
+      }
     }
     // strip_backslashes(mypath.c_str);
-    if (reservedFilenames_s.count(myPath) > 0) { continue; }
+    if (reservedFilenames_s.count(myPath) > 0) {
+      continue;
+    }
 
     // File appeared twice (somehow..?)
-    if (fileList.count(myPath) > 0) { continue; }
+    if (fileList.count(myPath) > 0) {
+      continue;
+    }
 
     // FINALLY we can insert this file path into our list.
     fileList.insert(myPath);
   }
 }
 
-wc::Result wc::Module::loadFileList() {
+wc::Result::Empty wc::Module::loadFileList() {
 
   if (!found_) {
     return Result::error("Trying to load module before opening it.");
@@ -166,7 +184,9 @@ wc::Result wc::Module::loadFileList() {
   if (archive_.isOpen()) {
     fileTable_.reserve(archive_.numFiles());
 
-    for (auto& it : archive_) { fileTable_.insert(it.get<0>()); }
+    for (auto& it : archive_) {
+      fileTable_.insert(it.get<0>());
+    }
   } else {
     loadFileListRecursive(fileTable_, path_, "");
   }
@@ -174,7 +194,8 @@ wc::Result wc::Module::loadFileList() {
   return Result::success();
 }
 
-wc::Result wc::Module::loadFile(const FixedString<64>& filename) {
+wc::Result::Value<std::vector<char>>
+    wc::Module::loadFile(const FixedString<64>& filename) {
   std::vector<char> fileData;
   if (archive_.isOpen()) {
     Archive::timestamp_t nil;
@@ -185,7 +206,9 @@ wc::Result wc::Module::loadFile(const FixedString<64>& filename) {
     sfs::path fullPath = getPath();
     fullPath /= filename.c_str;
     std::ifstream file(fullPath, std::ios::binary | std::ios::in);
-    if (!file.is_open()) { return Result::error("Failed to open file."); }
+    if (!file.is_open()) {
+      return Result::error("Failed to open file.");
+    }
     // Slurp up the file contents.
     file.seekg(0, file.end);
     size_t len = file.tellg();

@@ -89,7 +89,7 @@ namespace wc::vfs {
       /// Loads the version of the file that this iterator currently points to.
       /// @return An 'std::vector<char>' containing the file's binary data,
       /// or an error message if the operation was unsuccessful.
-      wc::Result load();
+      wc::Result::Value<std::vector<char>> load();
 
     private:
       const FileProxy& proxy_;
@@ -109,14 +109,15 @@ namespace wc::vfs {
     /// Otherwise, it will be the highest-priority version.
     /// @return An 'std::vector<char>' containing the file's binary data,
     /// or an error message if the operation was unsuccessful.
-    wc::Result load() { return begin().load(); }
+    wc::Result::Value<std::vector<char>> load() { return begin().load(); }
 
     /// Loads the lowest-priority version of the file that was searched for,
     /// regardless of whether reverseSort was set or not.
     /// @return An 'std::vector<char>' containing the file's binary data,
     /// or an error message if the operation was unsuccessful.
-    wc::Result loadLowest() {
-      if (reverseSort_) return Iterator(*this, list_.size() - 1).load();
+    wc::Result::Value<std::vector<char>> loadLowest() {
+      if (reverseSort_)
+        return Iterator(*this, list_.size() - 1).load();
       else
         return begin().load();
     }
@@ -125,8 +126,9 @@ namespace wc::vfs {
     /// regardless of whether reverseSort was set or not.
     /// @return An 'std::vector<char>' containing the file's binary data,
     /// or an error message if the operation was unsuccessful.
-    wc::Result loadHighest() {
-      if (reverseSort_) return begin().load();
+    wc::Result::Value<std::vector<char>> loadHighest() {
+      if (reverseSort_)
+        return begin().load();
       else
         return Iterator(*this, list_.size() - 1).load();
     }

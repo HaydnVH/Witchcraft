@@ -26,17 +26,17 @@ namespace wc::lua {
 
   /// Execute a lua file.
   /// @return An empty Result which may contain an error message.
-  wc::Result doFile(const char* filename);
+  wc::Result::Empty doFile(const char* filename);
 
   /// Execute each instance of a given file found in the virtual filesystem.
   /// @return An empty Result which may contain an error message.
-  wc::Result doEachFile(const char* filename);
+  wc::Result::Empty doEachFile(const char* filename);
 
   /// Executes the lua source code 'src' within the environment 'env'.
   /// If 'env' is null, 'src' will run in _G.
   /// @return an empty Result which may contain an error message.
-  wc::Result runString(const char* src, const char* env,
-                       const char* sourcename = nullptr);
+  wc::Result::Empty runString(const char* src, const char* env,
+                              const char* sourcename = nullptr);
 
 }  // namespace wc::lua
 
