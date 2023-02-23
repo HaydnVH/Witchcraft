@@ -103,8 +103,8 @@ wc::Result::Empty wc::Module::open(const std::filesystem::path& myPath) {
 
   path_  = myPath;
   found_ = true;
-  if (warnMsg.has_value())
-    return Result::warning(warnMsg.value());
+  if (warnMsg)
+    return Result::warning(*warnMsg);
   else
     return Result::success();
 }

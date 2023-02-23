@@ -12,6 +12,7 @@
 #define WC_SYS_DEBUG_H
 
 #include "tools/enumbits.h"
+#include "tools/exceptions.h"
 
 #include <filesystem>
 #include <fmt/core.h>
@@ -154,6 +155,10 @@ namespace dbg {
   }
   /// Prints an additional 'fatal' message to the console and log.
   void fatalmore(const std::string_view message);
+  /// Prints a Cumulative Exception to the console and log.
+  Lock fatal(const Exception&                e,
+             std::optional<std::string_view> srcOverride = std::nullopt,
+             std::source_location src = std::source_location::current());
 
   /// Prints a series of 'user' messages to the console and log.
   void user(const std::initializer_list<const std::string_view>& messages);

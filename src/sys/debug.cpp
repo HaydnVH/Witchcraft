@@ -25,31 +25,12 @@ namespace {
 
   bool shouldPrintTime_s = true;
 
-  void printStandardPrefix(dbg::MessageSeverity            severity,
+  void printStandardPrefix(dbg::MessageSeverity severity,
+                           std::string_view color, std::string_view mark,
                            std::optional<std::string_view> srcOverride,
                            std::source_location            src) {
     // Print the prefix according to the severity.
-    switch (severity) {
-    case dbg::MessageSeverity::Info:
-      dbg::printRaw(severity,
-                    fmt::format("{}{} ", dbg::INFOCOLR, dbg::INFOMARK));
-      break;
-    case dbg::MessageSeverity::Warning:
-      dbg::printRaw(severity,
-                    fmt::format("{}{} ", dbg::WARNCOLR, dbg::WARNMARK));
-      break;
-    case dbg::MessageSeverity::Error:
-      dbg::printRaw(severity, fmt::format("{}{} ", dbg::ERRCOLR, dbg::ERRMARK));
-      break;
-    case dbg::MessageSeverity::Fatal:
-      dbg::printRaw(severity,
-                    fmt::format("{}{} ", dbg::FATALCOLR, dbg::FATALMARK));
-      break;
-    case dbg::MessageSeverity::User:
-      dbg::printRaw(severity, fmt::format("{}{} ", dbg::LUACOLR, dbg::LUAMARK));
-      break;
-    default: break;
-    }
+    dbg::printRaw(severity, fmt::format("{}{} ", color, mark));
 
     if (shouldPrintTime_s) {
       using namespace std::chrono;
@@ -95,8 +76,11 @@ namespace dbg {
             std::optional<std::string_view>                      srcOverride,
             std::source_location                                 src) {
     Lock lock(cliMutex_g);
-    printStandardPrefix(MessageSeverity::Info, srcOverride, src);
-    for (auto msg : messages) { infomore(msg); }
+    printStandardPrefix(MessageSeverity::Info, dbg::INFOCOLR, dbg::INFOMARK,
+                        srcOverride, src);
+    for (auto msg : messages) {
+      infomore(msg);
+    }
     return std::move(lock);
   }
   void infomore(const std::string_view message) {
@@ -108,8 +92,11 @@ namespace dbg {
                std::optional<std::string_view>                      srcOverride,
                std::source_location                                 src) {
     Lock lock(cliMutex_g);
-    printStandardPrefix(MessageSeverity::Warning, srcOverride, src);
-    for (auto msg : messages) { warnmore(msg); }
+    printStandardPrefix(MessageSeverity::Warning, dbg::WARNCOLR, dbg::WARNMARK,
+                        srcOverride, src);
+    for (auto msg : messages) {
+      warnmore(msg);
+    }
     return std::move(lock);
   }
   void warnmore(const std::string_view message) {
@@ -121,8 +108,11 @@ namespace dbg {
              std::optional<std::string_view>                      srcOverride,
              std::source_location                                 src) {
     Lock lock(cliMutex_g);
-    printStandardPrefix(MessageSeverity::Error, srcOverride, src);
-    for (auto msg : messages) { errmore(msg); }
+    printStandardPrefix(MessageSeverity::Error, dbg::ERRCOLR, dbg::ERRMARK,
+                        srcOverride, src);
+    for (auto msg : messages) {
+      errmore(msg);
+    }
     return std::move(lock);
   }
   void errmore(const std::string_view message) {
@@ -134,13 +124,27 @@ namespace dbg {
              std::optional<std::string_view>                      srcOverride,
              std::source_location                                 src) {
     Lock lock(cliMutex_g);
-    printStandardPrefix(MessageSeverity::Fatal, srcOverride, src);
-    for (auto msg : messages) { fatalmore(msg); }
+    printStandardPrefix(MessageSeverity::Fatal, dbg::FATALCOLR, dbg::FATALMARK,
+                        srcOverride, src);
+    for (auto msg : messages) {
+      fatalmore(msg);
+    }
     return std::move(lock);
   }
   void fatalmore(const std::string_view message) {
     printLine(MessageSeverity::Fatal,
               fmt::format(" {}{}{} {}", ERRCOLR_FG, FATALMORE, CLEAR, message));
+  }
+
+  Lock fatal(const Exception& e, std::optional<std::string_view> srcOverride,
+             std::source_location src) {
+    Lock lock(cliMutex_g);
+    printStandardPrefix(MessageSeverity::Fatal, dbg::FATALCOLR, dbg::FATALMARK,
+                        srcOverride, src);
+    for (auto msg : e) {
+      fatalmore(msg);
+    }
+    return std::move(lock);
   }
 
   void user(const std::initializer_list<const std::string_view>& messages) {
@@ -161,8 +165,11 @@ namespace dbg {
                 std::optional<std::string_view> srcOverride,
                 std::source_location            src) {
     Lock lock(cliMutex_g);
-    printStandardPrefix(MessageSeverity::User, srcOverride, src);
-    for (auto msg : messages) { luaPrintmore(msg); }
+    printStandardPrefix(MessageSeverity::User, dbg::LUACOLR, dbg::LUAMARK,
+                        srcOverride, src);
+    for (auto msg : messages) {
+      luaPrintmore(msg);
+    }
   }
   void luaPrintmore(const std::string_view message) {
     printLine(MessageSeverity::User,

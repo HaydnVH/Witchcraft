@@ -25,50 +25,43 @@
 namespace rj  = rapidjson;
 namespace sfs = std::filesystem;
 
-namespace {
-  rj::Document doc_s;
-  bool         initialized_s = false;
-  bool         modified_s    = false;
-}  // namespace
-
-void wc::settings::init() {
-  sfs::path     filePath = wc::getUserPath() / SETTINGS_FILENAME;
+wc::SettingsFile::SettingsFile(const std::string_view filename):
+    filename_(filename) {
+  sfs::path     filePath = wc::getUserPath() / filename_;
   std::ifstream inFile(filePath, std::ios::in | std::ios::binary);
   if (!inFile.is_open()) {
     // The settings file doesn't exist, so let's create an empty document to
     // write to.
-    doc_s.SetObject();
-    modified_s = true;
+    doc_.SetObject();
+    modified_ = true;
   } else {
     std::stringstream ss;
     ss << inFile.rdbuf();
-    doc_s.Parse(ss.str().c_str());
-    if (doc_s.HasParseError() || !doc_s.IsObject()) {
-      doc_s.SetObject();
-      modified_s = true;
+    doc_.Parse(ss.str().c_str());
+    if (doc_.HasParseError() || !doc_.IsObject()) {
+      doc_.SetObject();
+      modified_ = true;
     }
   }
 
   inFile.close();
-  initialized_s = true;
 }
 
-void wc::settings::shutdown() {
-  if (modified_s) {
-    sfs::path     filePath = wc::getUserPath() / SETTINGS_FILENAME;
+wc::SettingsFile::~SettingsFile() {
+  if (modified_) {
+    sfs::path     filePath = wc::getUserPath() / filename_;
     std::ofstream outFile(filePath, std::ios::out | std::ios::binary);
     if (outFile.is_open()) {
       rj::StringBuffer buffer;
       rj::PrettyWriter writer(buffer);
-      doc_s.Accept(writer);
+      doc_.Accept(writer);
       outFile << buffer.GetString();
     }
   }
 }
 
-bool wc::settings::isInitialized() { return initialized_s; }
-
-rj::Value* followPath(const std::string_view path, bool mayCreate) {
+rj::Value*
+    wc::SettingsFile::followPath(const std::string_view path, bool mayCreate) {
   rj::Value* current = nullptr;
   for (auto& it : Tokenizer(path, "", ".")) {
     std::string token(it);
@@ -79,8 +72,8 @@ rj::Value* followPath(const std::string_view path, bool mayCreate) {
         } else {
           if (mayCreate) {
             current->AddMember(
-                rj::Value(token.c_str(), doc_s.GetAllocator()).Move(),
-                rj::Value(rj::kObjectType).Move(), doc_s.GetAllocator());
+                rj::Value(token.c_str(), doc_.GetAllocator()).Move(),
+                rj::Value(rj::kObjectType).Move(), doc_.GetAllocator());
             current = &((*current)[token.c_str()]);
           } else
             return nullptr;
@@ -88,14 +81,14 @@ rj::Value* followPath(const std::string_view path, bool mayCreate) {
       } else
         return nullptr;
     } else {
-      if (doc_s.HasMember(token.c_str())) {
-        current = &doc_s[token.c_str()];
+      if (doc_.HasMember(token.c_str())) {
+        current = &doc_[token.c_str()];
       } else {
         if (mayCreate) {
-          doc_s.AddMember(rj::Value(token.c_str(), doc_s.GetAllocator()).Move(),
-                          rj::Value(rj::kObjectType).Move(),
-                          doc_s.GetAllocator());
-          current = &doc_s[token.c_str()];
+          doc_.AddMember(rj::Value(token.c_str(), doc_.GetAllocator()).Move(),
+                         rj::Value(rj::kObjectType).Move(),
+                         doc_.GetAllocator());
+          current = &doc_[token.c_str()];
         } else
           return nullptr;
       }
@@ -104,12 +97,12 @@ rj::Value* followPath(const std::string_view path, bool mayCreate) {
   return current;
 }
 
-bool wc::settings::exists(const std::string_view path) {
+bool wc::SettingsFile::exists(const std::string_view path) {
   return (followPath(path, false) != nullptr);
 }
 
 template <>
-bool wc::settings::read<bool>(const std::string_view path, bool& outVal) {
+bool wc::SettingsFile::read<bool>(const std::string_view path, bool& outVal) {
   rj::Value* object = followPath(path, false);
   if (!object)
     return false;
@@ -120,7 +113,7 @@ bool wc::settings::read<bool>(const std::string_view path, bool& outVal) {
 }
 
 template <>
-bool wc::settings::read<int>(const std::string_view path, int& outVal) {
+bool wc::SettingsFile::read<int>(const std::string_view path, int& outVal) {
   rj::Value* object = followPath(path, false);
   if (!object)
     return false;
@@ -131,7 +124,7 @@ bool wc::settings::read<int>(const std::string_view path, int& outVal) {
 }
 
 template <>
-bool wc::settings::read<float>(const std::string_view path, float& outVal) {
+bool wc::SettingsFile::read<float>(const std::string_view path, float& outVal) {
   rj::Value* object = followPath(path, false);
   if (!object)
     return false;
@@ -142,8 +135,8 @@ bool wc::settings::read<float>(const std::string_view path, float& outVal) {
 }
 
 template <>
-bool wc::settings::read<std::string>(const std::string_view path,
-                                     std::string&           outVal) {
+bool wc::SettingsFile::read<std::string>(const std::string_view path,
+                                         std::string&           outVal) {
   rj::Value* object = followPath(path, false);
   if (!object)
     return false;
@@ -153,18 +146,21 @@ bool wc::settings::read<std::string>(const std::string_view path,
   return true;
 }
 
-bool chopTail(const std::string_view path, std::string_view& outTailless,
-              std::string_view& outTail) {
-  auto pos = path.find_last_of(".");
-  if (pos == std::string::npos)
-    return false;
-  outTailless = std::string_view(&path[0], pos);
-  outTail     = std::string_view(&path[pos + 1], path.size() - (pos + 1));
-  return true;
-}
+namespace {
+  bool chopTail(const std::string_view path, std::string_view& outTailless,
+                std::string_view& outTail) {
+    auto pos = path.find_last_of(".");
+    if (pos == std::string::npos)
+      return false;
+    outTailless = std::string_view(&path[0], pos);
+    outTail     = std::string_view(&path[pos + 1], path.size() - (pos + 1));
+    return true;
+  }
+}  // namespace
 
 template <>
-void wc::settings::write<bool>(const std::string_view path, const bool& val) {
+void wc::SettingsFile::write<bool>(const std::string_view path,
+                                   const bool&            val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
@@ -173,13 +169,13 @@ void wc::settings::write<bool>(const std::string_view path, const bool& val) {
   while (object->HasMember(tail.data())) {
     object->RemoveMember(tail.data());
   }
-  object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(), val,
-                    doc_s.GetAllocator());
-  modified_s = true;
+  object->AddMember(rj::Value(tail.data(), doc_.GetAllocator()).Move(), val,
+                    doc_.GetAllocator());
+  modified_ = true;
 }
 
 template <>
-void wc::settings::write<int>(const std::string_view path, const int& val) {
+void wc::SettingsFile::write<int>(const std::string_view path, const int& val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
@@ -188,13 +184,14 @@ void wc::settings::write<int>(const std::string_view path, const int& val) {
   while (object->HasMember(tail.data())) {
     object->RemoveMember(tail.data());
   }
-  object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(), val,
-                    doc_s.GetAllocator());
-  modified_s = true;
+  object->AddMember(rj::Value(tail.data(), doc_.GetAllocator()).Move(), val,
+                    doc_.GetAllocator());
+  modified_ = true;
 }
 
 template <>
-void wc::settings::write<float>(const std::string_view path, const float& val) {
+void wc::SettingsFile::write<float>(const std::string_view path,
+                                    const float&           val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
@@ -203,14 +200,14 @@ void wc::settings::write<float>(const std::string_view path, const float& val) {
   while (object->HasMember(tail.data())) {
     object->RemoveMember(tail.data());
   }
-  object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(), val,
-                    doc_s.GetAllocator());
-  modified_s = true;
+  object->AddMember(rj::Value(tail.data(), doc_.GetAllocator()).Move(), val,
+                    doc_.GetAllocator());
+  modified_ = true;
 }
 
 template <>
-void wc::settings::write<std::string_view>(const std::string_view  path,
-                                           const std::string_view& val) {
+void wc::SettingsFile::write<std::string_view>(const std::string_view  path,
+                                               const std::string_view& val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);
@@ -219,8 +216,8 @@ void wc::settings::write<std::string_view>(const std::string_view  path,
   while (object->HasMember(tail.data())) {
     object->RemoveMember(tail.data());
   }
-  object->AddMember(rj::Value(tail.data(), doc_s.GetAllocator()).Move(),
-                    rj::Value(val.data(), doc_s.GetAllocator()).Move(),
-                    doc_s.GetAllocator());
-  modified_s = true;
+  object->AddMember(rj::Value(tail.data(), doc_.GetAllocator()).Move(),
+                    rj::Value(val.data(), doc_.GetAllocator()).Move(),
+                    doc_.GetAllocator());
+  modified_ = true;
 }

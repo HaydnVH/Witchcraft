@@ -11,7 +11,50 @@
 #ifndef WC_SYS_WINDOW_H
 #define WC_SYS_WINDOW_H
 
-namespace wc::window {
+#include "settings.h"
+
+#ifdef PLATFORM_SDL
+  #include "SDL.h"
+#endif
+
+namespace wc {
+
+  class Window {
+  public:
+    Window(wc::SettingsFile& settings);
+    ~Window();
+
+    bool handleMessages();
+
+    void getWindowSize(int& w, int& h);
+    void getDrawableSize(int& w, int& h);
+
+  private:
+    wc::SettingsFile& settingsFile_;
+
+#ifdef PLATFORM_SDL
+    SDL_Window* window_;
+#endif
+
+    // This struct holds everything that can be read and saved via
+    // settings.json.
+    struct Settings {
+      int  iWidth = 1280, iHeight = 720;
+      bool bMaximized = false;
+      struct Fullscreen {
+        bool bEnabled    = false;
+        bool bBorderless = true;
+        int  iWidth = 0, iHeight = 0;
+
+        bool operator==(const Fullscreen&) const = default;
+      } fs;
+
+      bool operator==(const Settings&) const = default;
+    };
+
+    Window::Settings initialSettings_;
+    Window::Settings settings_;
+  };
 
   bool init();
   void shutdown();
@@ -21,6 +64,6 @@ namespace wc::window {
   void getWindowSize(int& w, int& h);
   void getDrawableSize(int& w, int& h);
 
-}  // namespace wc::window
+}  // namespace wc
 
 #endif  // WC_SYS_WINDOW_H

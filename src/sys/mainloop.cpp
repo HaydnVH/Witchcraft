@@ -25,15 +25,17 @@ namespace wc::sys {
   bool isRunning() { return running_s; }
   void shutDown() { running_s = false; }
 
-  void mainLoop(bool handleWindowMessages) {
+  void mainLoop(wc::Lua& lua, wc::Window& window, bool handleWindowMessages) {
 
-    if (handleWindowMessages) { running_s = window::handleMessages(); }
+    if (handleWindowMessages) {
+      running_s = window.handleMessages();
+    }
 
     // Handle terminal input.
     std::string terminalInput;
     while (cli::popInput(terminalInput)) {
       // if (terminalInput == "quit") { shutDown(); }
-      lua::runString(terminalInput.c_str(), "CONSOLE", "@CLI");
+      lua.runString(terminalInput.c_str(), "CONSOLE", "@CLI");
     }
   }
 

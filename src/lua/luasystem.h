@@ -10,34 +10,49 @@
 #ifndef WC_LUA_LUASYSTEM_H
 #define WC_LUA_LUASYSTEM_H
 
+#include "filesys/vfs.h"
 #include "tools/result.h"
 
 #include <lua.hpp>
 
-namespace wc::lua {
+namespace wc {
 
-  // Initialize the lua system.
-  // Returns true on success, false on failure.
-  bool init();
+  class Lua {
 
-  // Get the global lua state.
-  // Returns nullptr on failure (if run before Init).
-  lua_State* getState();
+    static constexpr const char* SCRIPT_DIR = "scripts/";
+    static constexpr const char* SCRIPT_EXT = ".lua";
+    static constexpr const char* NILSTR     = "nil";
 
-  /// Execute a lua file.
-  /// @return An empty Result which may contain an error message.
-  wc::Result::Empty doFile(const char* filename);
+  public:
+    Lua(Filesystem& vfs);
+    ~Lua();
 
-  /// Execute each instance of a given file found in the virtual filesystem.
-  /// @return An empty Result which may contain an error message.
-  wc::Result::Empty doEachFile(const char* filename);
+    lua_State*       operator*() { return L_; }
+    const lua_State* operator*() const { return L_; }
+    lua_State*       operator->() { return L_; }
+    const lua_State* operator->() const { return L_; }
 
-  /// Executes the lua source code 'src' within the environment 'env'.
-  /// If 'env' is null, 'src' will run in _G.
-  /// @return an empty Result which may contain an error message.
-  wc::Result::Empty runString(const char* src, const char* env,
-                              const char* sourcename = nullptr);
+    /// Executes the lua source code 'src' within the environment 'env'.
+    /// If 'env' is null, 'src' will run in _G.
+    /// @return an empty Result which may contain an error message.
+    wc::Result::Empty runString(const char* src, const char* env,
+                                const char* srcName = nullptr);
 
-}  // namespace wc::lua
+    /// Execute a lua file.
+    /// @return An empty Result which may contain an error message.
+    wc::Result::Empty doFile(const char* filename);
+
+    /// Execute each instance of a given file found in the virtual filesystem.
+    /// @return An empty Result which may contain an error message.
+    wc::Result::Empty doEachFile(const char* filename);
+
+  private:
+    Filesystem& vfs_;
+    lua_State*  L_ = nullptr;
+
+    int  getToTable(std::string_view path, bool mayCreate, bool skipLast);
+    void printLuaError(int errindex);
+  };
+}  // namespace wc
 
 #endif  // HVH_LUA_LUASYSTEM_H

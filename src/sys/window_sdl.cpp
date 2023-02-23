@@ -17,47 +17,28 @@
   #include <SDL.h>
 
 namespace {
-  SDL_Window* window_s = nullptr;
-
-  // This struct holds everything that can be read and saved via settings.json.
-  struct Settings {
-    int  iWidth = 1280, iHeight = 720;
-    bool bMaximized = false;
-    struct Fullscreen {
-      bool bEnabled    = false;
-      bool bBorderless = true;
-      int  iWidth = 0, iHeight = 0;
-
-      bool operator==(const Fullscreen&) const = default;
-    } fs;
-
-    bool operator==(const Settings&) const = default;
-  };
-
-  // The state of settings immediately after being loaded.
-  Settings initialSettings_s;
-  // The curent active settings.
-  Settings settings_s;
-
+  wc::Window* window_s = nullptr;
 }  // namespace
 
-bool wc::window::init() {
+wc::Window::Window(wc::SettingsFile& settingsFile):
+    settingsFile_(settingsFile) {
 
   if (window_s) {
-    dbg::fatal("Can't open the window a second time!");
-    return false;
+    throw dbg::Exception("Can't open the window a second time!");
   }
+  window_s = this;
+
+  // throw dbg::Exception("Gotta keep ya on your toes, you know?");
 
   // Read settings.
-  wc::settings::read("Window.iWidth", settings_s.iWidth);
-  wc::settings::read("Window.iHeight", settings_s.iHeight);
-  wc::settings::read("Window.bMaximized", settings_s.bMaximized);
-  wc::settings::read("Window.Fullscreen.bEnabled", settings_s.fs.bEnabled);
-  wc::settings::read("Window.Fullscreen.bBorderless",
-                     settings_s.fs.bBorderless);
-  wc::settings::read("Window.Fullscreen.iWidth", settings_s.fs.iWidth);
-  wc::settings::read("Window.Fullscreen.iHeight", settings_s.fs.iHeight);
-  initialSettings_s = settings_s;
+  settingsFile_.read("Window.iWidth", settings_.iWidth);
+  settingsFile_.read("Window.iHeight", settings_.iHeight);
+  settingsFile_.read("Window.bMaximized", settings_.bMaximized);
+  settingsFile_.read("Window.Fullscreen.bEnabled", settings_.fs.bEnabled);
+  settingsFile_.read("Window.Fullscreen.bBorderless", settings_.fs.bBorderless);
+  settingsFile_.read("Window.Fullscreen.iWidth", settings_.fs.iWidth);
+  settingsFile_.read("Window.Fullscreen.iHeight", settings_.fs.iHeight);
+  initialSettings_ = settings_;
 
   SDL_Init(SDL_INIT_VIDEO);
 
@@ -66,40 +47,39 @@ bool wc::window::init() {
   #ifdef RENDERER_VULKAN
   flags |= SDL_WINDOW_VULKAN;
   #endif
-  if (settings_s.bMaximized) {
+  if (settings_.bMaximized) {
     flags |= SDL_WINDOW_MAXIMIZED;
   }
-  window_s = SDL_CreateWindow(wc::APP_NAME, SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED, settings_s.iWidth,
-                              settings_s.iHeight, flags);
-  if (!window_s) {
-    dbg::fatal({"Failed to create window.", SDL_GetError()});
-    return false;
+  window_ = SDL_CreateWindow(wc::APP_NAME, SDL_WINDOWPOS_UNDEFINED,
+                             SDL_WINDOWPOS_UNDEFINED, settings_.iWidth,
+                             settings_.iHeight, flags);
+  if (!window_) {
+    throw dbg::Exception(
+        fmt::format("Failed to create window. {}", SDL_GetError()));
   }
 
-  dbg::info(fmt::format("Window opened; dimensions {} x {}.", settings_s.iWidth,
-                        settings_s.iHeight));
-  return true;
+  dbg::info(fmt::format("Window opened; dimensions {} x {}.", settings_.iWidth,
+                        settings_.iHeight));
 }
 
-void wc::window::shutdown() {
+wc::Window::~Window() {
   if (window_s)
-    SDL_DestroyWindow(window_s);
+    SDL_DestroyWindow(window_);
 
   // If settings have changed since load, we'll have to save them.
-  if (settings_s != initialSettings_s) {
-    wc::settings::write("Window.iWidth", settings_s.iWidth);
-    wc::settings::write("Window.iHeight", settings_s.iHeight);
-    wc::settings::write("Window.bMaximized", settings_s.bMaximized);
-    wc::settings::write("Window.Fullscreen.bEnabled", settings_s.fs.bEnabled);
-    wc::settings::write("Window.Fullscreen.bBorderless",
-                        settings_s.fs.bBorderless);
-    wc::settings::write("Window.Fullscreen.iWidth", settings_s.fs.iWidth);
-    wc::settings::write("Window.Fullscreen.iHeight", settings_s.fs.iHeight);
+  if (settings_ != initialSettings_) {
+    settingsFile_.write("Window.iWidth", settings_.iWidth);
+    settingsFile_.write("Window.iHeight", settings_.iHeight);
+    settingsFile_.write("Window.bMaximized", settings_.bMaximized);
+    settingsFile_.write("Window.Fullscreen.bEnabled", settings_.fs.bEnabled);
+    settingsFile_.write("Window.Fullscreen.bBorderless",
+                        settings_.fs.bBorderless);
+    settingsFile_.write("Window.Fullscreen.iWidth", settings_.fs.iWidth);
+    settingsFile_.write("Window.Fullscreen.iHeight", settings_.fs.iHeight);
   }
 }
 
-bool wc::window::handleMessages() {
+bool wc::Window::handleMessages() {
   SDL_Event e;
   while (SDL_PollEvent(&e)) {
     switch (e.type) {
@@ -107,11 +87,11 @@ bool wc::window::handleMessages() {
     case SDL_WINDOWEVENT: {
       switch (e.window.event) {
       case SDL_WINDOWEVENT_RESIZED:
-        settings_s.bMaximized =
-            SDL_GetWindowFlags(window_s) & SDL_WINDOW_MAXIMIZED;
-        if (!settings_s.bMaximized) {
-          settings_s.iWidth  = e.window.data1;
-          settings_s.iHeight = e.window.data2;
+        settings_.bMaximized =
+            SDL_GetWindowFlags(window_) & SDL_WINDOW_MAXIMIZED;
+        if (!settings_.bMaximized) {
+          settings_.iWidth  = e.window.data1;
+          settings_.iHeight = e.window.data2;
         }
         dbg::infomore(fmt::format("Window resized to {} x {}", e.window.data1,
                                   e.window.data2));
@@ -123,7 +103,7 @@ bool wc::window::handleMessages() {
   return true;
 }
 
-void wc::window::getWindowSize(int& w, int& h) {}
-void wc::window::getDrawableSize(int& w, int& h) {}
+void wc::Window::getWindowSize(int& w, int& h) {}
+void wc::Window::getDrawableSize(int& w, int& h) {}
 
 #endif  // PLATFORM_SDL

@@ -25,28 +25,16 @@ namespace sfs = std::filesystem;
 #include "sys/paths.h"
 #include "tools/htable.hpp"
 
-namespace {
-
-  hvh::Table<FixedString<64>, wc::Module> modules;
-  hvh::Table<FixedString<64>, size_t>     files;
-
-  size_t loadModule(size_t moduleIndex) {
-    wc::Module& pkg = modules.at<1>(moduleIndex);
-    pkg.loadFileList();
-    for (auto& it : pkg.getFileTable()) {
-      files.insert(it.get<0>(), moduleIndex);
-    }
-    return pkg.getFileTable().size();
+size_t wc::Filesystem::loadModule(size_t moduleIndex) {
+  wc::Module& pkg = modules_.at<1>(moduleIndex);
+  pkg.loadFileList();
+  for (auto& it : pkg.getFileTable()) {
+    files_.insert(it.get<0>(), moduleIndex);
   }
+  return pkg.getFileTable().size();
+}
 
-}  // namespace
-
-bool wc::vfs::init() {
-  if (isInitialized()) {
-    dbg::fatal("Filesystem cannot be initialized more than once!\n");
-    return false;
-  }
-
+wc::Filesystem::Filesystem() {
   dbg::info("Initializing filesystem and loading modules...");
 
   // Scan through the user data directory.
@@ -64,15 +52,15 @@ bool wc::vfs::init() {
       if (openResult.isError()) {
         dbg::error({fmt::format("'{}' is not a valid package.",
                                 trimPathStr(it->path())),
-                    openResult.getMessage()});
+                    openResult.msg()});
         continue;
       }
-      if (openResult.isWarning() && openResult.hasMessage())
-        dbg::warnmore(openResult.getMessage());
-      if (modules.count(mod.getName().c_str()) > 0)
+      if (openResult.isWarning() && openResult.hasMsg())
+        dbg::warnmore(openResult.msg());
+      if (modules_.count(mod.getName().c_str()) > 0)
         dbg::infomore("A package with this name is already present.");
       else
-        modules.insert(mod.getName().c_str(), std::move(mod));
+        modules_.insert(mod.getName().c_str(), std::move(mod));
     } else
       dbg::error(
           fmt::format("'{}' is not a valid package.", trimPathStr(it->path())));
@@ -93,58 +81,54 @@ bool wc::vfs::init() {
         if (openResult.isError()) {
           dbg::error({fmt::format("'{}' is not a valid package.",
                                   trimPathStr(it->path())),
-                      openResult.getMessage()});
+                      openResult.msg()});
           continue;
         }
-        if (openResult.isWarning() && openResult.hasMessage())
-          dbg::warnmore(openResult.getMessage());
-        if (modules.count(mod.getName().c_str()) > 0)
+        if (openResult.isWarning() && openResult.hasMsg())
+          dbg::warnmore(openResult.msg());
+        if (modules_.count(mod.getName().c_str()) > 0)
           dbg::infomore("A package with this name is already present.");
         else
-          modules.insert(mod.getName().c_str(), std::move(mod));
+          modules_.insert(mod.getName().c_str(), std::move(mod));
       } else
         dbg::error(fmt::format("'{}' is not a valid package.",
                                trimPathStr(it->path())));
     }
   }
 
-  if (modules.size() == 0) {
-    dbg::fatal("Failed to find any modules!\n");
-    return false;
+  // Make sure we actually loaded something.
+  if (modules_.size() == 0) {
+    throw dbg::Exception("Failed to find any modules!\n");
   }
 
   // Sort the list of modules according to the load order of the modules.
-  modules.sort<1>();
+  modules_.sort<1>();
 
   // Go ahead and load all the modules for now.
-  for (size_t modindex = 0; modindex < modules.size(); ++modindex) {
+  for (size_t modindex = 0; modindex < modules_.size(); ++modindex) {
 
     size_t numFilesLoaded = loadModule(modindex);
     dbg::infomore(fmt::format("Loaded package '{}' with {} files(s).",
-                              modules.at<0>(modindex).c_str, numFilesLoaded));
+                              modules_.at<0>(modindex).c_str, numFilesLoaded));
   }
-
-  return true;
 }
 
-void wc::vfs::shutdown() {
+wc::Filesystem::~Filesystem() {
 
-  for (auto& it : modules) {
+  for (auto& it : modules_) {
     it.get<1>().close();
   }
-  modules.clear();
-  files.clear();
+  modules_.clear();
+  files_.clear();
 }
 
-bool wc::vfs::isInitialized() { return (modules.size() > 0); }
-
-wc::vfs::FileProxy
-    wc::vfs::getFile(const std::string_view filename, bool reverseSort) {
+wc::Filesystem::FileProxy
+    wc::Filesystem::getFile(const std::string_view filename, bool reverseSort) {
   std::vector<size_t> list;
-  list.reserve(files.count(filename));
+  list.reserve(files_.count(filename));
   // Get the module indices from the map and save them in the list.
-  for (auto& it : files.find(filename)) {
-    list.push_back(files.at<1>(it.index()));
+  for (auto& it : files_.find(filename)) {
+    list.push_back(files_.at<1>(it.index()));
   }
   // Sort the list and return the proxy.
   if (list.size() > 1) {
@@ -153,10 +137,11 @@ wc::vfs::FileProxy
     else
       std::sort(list.begin(), list.end());
   }
-  return wc::vfs::FileProxy(filename, std::move(list), reverseSort);
+  return wc::Filesystem::FileProxy(*this, filename, std::move(list),
+                                   reverseSort);
 }
 
-wc::Result::Value<std::vector<char>> wc::vfs::FileProxy::Iterator::load() {
+wc::FileResult wc::Filesystem::FileProxy::Iterator::load() {
   // If the list index points beyond the list,
   // either we've run out of files or the file we searched for doesn't exist.
   if (proxy_.list_.size() <= 0)
@@ -169,5 +154,6 @@ wc::Result::Value<std::vector<char>> wc::vfs::FileProxy::Iterator::load() {
   size_t moduleIndex = proxy_.list_[listIndex_];
 
   // Load the file data.
-  return modules.at<1>(moduleIndex).loadFile(proxy_.filename_.c_str());
+  return proxy_.vfs_.modules_.at<1>(moduleIndex)
+      .loadFile(proxy_.filename_.c_str());
 }

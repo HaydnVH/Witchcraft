@@ -11,27 +11,32 @@
 #define WC_SYS_SETTINGS_H
 
 #include <optional>
+#include <rapidjson/document.h>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace wc::settings {
+namespace wc {
+  class SettingsFile {
+  public:
+    SettingsFile(const std::string_view filename);
+    ~SettingsFile();
 
-  constexpr const char* SETTINGS_FILENAME = "settings.json";
+    bool exists(const std::string_view path);
 
-  void init();
-  void shutdown();
+    template <typename T>
+    bool read(const std::string_view path, T& val);
 
-  bool isInitialized();
+    template <typename T>
+    void write(const std::string_view path, const T& val);
 
-  /// @return True if a value at the given path exists, false otherwise.
-  bool exists(const std::string_view path);
+  private:
+    const std::string   filename_;
+    rapidjson::Document doc_;
+    bool                modified_ = false;
 
-  template <typename T>
-  bool read(const std::string_view path, T& val);
+    rapidjson::Value* followPath(const std::string_view path, bool mayCreate);
+  };
+}  // namespace wc
 
-  template <typename T>
-  void write(const std::string_view path, const T& val);
-
-}  // namespace wc::settings
 #endif  // WC_SYS_SETTINGS_H

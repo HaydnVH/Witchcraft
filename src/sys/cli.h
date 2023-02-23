@@ -23,7 +23,7 @@ namespace cli {
   constexpr const char* LOG_FILENAME = "log.txt";
 
   /// Initializes the CLI system and opens the log file.
-  bool initialize();
+  void init();
 
   /// Returns the terminal back to its default state and closes the log file.
   /// Unlike initialization, this must be done manually before the application
@@ -35,8 +35,8 @@ namespace cli {
   /// settings.
   /// @param message: The message to print.
   /// @param endl: Whether to insert an "end of line" after the message.
-  void print(dbg::MessageSeverity severity, std::string_view message,
-             bool endl);
+  void
+      print(dbg::MessageSeverity severity, std::string_view message, bool endl);
 
   /// Gets a single line of input that the user has entered into the terminal.
   /// @param out: The string where the line of input should be stored.

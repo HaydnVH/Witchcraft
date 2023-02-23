@@ -10,19 +10,24 @@
 #ifndef WC_SYS_MAINLOOP_H
 #define WC_SYS_MAINLOOP_H
 
+#include "lua/luasystem.h"
+#include "window.h"
+
 namespace wc::sys {
 
   /// Checks whether the engine should be running.
   bool isRunning();
 
-  /// Sets the internal 'running' flag to 'false' and allows the loop to terminate gracefully.
+  /// Sets the internal 'running' flag to 'false' and allows the loop to
+  /// terminate gracefully.
   void shutDown();
 
   /// Runs one iteration of the main loop.  Normally run in a tight loop.
   /// @param handleWindowMessages: Whether this iteration of the main loop
   /// should handle OS window messages.  Should only be false in special cases.
-  void mainLoop(bool handleWindowMessages = true);
+  void mainLoop(wc::Lua& lua, wc::Window& window,
+                bool handleWindowMessages = true);
 
-} // namespace wc::sys
+}  // namespace wc::sys
 
-#endif // WC_SYS_MAINLOOP_H
+#endif  // WC_SYS_MAINLOOP_H

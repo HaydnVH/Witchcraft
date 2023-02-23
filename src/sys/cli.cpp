@@ -112,7 +112,9 @@ namespace {
       char    mbstr[2048] = "";
       DWORD   numRead     = 0;
       // Read the utf-16 console input.
-      if (ReadConsoleW(hcin_s, wstr, 1024, &numRead, nullptr) == 0) { break; }
+      if (ReadConsoleW(hcin_s, wstr, 1024, &numRead, nullptr) == 0) {
+        break;
+      }
       // Convert it to utf-8.
       int size = WideCharToMultiByte(CP_UTF8, 0, wstr, numRead, mbstr,
                                      sizeof(mbstr), nullptr, nullptr);
@@ -132,7 +134,8 @@ namespace {
       inputstr += rawInput;
 #endif
 
-      if (inputstr.size() == 0) continue;
+      if (inputstr.size() == 0)
+        continue;
 
       switch (inputstr[0]) {
         // If the input is \n or \r,
@@ -242,7 +245,7 @@ namespace {
 
 }  // namespace
 
-bool cli::initialize() {
+void cli::init() {
 
   // Open the log file.
   std::filesystem::path logpath = wc::getUserPath() / LOG_FILENAME;
@@ -297,11 +300,12 @@ bool cli::initialize() {
                               logpath.string()));
   }
 
-  return true;
+  return;
 }
 
 void cli::shutdown() {
-  if (!initialized_s) return;
+  if (!initialized_s)
+    return;
   // Indicate that the input thread should stop looping.
   inThreadRunning_s = false;
   // Forces an input to be placed on the terminal input stream.
@@ -349,12 +353,15 @@ void cli::print(dbg::MessageSeverity severity, std::string_view message,
     WRITE(outString.c_str(), outString.size());
 
     // Iff we locked the mutex ourselves, unlock it here.
-    if (wasLocked) cliMutex_g.unlock();
+    if (wasLocked)
+      cliMutex_g.unlock();
   }
 
   if (logFile_s.is_open() && !!(severity & myConfig.logfileFilter)) {
     logFile_s << strippedAnsi(message);
-    if (endl) { logFile_s << std::endl; }
+    if (endl) {
+      logFile_s << std::endl;
+    }
   }
 }
 
