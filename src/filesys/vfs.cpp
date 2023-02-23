@@ -25,16 +25,17 @@ namespace sfs = std::filesystem;
 #include "sys/paths.h"
 #include "tools/htable.hpp"
 
-size_t wc::Filesystem::loadModule(size_t moduleIndex) {
-  wc::Module& pkg = modules_.at<1>(moduleIndex);
-  pkg.loadFileList();
-  for (auto& it : pkg.getFileTable()) {
-    files_.insert(it.get<0>(), moduleIndex);
-  }
-  return pkg.getFileTable().size();
+namespace {
+  wc::Filesystem* uniqueFilesystem_s = nullptr;
 }
 
 wc::Filesystem::Filesystem() {
+
+  // Uniqueness check
+  if (uniqueFilesystem_s)
+    throw dbg::Exception("Only one wc::Filesystem object should exist.");
+  uniqueFilesystem_s = this;
+
   dbg::info("Initializing filesystem and loading modules...");
 
   // Scan through the user data directory.
@@ -156,4 +157,13 @@ wc::FileResult wc::Filesystem::FileProxy::Iterator::load() {
   // Load the file data.
   return proxy_.vfs_.modules_.at<1>(moduleIndex)
       .loadFile(proxy_.filename_.c_str());
+}
+
+size_t wc::Filesystem::loadModule(size_t moduleIndex) {
+  wc::Module& pkg = modules_.at<1>(moduleIndex);
+  pkg.loadFileList();
+  for (auto& it : pkg.getFileTable()) {
+    files_.insert(it.get<0>(), moduleIndex);
+  }
+  return pkg.getFileTable().size();
 }

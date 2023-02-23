@@ -133,7 +133,7 @@ namespace dbg {
   }
   void fatalmore(const std::string_view message) {
     printLine(MessageSeverity::Fatal,
-              fmt::format(" {}{}{} {}", ERRCOLR_FG, FATALMORE, CLEAR, message));
+              fmt::format(" {}{} {}", ERRCOLR_FG, FATALMORE, message));
   }
 
   Lock fatal(const Exception& e, std::optional<std::string_view> srcOverride,

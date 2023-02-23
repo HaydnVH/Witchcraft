@@ -33,7 +33,7 @@ int main(int /*argc*/, char** /*argv*/) {
           {fmt::format("Now starting '{}' {}", wc::APP_NAME, wc::APP_VERSION),
            fmt::format("Created using '{}' {}", wc::ENGINE_NAME,
                        wc::ENGINE_VERSION),
-           "¯\\_(ツ)_/¯ 🌮"});
+           "Unicode handling test: ¯\\_(ツ)_/¯ 🌮"});
 
       wc::SettingsFile settings("settings.json");
       wc::Filesystem   vfs;
@@ -47,12 +47,12 @@ int main(int /*argc*/, char** /*argv*/) {
 
     } catch (const dbg::Exception& e) {
       dbg::fatal(e);
-      result = 1;
+      result = 10;
     }
     cli::shutdown();
   } catch (const std::exception& e) {
     std::cerr << "\n" << e.what() << std::endl;
-    result = 2;
+    result = 20;
   }
   return result;
 }

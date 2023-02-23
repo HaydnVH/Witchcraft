@@ -17,18 +17,16 @@
   #include <SDL.h>
 
 namespace {
-  wc::Window* window_s = nullptr;
-}  // namespace
+  wc::Window* uniqueWindow_s = nullptr;
+}
 
 wc::Window::Window(wc::SettingsFile& settingsFile):
     settingsFile_(settingsFile) {
 
-  if (window_s) {
-    throw dbg::Exception("Can't open the window a second time!");
-  }
-  window_s = this;
-
-  // throw dbg::Exception("Gotta keep ya on your toes, you know?");
+  // Uniqueness check
+  if (uniqueWindow_s)
+    throw dbg::Exception("Only one wc::Window object should exist.");
+  uniqueWindow_s = this;
 
   // Read settings.
   settingsFile_.read("Window.iWidth", settings_.iWidth);
@@ -63,7 +61,7 @@ wc::Window::Window(wc::SettingsFile& settingsFile):
 }
 
 wc::Window::~Window() {
-  if (window_s)
+  if (window_)
     SDL_DestroyWindow(window_);
 
   // If settings have changed since load, we'll have to save them.

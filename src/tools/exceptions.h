@@ -11,12 +11,18 @@
 
 namespace dbg {
 
+  /// This exception is designed to accumulate exception messages as it passes
+  /// through the call stack, picking up the source location of each place it
+  /// stops along the way.
   class Exception: public std::exception {
   public:
+    /// Constructs a new exception from just a regular message.
     Exception(const std::string_view msg,
               std::source_location   src = std::source_location::current()) {
       addMsg(msg, src);
     }
+    /// Constructs a new exception from an existing exception, adding the new
+    /// message to it.
     Exception(const std::string_view msg, Exception&& e,
               std::source_location src = std::source_location::current()) {
       *this = std::move(e);
@@ -32,6 +38,7 @@ namespace dbg {
   private:
     std::vector<std::string> messages_;
 
+    // Adds a new message to the list.
     Exception& addMsg(const std::string_view msg, std::source_location src) {
       messages_.push_back(fmt::format(
           "[{}:{} \"{}\"]:\x1b[0m {}",

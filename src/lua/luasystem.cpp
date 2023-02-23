@@ -23,14 +23,15 @@ using namespace std;
 #include "tools/strtoken.h"
 
 namespace {
-  wc::Lua* lua_s = nullptr;
+  wc::Lua* uniqueLua_s = nullptr;
 }
 
 wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
-  if (lua_s) {
+
+  // Uniqueness check.
+  if (uniqueLua_s)
     throw dbg::Exception("Only one wc::Lua object should exist.");
-  }
-  lua_s = this;
+  uniqueLua_s = this;
 
   L_ = luaL_newstate();
   luaL_openlibs(L_);
@@ -99,7 +100,7 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
   // This runs the script properly in a protected environment.
   lua_pushcfunction(L_, [](lua_State* L) {
     const char* filename = luaL_checkstring(L, 1);
-    auto        result   = lua_s->doFile(filename);
+    auto        result   = uniqueLua_s->doFile(filename);
     if (result.isError()) {
       return luaL_error(L, result.msg().c_str());
     }
@@ -109,9 +110,9 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
 
   lua_pop(L_, 1);  // Pop '_G' off the stack.
 
-  dbg::info("Finished initalizing lua system.");
   lua_getglobal(L_, "_VERSION");
-  dbg::infomore(fmt::format("{}", lua_tostring(L_, -1)));
+  dbg::info(
+      fmt::format("Finished initalizing lua system: {}", lua_tostring(L_, -1)));
   lua_pop(L_, 1);
 
   // Run core scripts here.
@@ -170,7 +171,7 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
       // If it's not a table, call 'dofile' to run it.
       if (!lua_istable(L, -1)) {
         lua_pop(L, 1);
-        auto result = lua_s->doFile(filename);
+        auto result = uniqueLua_s->doFile(filename);
         if (result.isError()) {
           return luaL_error(L, result.msg().c_str());
         }
