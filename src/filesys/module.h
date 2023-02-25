@@ -25,10 +25,15 @@ namespace wc {
 
   class Module {
   public:
+    Module()              = default;
+    Module(const Module&) = delete;
+    Module(Module&& rhs) noexcept { swap(*this, rhs); }
+    ~Module() { close(); };
+
     /// Attempts to open the module associated with the given path.
     /// This does not load the files inside the module!
-    /// @return An empty Result which may hold an error/warning message.
-    wc::Result::Empty open(const std::filesystem::path& path);
+    /// @return the module, or an error/warning message.
+    static Result::Value<Module> open(const std::filesystem::path& path);
 
     /// Closes the archive (if one exists) and frees resources.
     void close();

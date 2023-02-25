@@ -8,11 +8,11 @@
  * Defines the entrypoint into the application.
  *****************************************************************************/
 
+#include "dbg/cli.h"
+#include "dbg/debug.h"
 #include "filesys/vfs.h"
 #include "lua/luasystem.h"
 #include "sys/appconfig.h"
-#include "sys/cli.h"
-#include "sys/debug.h"
 #include "sys/mainloop.h"
 #include "sys/paths.h"
 #include "sys/settings.h"
@@ -26,33 +26,34 @@
 /// @return Standard application result code.  0 on success.
 int main(int /*argc*/, char** /*argv*/) {
   int result = 0;
+  // try {
+  cli::init();
   try {
-    cli::init();
-    try {
-      dbg::info(
-          {fmt::format("Now starting '{}' {}", wc::APP_NAME, wc::APP_VERSION),
-           fmt::format("Created using '{}' {}", wc::ENGINE_NAME,
-                       wc::ENGINE_VERSION),
-           "Unicode handling test: ¯\\_(ツ)_/¯ 🌮"});
+    dbg::info(fmt::format(
+        "Now starting '{}' {}\n"
+        "Created using '{}' {}\n"
+        "Unicode handling test: ¯\\_(ツ)_/¯ 🌮",
+        wc::APP_NAME, wc::APP_VERSION, wc::ENGINE_NAME, wc::ENGINE_VERSION));
 
-      wc::SettingsFile settings("settings.json");
-      wc::Filesystem   vfs;
-      wc::Lua          lua(vfs);
-      wc::Window       window(settings);
+    wc::SettingsFile settings("settings.json");
+    wc::Filesystem   vfs;
+    wc::Lua          lua(vfs);
+    wc::Window       window(settings);
 
-      // Enter the main loop.
-      while (wc::sys::isRunning()) {
-        wc::sys::mainLoop(lua, window, true);
-      }
-
-    } catch (const dbg::Exception& e) {
-      dbg::fatal(e);
-      result = 10;
+    // Enter the main loop.
+    while (wc::sys::isRunning()) {
+      wc::sys::mainLoop(lua, window, true);
     }
-    cli::shutdown();
-  } catch (const std::exception& e) {
-    std::cerr << "\n" << e.what() << std::endl;
-    result = 20;
+
+  } catch (const dbg::Exception& e) {
+    dbg::fatal(e);
+    result = 10;
   }
+  cli::shutdown();
+  //}
+  // catch (const std::exception& e) {
+  //  std::cerr << "\n" << e.what() << std::endl;
+  //  result = 20;
+  //}
   return result;
 }

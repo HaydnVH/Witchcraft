@@ -18,7 +18,7 @@ namespace sfs = std::filesystem;
 #include <rapidjson/filereadstream.h>
 using namespace rapidjson;
 
-#include "sys/debug.h"
+#include "dbg/debug.h"
 #include "sys/paths.h"
 
 // #include "tools/stringhelper.h"
@@ -31,7 +31,8 @@ namespace {
 
 }  // namespace
 
-wc::Result::Empty wc::Module::open(const std::filesystem::path& myPath) {
+wc::Result::Value<wc::Module>
+    wc::Module::open(const std::filesystem::path& myPath) {
 
   // Make sure something exists there.
   if (!sfs::exists(myPath)) {
@@ -39,6 +40,7 @@ wc::Result::Empty wc::Module::open(const std::filesystem::path& myPath) {
         fmt::format("'{}' does not exist.", trimPathStr(myPath)));
   }
 
+  Module                     result;
   std::optional<std::string> warnMsg = std::nullopt;
   std::vector<char>          modinfo;
 
@@ -59,13 +61,13 @@ wc::Result::Empty wc::Module::open(const std::filesystem::path& myPath) {
     }
     // modinfo = FileData(mypath, PACKAGEINFO_FILENAME);
   } else if (sfs::is_regular_file(myPath)) {
-    if (archive_.open(myPath.string().c_str())) {
+    if (result.getArchive().open(myPath.string().c_str())) {
       Archive::timestamp_t nil;
-      archive_.extractData(MODINFO_FILENAME, modinfo, nil);
+      result.getArchive().extractData(MODINFO_FILENAME, modinfo, nil);
     }
   }
 
-  name_ = myPath.filename().string();
+  result.name_ = myPath.filename().string();
 
   if (modinfo.empty()) {
     warnMsg = fmt::format("Failed to open '{}/{}'.", trimPathStr(myPath),
@@ -81,32 +83,32 @@ wc::Result::Empty wc::Module::open(const std::filesystem::path& myPath) {
       // We've found and correctly parsed module.json,
       // by this point we can confidently say that we're looking at a module.
       if (doc.HasMember("name")) {
-        name_ = doc["name"].GetString();
+        result.name_ = doc["name"].GetString();
       }
       if (doc.HasMember("author")) {
-        author_ = doc["author"].GetString();
+        result.author_ = doc["author"].GetString();
       }
       if (doc.HasMember("category")) {
-        category_ = doc["category"].GetString();
+        result.category_ = doc["category"].GetString();
       }
       if (doc.HasMember("description")) {
-        description_ = doc["description"].GetString();
+        result.description_ = doc["description"].GetString();
       }
       if (doc.HasMember("priority")) {
-        priority_ = doc["priority"].GetFloat();
+        result.priority_ = doc["priority"].GetFloat();
       }
     }
   }
 
   // Timestamp is used to sort modules which have equal priority.
-  timestamp_ = sfs::last_write_time(myPath).time_since_epoch().count();
+  result.timestamp_ = sfs::last_write_time(myPath).time_since_epoch().count();
 
-  path_  = myPath;
-  found_ = true;
+  result.path_  = myPath;
+  result.found_ = true;
   if (warnMsg)
-    return Result::warning(*warnMsg);
+    return Result::warning(*warnMsg, result);
   else
-    return Result::success();
+    return Result::success(result);
 }
 
 void wc::Module::close() {

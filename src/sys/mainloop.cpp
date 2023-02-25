@@ -9,8 +9,8 @@
  *****************************************************************************/
 #include "mainloop.h"
 
-#include "cli.h"
-#include "debug.h"
+#include "dbg/cli.h"
+#include "dbg/debug.h"
 #include "lua/luasystem.h"
 #include "window.h"
 
@@ -35,7 +35,7 @@ namespace wc::sys {
     std::string terminalInput;
     while (cli::popInput(terminalInput)) {
       // if (terminalInput == "quit") { shutDown(); }
-      lua.runString(terminalInput.c_str(), "CONSOLE", "@CLI");
+      lua.runString(terminalInput.c_str(), "CONSOLE", "@Command Line");
     }
   }
 

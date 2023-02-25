@@ -19,9 +19,9 @@
 #include <vector>
 namespace sfs = std::filesystem;
 
+#include "dbg/debug.h"
 #include "module.h"
 #include "sys/appconfig.h"
-#include "sys/debug.h"
 #include "sys/paths.h"
 #include "tools/htable.hpp"
 
@@ -48,20 +48,18 @@ wc::Filesystem::Filesystem() {
     if (it->is_directory() || (it->is_regular_file() &&
                                it->path().extension().string() == MODULE_EXT)) {
       // Add it to the list of available modules.
-      Module mod;
-      auto   openResult = mod.open(it->path());
-      if (openResult.isError()) {
-        dbg::error({fmt::format("'{}' is not a valid package.",
-                                trimPathStr(it->path())),
-                    openResult.msg()});
+      auto mod = Module::open(it->path());
+      if (mod.isError() || !mod) {
+        dbg::error(fmt::format("'{}' is not a valid package,\n{}",
+                               trimPathStr(it->path()), mod.msg()));
         continue;
       }
-      if (openResult.isWarning() && openResult.hasMsg())
-        dbg::warnmore(openResult.msg());
-      if (modules_.count(mod.getName().c_str()) > 0)
+      if (mod.isWarning() && mod.hasMsg())
+        dbg::warnmore(mod.msg());
+      if (modules_.count(mod->getName().c_str()) > 0)
         dbg::infomore("A package with this name is already present.");
       else
-        modules_.insert(mod.getName().c_str(), std::move(mod));
+        modules_.insert(mod->getName().c_str(), std::move(*mod));
     } else
       dbg::error(
           fmt::format("'{}' is not a valid package.", trimPathStr(it->path())));
@@ -77,20 +75,18 @@ wc::Filesystem::Filesystem() {
           (it->is_regular_file() &&
            it->path().extension().string() == MODULE_EXT)) {
         // Add it to the list of available modules.
-        Module mod;
-        auto   openResult = mod.open(it->path());
-        if (openResult.isError()) {
-          dbg::error({fmt::format("'{}' is not a valid package.",
-                                  trimPathStr(it->path())),
-                      openResult.msg()});
+        auto mod = Module::open(it->path());
+        if (mod.isError() || !mod) {
+          dbg::error(fmt::format("'{}' is not a valid package,\n{}",
+                                 trimPathStr(it->path()), mod.msg()));
           continue;
         }
-        if (openResult.isWarning() && openResult.hasMsg())
-          dbg::warnmore(openResult.msg());
-        if (modules_.count(mod.getName().c_str()) > 0)
+        if (mod.isWarning() && mod.hasMsg())
+          dbg::warnmore(mod.msg());
+        if (modules_.count(mod->getName().c_str()) > 0)
           dbg::infomore("A package with this name is already present.");
         else
-          modules_.insert(mod.getName().c_str(), std::move(mod));
+          modules_.insert(mod->getName().c_str(), std::move(*mod));
       } else
         dbg::error(fmt::format("'{}' is not a valid package.",
                                trimPathStr(it->path())));

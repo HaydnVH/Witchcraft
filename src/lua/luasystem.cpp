@@ -14,11 +14,11 @@
 #include <vector>
 using namespace std;
 
+#include "dbg/debug.h"
 #include "filesys/vfs.h"
 #include "scripts_inc/events.lua.h"
 #include "scripts_inc/math2.lua.h"
 #include "scripts_inc/sandbox.lua.h"
-#include "sys/debug.h"
 #include "sys/mainloop.h"
 #include "tools/strtoken.h"
 
@@ -59,18 +59,18 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
       if (lua_isnumber(L, -1))
         currentLine = lua_tointeger(L, -1);
       lua_pop(L, 1);
-      dbg::luaPrint({}, fmt::format("{}:{}", shortSrc, currentLine));
+      dbg::luamsg("", fmt::format("{}:{}", shortSrc, currentLine));
     } else {
-      dbg::luaPrint({}, "");
+      dbg::luamsg("", "");
     }
     lua_pop(L, 2);  // pop _G.debug and our returned table/nil off the stack.
 
     int argc = lua_gettop(L);
     for (int i = 1; i <= argc; ++i) {
       if (lua_isnil(L, i)) {
-        dbg::luaPrintmore(NILSTR);
+        dbg::luamore(NILSTR);
       } else {
-        dbg::luaPrintmore(lua_tostring(L, i));
+        dbg::luamore(lua_tostring(L, i));
       }
     }
     return 0;
@@ -85,9 +85,9 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
     stringstream ss;
     for (int i = 1; i <= argc; ++i) {
       if (lua_isnil(L, i)) {
-        dbg::luaPrintmore(NILSTR);
+        dbg::luamore(NILSTR);
       } else {
-        dbg::luaPrintmore(lua_tostring(L, i));
+        dbg::luamore(lua_tostring(L, i));
       }
     }
     return 0;

@@ -42,20 +42,20 @@ std::mutex cliMutex_g;
 
 namespace {
 
-  bool                     initialized_s = false;
-  std::ofstream            logFile_s;
-  std::vector<std::string> crashReports_s;
-  std::queue<std::string>  consoleQueue_s;
-  std::queue<std::tuple<dbg::MessageSeverity, std::string>> preinitQueue_s;
-  std::string                                               lastMessage_s = "";
+  bool                                               initialized_s = false;
+  std::ofstream                                      logFile_s;
+  std::vector<std::string>                           crashReports_s;
+  std::queue<std::string>                            consoleQueue_s;
+  std::queue<std::tuple<dbg::Severity, std::string>> preinitQueue_s;
+  std::string                                        lastMessage_s = "";
 
   struct {
-    dbg::MessageSeverity stdoutFilter  = dbg::MessageSeverity::Everything;
-    dbg::MessageSeverity logfileFilter = dbg::MessageSeverity::Everything;
-    dbg::MessageSeverity consoleFilter = dbg::MessageSeverity::Everything;
-    bool                 makeConsole   = true;
-    bool                 allowCheats   = true;
-    bool                 modified      = false;
+    dbg::Severity stdoutFilter  = dbg::Severity::Everything;
+    dbg::Severity logfileFilter = dbg::Severity::Everything;
+    dbg::Severity consoleFilter = dbg::Severity::Everything;
+    bool          makeConsole   = true;
+    bool          allowCheats   = true;
+    bool          modified      = false;
   } myConfig;
 
   std::thread       cinThread_s;
@@ -214,8 +214,7 @@ namespace {
         // Clear the console after that position.
         // Print the user input.
         auto formattedEchoString =
-            fmt::format("{}{}{}{}{}{}", DECSR, ED, dbg::USERCOLR, "$> ",
-                        dbg::CLEAR, echostr);
+            fmt::format("{}{}{}\x1b[0m{}", DECSR, ED, dbg::USERPROMPT, echostr);
         WRITE(formattedEchoString.c_str(), formattedEchoString.size());
 
         // Move the cursor so it appears where our input is.
@@ -322,8 +321,7 @@ void cli::shutdown() {
 #endif
 }
 
-void cli::print(dbg::MessageSeverity severity, std::string_view message,
-                bool endl) {
+void cli::print(dbg::Severity severity, std::string_view message, bool endl) {
   // If the console hasn't been initialized yet, initialize it.
   if (!initialized_s) {
     return;
@@ -331,16 +329,13 @@ void cli::print(dbg::MessageSeverity severity, std::string_view message,
   }
 
   // Check for repeated messages so we don't spam the console.
-  if ((lastMessage_s == message) && (severity != dbg::MessageSeverity::User))
+  if ((lastMessage_s == message) && (severity != dbg::Severity::User))
     return;
   else
     lastMessage_s = message;
 
   if (myConfig.makeConsole && !!(severity & myConfig.stdoutFilter)) {
-    // Try to lock the mutex.
-    // This will fail if it was locked during a call to `info`, `error`, etc.
-    // In that case we don't need to do anything because we're already
-    // synchronized.
+
     bool wasLocked = cliMutex_g.try_lock();
 
     // Restore the cursor position to where we last output.
@@ -352,7 +347,6 @@ void cli::print(dbg::MessageSeverity severity, std::string_view message,
                                  (endl) ? "\n" : "", DECSC, WAKEUP);
     WRITE(outString.c_str(), outString.size());
 
-    // Iff we locked the mutex ourselves, unlock it here.
     if (wasLocked)
       cliMutex_g.unlock();
   }
@@ -372,7 +366,7 @@ bool cli::popInput(std::string& out) {
   } else {
     out = std::move(consoleQueue_s.front());
     consoleQueue_s.pop();
-    dbg::user(out);
+    dbg::usermsg(out);
     return true;
   }
 }

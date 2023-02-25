@@ -10,7 +10,7 @@
 #ifdef PLATFORM_SDL
 
   #include "appconfig.h"
-  #include "debug.h"
+  #include "dbg/debug.h"
   #include "settings.h"
   #include "window.h"
 

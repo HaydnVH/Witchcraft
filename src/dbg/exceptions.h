@@ -1,3 +1,13 @@
+/******************************************************************************
+ * result.h
+ * Part of the Witchcraft engine by Haydn V. Harach
+ * https://github.com/HaydnVH/Witchcraft
+ * (C) Haydn V. February 2023 - present
+ * Last modified February 2023
+ * ---------------------------------------------------------------------------
+ * Provides an exception which can accumulate messages as it passes through
+ * the call stack.  Also records source locations.
+ *****************************************************************************/
 #ifndef WC_TOOLS_EXCEPTIONS_H
 #define WC_TOOLS_EXCEPTIONS_H
 

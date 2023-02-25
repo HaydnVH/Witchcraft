@@ -35,8 +35,7 @@ namespace cli {
   /// settings.
   /// @param message: The message to print.
   /// @param endl: Whether to insert an "end of line" after the message.
-  void
-      print(dbg::MessageSeverity severity, std::string_view message, bool endl);
+  void print(dbg::Severity severity, std::string_view message, bool endl);
 
   /// Gets a single line of input that the user has entered into the terminal.
   /// @param out: The string where the line of input should be stored.

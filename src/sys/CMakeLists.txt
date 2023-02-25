@@ -8,8 +8,6 @@
 # Defines the source files for the "sys" subdirectory.
 ###############################################################################
 target_sources(Witchcraft PRIVATE
-  "cli.cpp"
-  "debug.cpp"
   "mainloop.cpp"
   "paths.cpp"
   "settings.cpp"

@@ -5,10 +5,8 @@
 # (C) Haydn V. Harach 2022 - present
 # Last modified February 2023
 # ----------------------------------------------------------------------------
-# Defines the source files that go into the main executable.
+# Defines the source files for the "dbg" subdirectory.
 ###############################################################################
-target_sources(Witchcraft PRIVATE "main.cpp")
-add_subdirectory("dbg")
-add_subdirectory("filesys")
-add_subdirectory("lua")
-add_subdirectory("sys")
+target_sources(Witchcraft PRIVATE
+  "cli.cpp"
+  "debug.cpp")
