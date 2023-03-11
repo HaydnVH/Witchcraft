@@ -9,12 +9,15 @@
  *****************************************************************************/
 #ifdef PLATFORM_SDL
 
-  #include "appconfig.h"
-  #include "dbg/debug.h"
-  #include "settings.h"
-  #include "window.h"
+#include "appconfig.h"
+#include "dbg/debug.h"
+#include "settings.h"
+#include "window.h"
 
-  #include <SDL.h>
+#include <SDL.h>
+#ifdef RENDERER_VULKAN
+#include <SDL_vulkan.h>
+#endif
 
 namespace {
   wc::Window* uniqueWindow_s = nullptr;
@@ -42,9 +45,9 @@ wc::Window::Window(wc::SettingsFile& settingsFile):
 
   // Create the window.
   uint32_t flags = SDL_WINDOW_RESIZABLE;
-  #ifdef RENDERER_VULKAN
+#ifdef RENDERER_VULKAN
   flags |= SDL_WINDOW_VULKAN;
-  #endif
+#endif
   if (settings_.bMaximized) {
     flags |= SDL_WINDOW_MAXIMIZED;
   }
@@ -102,6 +105,10 @@ bool wc::Window::handleMessages() {
 }
 
 void wc::Window::getWindowSize(int& w, int& h) {}
-void wc::Window::getDrawableSize(int& w, int& h) {}
+void wc::Window::getDrawableSize(int& w, int& h) {
+#ifdef RENDERER_VULKAN
+  SDL_Vulkan_GetDrawableSize(window_, &w, &h);
+#endif
+}
 
 #endif  // PLATFORM_SDL

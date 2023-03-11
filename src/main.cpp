@@ -11,14 +11,18 @@
 #include "dbg/cli.h"
 #include "dbg/debug.h"
 #include "filesys/vfs.h"
+#include "gfx/renderer_vk.h"
 #include "lua/luasystem.h"
 #include "sys/appconfig.h"
 #include "sys/mainloop.h"
 #include "sys/paths.h"
 #include "sys/settings.h"
 #include "sys/window.h"
+#include "tools/uuid.h"
 
+#include <chrono>
 #include <iostream>
+#include <unordered_set>
 
 /// The main entrypoint into the application.
 /// @param argc: The number of arguments passed to the application (unused).
@@ -29,16 +33,27 @@ int main(int /*argc*/, char** /*argv*/) {
   // try {
   cli::init();
   try {
-    dbg::info(fmt::format(
-        "Now starting '{}' {}\n"
-        "Created using '{}' {}\n"
-        "Unicode handling test: ¯\\_(ツ)_/¯ 🌮",
-        wc::APP_NAME, wc::APP_VERSION, wc::ENGINE_NAME, wc::ENGINE_VERSION));
+    dbg::info(
+        fmt::format("Now starting '{}' {}\n"
+                    "Created using '{}' {}\n"
+                    "Unicode handling test: ¯\\_(ツ)_/¯ 🌮 {:x}\n",
+                    wc::APP_NAME, wc::APP_VERSION, wc::ENGINE_NAME,
+                    wc::ENGINE_VERSION, 42));
 
-    wc::SettingsFile settings("settings.json");
-    wc::Filesystem   vfs;
-    wc::Lua          lua(vfs);
-    wc::Window       window(settings);
+    for (int i = 0; i < 10; ++i) {
+      auto id  = wc::Uuid::makeV4Secure();
+      auto b64 = id.toStrBase64();
+      dbg::infomore(b64);
+      if (id != wc::Uuid::fromStrBase64(b64)) {
+        dbg::errmore("id doesn't match!");
+      }
+    }
+
+    wc::SettingsFile  settings("settings.json");
+    wc::Filesystem    vfs;
+    wc::Lua           lua(vfs);
+    wc::Window        window(settings);
+    wc::gfx::Renderer renderer(settings, window);
 
     // Enter the main loop.
     while (wc::sys::isRunning()) {

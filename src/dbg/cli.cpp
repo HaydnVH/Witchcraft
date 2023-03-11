@@ -36,10 +36,6 @@
   #define WRITE(s, n) write(STDOUT_FILENO, s, n)
 #endif
 
-/// Although this is technically a "global", it should only ever be 'extern'd
-/// from "debug.cpp". This mutex is used to synchronize CLI behaviour.
-std::mutex cliMutex_g;
-
 namespace {
 
   bool                                               initialized_s = false;
@@ -59,6 +55,7 @@ namespace {
   } myConfig;
 
   std::thread       cinThread_s;
+  std::mutex        cliMutex_s;
   bool              inThreadRunning_s = true;
   std::atomic<bool> updateInLine_s    = true;
 
@@ -146,7 +143,7 @@ namespace {
         qstr = utf32_to_utf8(*inputBuffer);
         // Push it onto the queue.
         {
-          std::lock_guard lock(cliMutex_g);
+          std::lock_guard lock(cliMutex_s);
           consoleQueue_s.push(move(qstr));
         }
         // Clear the buffer and set the cursor to 0.
@@ -209,12 +206,12 @@ namespace {
 
       echostr = utf32_to_utf8(*inputBuffer);
       {
-        std::lock_guard lock(cliMutex_g);
+        std::lock_guard lock(cliMutex_s);
         // Move the cursor to the saved output position.
         // Clear the console after that position.
         // Print the user input.
         auto formattedEchoString =
-            fmt::format("{}{}{}\x1b[0m{}", DECSR, ED, dbg::USERPROMPT, echostr);
+            fmt::format("{}{}{}\x1b[0m{}", DECSR, ED, cli::USERPROMPT, echostr);
         WRITE(formattedEchoString.c_str(), formattedEchoString.size());
 
         // Move the cursor so it appears where our input is.
@@ -336,7 +333,7 @@ void cli::print(dbg::Severity severity, std::string_view message, bool endl) {
 
   if (myConfig.makeConsole && !!(severity & myConfig.stdoutFilter)) {
 
-    bool wasLocked = cliMutex_g.try_lock();
+    std::lock_guard lock(cliMutex_s);
 
     // Restore the cursor position to where we last output.
     // Clear the console after the current position.
@@ -346,9 +343,6 @@ void cli::print(dbg::Severity severity, std::string_view message, bool endl) {
     auto outString = fmt::format("{}{}{}{}{}{}", DECSR, ED, message,
                                  (endl) ? "\n" : "", DECSC, WAKEUP);
     WRITE(outString.c_str(), outString.size());
-
-    if (wasLocked)
-      cliMutex_g.unlock();
   }
 
   if (logFile_s.is_open() && !!(severity & myConfig.logfileFilter)) {
@@ -360,13 +354,18 @@ void cli::print(dbg::Severity severity, std::string_view message, bool endl) {
 }
 
 bool cli::popInput(std::string& out) {
-  std::lock_guard lock(cliMutex_g);
-  if (consoleQueue_s.empty()) {
-    return false;
-  } else {
-    out = std::move(consoleQueue_s.front());
-    consoleQueue_s.pop();
-    dbg::usermsg(out);
-    return true;
+  bool result = false;
+  {
+    std::lock_guard lock(cliMutex_s);
+    if (consoleQueue_s.empty()) {
+      result = false;
+    } else {
+      out = std::move(consoleQueue_s.front());
+      consoleQueue_s.pop();
+      result = true;
+    }
   }
+  if (result)
+    cli::usermsg(out);
+  return result;
 }

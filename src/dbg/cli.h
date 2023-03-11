@@ -22,6 +22,21 @@ namespace cli {
   /// directory).
   constexpr const char* LOG_FILENAME = "log.txt";
 
+  static constexpr const char* USERPROMPT = "\x1b[38;2;0;255;255m$> ";
+  static constexpr const char* USERMARK   = "\x1b[38;2;0;255;255m>";
+  static constexpr const char* USERMORE   = "\x1b[38;2;0;255;255m-";
+  static constexpr const char* USERCOLR   = "\x1b[38;2;0;255;255m";
+
+  /// Prints user message(s) to the console and log.
+  template <typename T>
+  inline void
+      usermsg(const T&                        message,
+              std::optional<std::string_view> srcStr = std::nullopt,
+              std::source_location srcLoc = std::source_location::current()) {
+    dbg::printMessage(dbg::Severity::User, message, USERMARK, std::nullopt,
+                      srcStr, srcLoc);
+  }
+
   /// Initializes the CLI system and opens the log file.
   void init();
 

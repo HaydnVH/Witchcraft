@@ -35,8 +35,13 @@ namespace dbg {
   };
   ENUM_BITFIELD_OPERATORS(Severity);
 
-  using Source =
-      std::variant<std::string_view, std::source_location, std::nullopt_t>;
+  /* NOTE: This is a much more elegant way of handling "source",
+   * but as of 17.5 it's broken in MSVC.
+   * TODO: Once it's fixed and actually works, use this in place of
+   * "srcStr/srcLoc".
+  using Source = std::variant<std::string_view, std::source_location,
+  std::nullopt_t>;
+   */
 
   // These constants are used to prefix messages.
 
@@ -69,11 +74,6 @@ namespace dbg {
   static constexpr const char* FATALLIST = "\x1b[38;2;255;60;20m!!!";
   static constexpr const char* FATALCOLR =
       "\x1b[38;2;0;0;32m\x1b[48;2;255;60;20m";
-
-  static constexpr const char* USERPROMPT = "\x1b[38;2;0;255;255m$> ";
-  static constexpr const char* USERMARK   = "\x1b[38;2;0;255;255m>";
-  static constexpr const char* USERMORE   = "\x1b[38;2;0;255;255m-";
-  static constexpr const char* USERCOLR   = "\x1b[38;2;0;255;255m";
 
   static constexpr const char* LUAHEAD =
       "\x1b[38;2;255;0;255m\x1b[48;2;30;10;30mLUA";
@@ -146,10 +146,9 @@ namespace dbg {
 
   /// Prints additional info message(s) to the console and log.
   template <typename T>
-  inline void
-      infomore(const T&                        message,
-               std::optional<std::string_view> srcStr = std::nullopt,
-               std::source_location srcLoc = std::source_location::current()) {
+  inline void infomore(const T&                        message,
+                       std::optional<std::string_view> srcStr = std::nullopt,
+                       std::source_location srcLoc = std::source_location()) {
     printMessage(Severity::Info, message, INFOLIST, std::nullopt, srcStr,
                  srcLoc);
   }
@@ -166,10 +165,9 @@ namespace dbg {
 
   /// Prints additional warning message(s) to the console and log.
   template <typename T>
-  inline void
-      warnmore(const T&                        message,
-               std::optional<std::string_view> srcStr = std::nullopt,
-               std::source_location srcLoc = std::source_location::current()) {
+  inline void warnmore(const T&                        message,
+                       std::optional<std::string_view> srcStr = std::nullopt,
+                       std::source_location srcLoc = std::source_location()) {
     printMessage(Severity::Warning, message, WARNLIST, std::nullopt, srcStr,
                  srcLoc);
   }
@@ -185,10 +183,9 @@ namespace dbg {
 
   /// Prints additional error message(s) to the console and log.
   template <typename T>
-  inline void
-      errmore(const T&                        message,
-              std::optional<std::string_view> srcStr = std::nullopt,
-              std::source_location srcLoc = std::source_location::current()) {
+  inline void errmore(const T&                        message,
+                      std::optional<std::string_view> srcStr = std::nullopt,
+                      std::source_location srcLoc = std::source_location()) {
     printMessage(Severity::Error, message, ERRLIST, std::nullopt, srcStr,
                  srcLoc);
   }
@@ -205,21 +202,10 @@ namespace dbg {
 
   /// Prints additional fatal message(s) to the console and log.
   template <typename T>
-  inline void
-      fatalmore(const T&                        message,
-                std::optional<std::string_view> srcStr = std::nullopt,
-                std::source_location srcLoc = std::source_location::current()) {
+  inline void fatalmore(const T&                        message,
+                        std::optional<std::string_view> srcStr = std::nullopt,
+                        std::source_location srcLoc = std::source_location()) {
     printMessage(Severity::Error, message, FATALLIST, std::nullopt, srcStr,
-                 srcLoc);
-  }
-
-  /// Prints user message(s) to the console and log.
-  template <typename T>
-  inline void
-      usermsg(const T&                        message,
-              std::optional<std::string_view> srcStr = std::nullopt,
-              std::source_location srcLoc = std::source_location::current()) {
-    printMessage(Severity::User, message, USERMARK, std::nullopt, srcStr,
                  srcLoc);
   }
 
@@ -234,10 +220,9 @@ namespace dbg {
 
   /// Prints lua message(s) to the console and log.
   template <typename T>
-  inline void
-      luamore(const T&                        message,
-              std::optional<std::string_view> srcStr = std::nullopt,
-              std::source_location srcLoc = std::source_location::current()) {
+  inline void luamore(const T&                        message,
+                      std::optional<std::string_view> srcStr = std::nullopt,
+                      std::source_location srcLoc = std::source_location()) {
     printMessage(Severity::User, message, LUALIST, std::nullopt, srcStr,
                  srcLoc);
   }

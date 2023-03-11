@@ -14,6 +14,7 @@
 
 #include <algorithm>  // For std::min
 #include <climits>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>  // For memcpy and memmove
 #include <functional>
@@ -29,15 +30,15 @@ namespace hvh {
 
   namespace impl {
 
-// We need access to aligned allocations and deallocations,
-// but visual studio doesn't support aligned_alloc from the c11 standard.
-// This define lets us have consistent behaviour.
+    // We need access to aligned allocations and deallocations,
+    // but visual studio doesn't support aligned_alloc from the c11 standard.
+    // This define lets us have consistent behaviour.
 #ifdef _MSC_VER
-  #define SoaAlignedMalloc(alignment, size) _aligned_malloc(size, alignment)
-  #define SoaAlignedFree(mem)               _aligned_free(mem)
+#define SoaAlignedMalloc(alignment, size) _aligned_malloc(size, alignment)
+#define SoaAlignedFree(mem)               _aligned_free(mem)
 #else
-  #define SoaAlignedMalloc(alignment, size) aligned_alloc(alignment, size)
-  #define SoaAlignedFree(mem)               free(mem)
+#define SoaAlignedMalloc(alignment, size) aligned_alloc(alignment, size)
+#define SoaAlignedFree(mem)               free(mem)
 #endif
 
     // This is the base case for the recursive class.
@@ -46,27 +47,31 @@ namespace hvh {
     template <typename... Ts>
     class SoaBase {
     public:
-      inline size_t constexpr sizePerEntry() const { return 0; }
-      inline void        nullify() {}
-      inline void        constructRange(size_t, size_t) {}
-      inline void        destructRange(size_t, size_t) {}
-      inline void        divyBuffer(void*) {}
-      inline void        pushBack() {}
-      inline void        emplaceBack() {}
-      inline void        emplaceBackDefault() {}
-      inline void        popBack() {}
-      inline void        insert(size_t) {}
-      inline void        emplace(size_t) {}
-      inline void        emplaceDefault(size_t) {}
-      inline void        eraseSwap(size_t) {}
-      inline void        eraseShift(size_t) {}
-      friend inline void swap(SoaBase<Ts...>& lhs, SoaBase<Ts...>& rhs) {
+      inline size_t constexpr sizePerEntry_() const { return 0; }
+      inline void        nullify_() {}
+      inline void        constructRange_(size_t, size_t) {}
+      inline void        destructRange_(size_t, size_t) {}
+      inline void        divyBuffer_(void*) {}
+      inline void        pushBack_() {}
+      inline void        emplaceBack_() {}
+      inline void        emplaceBackDefault_() {}
+      inline void        popBack_() {}
+      inline void        insert_(size_t) {}
+      inline void        emplace_(size_t) {}
+      inline void        emplaceDefault_(size_t) {}
+      inline void        eraseSwap_(size_t) {}
+      inline void        eraseShift_(size_t) {}
+      friend inline void swap_(SoaBase<Ts...>& lhs, SoaBase<Ts...>& rhs) {
         std::swap(lhs.size_, rhs.size_);
         std::swap(lhs.capacity_, rhs.capacity_);
       }
-      inline void copy(const SoaBase<Ts...>& other) { size_ = other.size_; }
-      inline void swapEntries(size_t, size_t) {}
-      inline std::tuple<> makeRowTuple(size_t) const { return std::tuple<>(); }
+      inline void copy_(const SoaBase<Ts...>& other) { size_ = other.size_; }
+      inline void swapEntries_(size_t, size_t) {}
+      inline std::tuple<> makeRowTuple_(size_t) const { return std::tuple<>(); }
+      template <size_t>
+      inline std::tuple<> makeSelectedRowTuple_(size_t) const {
+        return std::tuple<>();
+      }
 
     protected:
       SoaBase() {}
@@ -76,23 +81,6 @@ namespace hvh {
 
     template <typename FT, typename... RTs>
     class SoaBase<FT, RTs...>: public SoaBase<RTs...> {
-
-      // This allows us to get the type of a given column.
-      template <size_t, typename>
-      struct ElemTypeHolder;
-
-      // Template specialization to fetch the actual type (base case).
-      template <typename T, typename... Ts>
-      struct ElemTypeHolder<0, SoaBase<T, Ts...>> {
-        typedef T type;
-      };
-
-      // Template specialization to fetch the actual type (recursive case).
-      template <size_t K, typename T, typename... Ts>
-      struct ElemTypeHolder<K, SoaBase<T, Ts...>> {
-        typedef typename ElemTypeHolder<K - 1, SoaBase<Ts...>>::type type;
-      };
-
     public:
       // data<K>()
       // Gets a constant reference to the pointer to the Kth array.
@@ -100,21 +88,13 @@ namespace hvh {
       // As a reference to the internal array, the result will remain valid even
       // after a reallocation.
       template <size_t K>
-      typename std::enable_if<K == 0, FT* const&>::type inline data() {
-        return data_;
-      }
-
-      // data<K>()
-      // Gets a constant reference to the pointer to the Kth array.
-      // Elements of the array may be modified, but the array itself cannot.
-      // As a reference to the internal array, the result will remain valid even
-      // after a reallocation.
-      template <size_t K>
-      typename std::enable_if<K != 0,
-                              typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::
-                                  type* const&>::type inline data() {
-        SoaBase<RTs...>& base = *this;
-        return base.template data<K - 1>();
+      inline auto const& data() {
+        if constexpr (K == 0)
+          return data_;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template data<K - 1>();
+        }
       }
 
       // data<K>() const
@@ -123,22 +103,13 @@ namespace hvh {
       // As a reference to the internal array, the result will remain valid even
       // after a reallocation.
       template <size_t K>
-      typename std::enable_if<K == 0, const FT* const&>::type inline data()
-          const {
-        return data_;
-      }
-
-      // data<K>() const
-      // Gets a constant reference to a constant pointer to the Kth array.
-      // Neither the array nor its elements can be modified.
-      // As a reference to the internal array, the result will remain valid even
-      // after a reallocation.
-      template <size_t K>
-      typename std::enable_if<
-          K != 0, const typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::
-                      type* const&>::type inline data() const {
-        SoaBase<RTs...>& base = *this;
-        return base.template data<K - 1>();
+      inline auto const& data() const {
+        if constexpr (K == 0)
+          return data_;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template data<K - 1>();
+        }
       }
 
       // at<K>(i)
@@ -146,20 +117,13 @@ namespace hvh {
       // Does not perform bounds checking; do not use with an out-of-bounds
       // index!
       template <size_t K>
-      typename std::enable_if<K == 0, FT&>::type inline at(size_t index) {
-        return data_[index];
-      }
-
-      // at<K>(i)
-      // Gets a reference to the ith item of the Kth array.
-      // Does not perform bounds checking; do not use with an out-of-bounds
-      // index!
-      template <size_t K>
-      typename std::enable_if<
-          K != 0, typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::type&>::
-          type inline at(size_t index) {
-        SoaBase<RTs...>& base = *this;
-        return base.template at<K - 1>(index);
+      inline auto& at(size_t index) {
+        if constexpr (K == 0)
+          return data_[index];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template at<K - 1>(index);
+        }
       }
 
       // at<K>(i) const
@@ -167,163 +131,108 @@ namespace hvh {
       // Does not perform bounds checking; do not use with an out-of-bounds
       // index!
       template <size_t K>
-      typename std::enable_if<K == 0, const FT&>::type inline at(
-          size_t index) const {
-        return data_[index];
-      }
-
-      // at<K>(i) const
-      // Gets a constant reference to the ith item of the Kth array.
-      // Does not perform bounds checking; do not use with an out-of-bounds
-      // index!
-      template <size_t K>
-      typename std::enable_if<K != 0, const typename ElemTypeHolder<
-                                          K, SoaBase<FT, RTs...>>::type&>::
-          type inline at(size_t index) const {
-        SoaBase<RTs...>& base = *this;
-        return base.template at<K - 1>(index);
+      inline const auto& at(size_t index) const {
+        if constexpr (K == 0)
+          return data_[index];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template at<K - 1>(index);
+        }
       }
 
       // front<K>()
       // Gets a reference to the item at the front of the Kth array.
       // Does not perform bounds checking; do not call on an empty container!
       template <size_t K>
-      typename std::enable_if<K == 0, FT&>::type inline front() {
-        return data_[0];
-      }
-
-      // front<K>()
-      // Gets a reference to the item at the front of the Kth array.
-      // Does not perform bounds checking; do not call on an empty container!
-      template <size_t K>
-      typename std::enable_if<
-          K != 0, typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::type&>::
-          type inline front() {
-        SoaBase<RTs...>& base = *this;
-        return base.template front<K - 1>();
+      inline auto& front() {
+        if constexpr (K == 0)
+          return data_[0];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template front<K - 1>();
+        }
       }
 
       // front<K>() const
       // Gets a const reference to the item at the front of the Kth array.
       // Does not perform bounds checking; do not call on an empty container!
       template <size_t K>
-      typename std::enable_if<K == 0, const FT&>::type inline front() const {
-        return data_[0];
-      }
-
-      // front<K>() const
-      // Gets a constant reference to the item at the front of the Kth array.
-      // Does not perform bounds checking; do not call on an empty container!
-      template <size_t K>
-      typename std::enable_if<K != 0, const typename ElemTypeHolder<
-                                          K, SoaBase<FT, RTs...>>::type&>::
-          type inline front() const {
-        SoaBase<RTs...>& base = *this;
-        return base.template front<K - 1>();
+      inline const auto& front() const {
+        if constexpr (K == 0)
+          return data_[0];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template front<K - 1>();
+        }
       }
 
       // back<K>()
       // Gets a reference to the item at the back of the Kth array.
       // Does not perform bounds checking; do not call on an empty container!
       template <size_t K>
-      typename std::enable_if<K == 0, FT&>::type inline back() {
-        return data_[this->size_ - 1];
-      }
-
-      // back<K>()
-      // Gets a reference to the item at the back of the Kth array.
-      // Does not perform bounds checking; do not call on an empty container!
-      template <size_t K>
-      typename std::enable_if<
-          K != 0, typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::type&>::
-          type inline back() {
-        SoaBase<RTs...>& base = *this;
-        return base.template back<K - 1>();
+      inline auto& back() {
+        if constexpr (K == 0)
+          return data_[this->size_ - 1];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template back<K - 1>();
+        }
       }
 
       // back<K>() const
       // Gets a constant reference to the item at the back of the Kth array.
       // Does not perform bounds checking; do not call on an empty container!
       template <size_t K>
-      typename std::enable_if<K == 0, const FT&>::type inline back() const {
-        return data_[this->size_ - 1];
+      inline const auto& back() const {
+        if constexpr (K == 0)
+          return data_[this->size_ - 1];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template back<K - 1>();
+        }
       }
 
-      // back<K>() const
-      // Gets a constant reference to the item at the back of the Kth array.
-      // Does not perform bounds checking; do not call on an empty container!
-      template <size_t K>
-      typename std::enable_if<K != 0, const typename ElemTypeHolder<
-                                          K, SoaBase<FT, RTs...>>::type&>::
-          type inline back() const {
-        SoaBase<RTs...>& base = *this;
-        return base.template back<K - 1>();
-      }
-
-      // lower_bound<K>(goal)
+      // lowerBound<K>(goal)
       // Performs a binary search looking for 'goal' in sorted array 'K'.
       // If 'goal' is in sorted array 'K', returns the index of leftmost element
       // which equals 'goal'. Otherwise, returns the number of items which are
       // less than 'goal'. This behaviour is similar to std::lower_bound.
       // Complexity: O(logn).
       template <size_t K>
-      typename std::enable_if<K == 0, size_t>::type
-          lowerBound(const FT& goal) const {
-        size_t left  = 0;
-        size_t right = this->size_;
-        while (left < right) {
-          size_t middle = (left + right) / 2;
-          if (data_[middle] < goal) left = middle + 1;
-          else
-            right = middle;
+      size_t lowerBound(const FT& goal) const {
+        if constexpr (K == 0) {
+          size_t left  = 0;
+          size_t right = this->size_;
+          while (left < right) {
+            size_t middle = (left + right) / 2;
+            if (data_[middle] < goal)
+              left = middle + 1;
+            else
+              right = middle;
+          }
+          return left;
+        } else {
+          SoaBase<RTs...>& base = *this;
+          return base.template lowerBound<K - 1>(goal);
         }
-        return left;
       }
 
-      // lower_bound_row<K>(goal_row)
+      // lowerBoundRow<K>(goal_row)
       // Performs a binary search looking for the Kth entry in 'goal_row' in
       // sorted array 'K'. This behaves like lower_bound, but letting the user
       // give an entire row of data instead of just the key.  Entries in the row
       // other than the Kth are ignored. Complexity: O(logn).
       template <size_t K>
-      typename std::enable_if<K == 0, size_t>::type
-          lowerBoundRow(const FT& goal, const RTs&... rest) const {
-        size_t left  = 0;
-        size_t right = this->size_;
-        while (left < right) {
-          size_t middle = (left + right) / 2;
-          if (data_[middle] < goal) left = middle + 1;
-          else
-            right = middle;
+      inline size_t lowerBoundRow(const FT& goal, const RTs&... rest) const {
+        if constexpr (K == 0)
+          return lowerBound<0>(goal);
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template lowerBoundRow<K - 1>(rest...);
         }
-        return left;
       }
 
-      // lower_bound<K>(goal)
-      // Performs a binary search looking for 'goal' in sorted array 'K'.
-      // If 'goal' is in the array, returns the index of leftmost element which
-      // equals 'goal'. Otherwise, returns the number of items which are less
-      // than 'goal'. This behaviour is similar to std::lower_bound. Complexity:
-      // O(logn).
-      template <size_t K>
-      typename std::enable_if<K != 0, size_t>::type inline lowerBound(
-          const typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::type& goal) {
-        SoaBase<RTs...>& base = *this;
-        return base.template lowerBound<K - 1>(goal);
-      }
-      // lower_bound_row<K>(goal_row)
-      // Performs a binary search looking for the Kth entry in 'goal_row' in
-      // sorted array 'K'. This behaves like lower_bound, but letting the user
-      // give an entire row of data instead of just the key.  Entries in the row
-      // other than the Kth are ignored. Complexity: O(logn).
-      template <size_t K>
-      typename std::enable_if<K != 0, size_t>::type inline lowerBoundRow(
-          const FT& first, const RTs&... rest) {
-        SoaBase<RTs...>& base = *this;
-        return base.template lowerBound<K - 1>(rest...);
-      }
-
-      // upper_bound<K>(goal)
+      // upperBound<K>(goal)
       // Performs a binary search looking for 'goal' in sorted array 'K'.
       // If 'goal' is in the array, returns the index of the leftmost element
       // which is greather than 'goal'. Otherwise, returns the number of items
@@ -331,30 +240,22 @@ namespace hvh {
       // std::upper_bound, and is useful if one array in a container is treated
       // as the key for a binary search table. Complexity: O(logn).
       template <size_t K>
-      typename std::enable_if<K == 0, size_t>::type
-          upperBound(const FT& goal) const {
-        size_t left  = 0;
-        size_t right = this->size_;
-        while (left < right) {
-          size_t middle = (left + right) / 2;
-          if (goal < data_[middle]) right = middle;
-          else
-            left = middle + 1;
+      size_t upperBound(const FT& goal) const {
+        if constexpr (K == 0) {
+          size_t left  = 0;
+          size_t right = this->size_;
+          while (left < right) {
+            size_t middle = (left + right) / 2;
+            if (goal < data_[middle])
+              right = middle;
+            else
+              left = middle + 1;
+          }
+          return left;
+        } else {
+          SoaBase<RTs...>& base = *this;
+          return base.template upperBound<K - 1>(goal);
         }
-        return left;
-      }
-      // upper_bound<K>(goal)
-      // Performs a binary search looking for 'goal' in sorted array 'K'.
-      // If 'goal' is in the array, returns the index of the leftmost element
-      // which is greather than 'goal'. Otherwise, returns the number of items
-      // which are less than 'goal'. This behaviour is similar to
-      // std::upper_bound, and is useful if one array in a container is treated
-      // as the key for a binary search table. Complexity: O(logn).
-      template <size_t K>
-      typename std::enable_if<K != 0, size_t>::type inline upperBound(
-          const typename ElemTypeHolder<K, SoaBase<FT, RTs...>>::type& goal) {
-        SoaBase<RTs...>& base = *this;
-        return base.template upperBound<K - 1>(goal);
       }
 
       ///////////////////////////////////////////////////////////////////////////
@@ -365,98 +266,105 @@ namespace hvh {
       ///////////////////////////////////////////////////////////////////////////
 
       // size_per_entry gives the total sizeof() of an entire row of data.
-      inline constexpr size_t sizePerEntry() const {
+      inline constexpr size_t sizePerEntry_() const {
         const SoaBase<RTs...>& base = *this;
-        return sizeof(FT) + base.sizePerEntry();
+        return sizeof(FT) + base.sizePerEntry_();
       }
 
       // nullify sets the data pointer of every column to nullptr.
-      inline void nullify() {
+      inline void nullify_() {
         SoaBase<RTs...>& base = *this;
         data_                 = nullptr;
-        base.nullify();
+        base.nullify_();
       }
 
       // construct_range calls the default constructor on a range of entries.
-      inline void constructRange(size_t begin, size_t end) {
-        for (size_t i = begin; i < end; ++i) { new (&data_[i]) FT(); }
+      inline void constructRange_(size_t begin, size_t end) {
+        for (size_t i = begin; i < end; ++i) {
+          new (&data_[i]) FT();
+        }
         SoaBase<RTs...>& base = *this;
-        base.constructRange(begin, end);
+        base.constructRange_(begin, end);
       }
 
       // construct_range calls the copy constructor on a range of entries.
-      inline void constructRange(size_t begin, size_t end, const FT& initval,
-                                 const RTs&... restvals) {
-        for (size_t i = begin; i < end; ++i) { new (&data_[i]) FT(initval); }
+      inline void constructRange_(size_t begin, size_t end, const FT& initval,
+                                  const RTs&... restvals) {
+        for (size_t i = begin; i < end; ++i) {
+          new (&data_[i]) FT(initval);
+        }
         SoaBase<RTs...>& base = *this;
-        base.constructRange(begin, end, restvals...);
+        base.constructRange_(begin, end, restvals...);
       }
 
       // destruct_range calls the destructor on a range of entries.
-      inline void destructRange(size_t begin, size_t end) {
-        for (size_t i = begin; i < end; ++i) { data_[i].~FT(); }
+      inline void destructRange_(size_t begin, size_t end) {
+        for (size_t i = begin; i < end; ++i) {
+          data_[i].~FT();
+        }
         SoaBase<RTs...>& base = *this;
-        base.destructRange(begin, end);
+        base.destructRange_(begin, end);
       }
 
       // divy_buffer splits a big buffer of memory into a series of column
       // arrays. This also copies existing data into the new memory buffer.
-      inline void divyBuffer(void* newmem) {
+      inline void divyBuffer_(void* newmem) {
         if (data_) {
           memcpy(newmem, data_,
                  sizeof(FT) * std::min(this->size_, this->capacity_));
         }
         data_                 = (FT*)newmem;
         SoaBase<RTs...>& base = *this;
-        base.divyBuffer(((FT*)newmem) + this->capacity_);
+        base.divyBuffer_(((FT*)newmem) + this->capacity_);
       }
 
       // push_back copies a row onto the back of the container.
       template <typename FirstType = FT, typename... RestTypes>
-      typename std::enable_if<std::is_copy_constructible<FirstType>::value,
-                              void>::type inline pushBack(const FirstType&
-                                                              first,
-                                                          RestTypes&&... rest) {
+      typename std::enable_if<
+          std::is_copy_constructible<FirstType>::value,
+          void>::type inline pushBack_(const FirstType& first,
+                                       RestTypes&&... rest) {
         new (&data_[this->size_]) FT(first);
         SoaBase<RTs...>& base = *this;
-        base.pushBack(rest...);
+        base.pushBack_(rest...);
       }
 
       // push_back moves a row onto the back of the container.
       template <typename FirstType = FT, typename... RestTypes>
-      typename std::enable_if<std::is_move_constructible<FirstType>::value,
-                              void>::type inline pushBack(FirstType&& first,
-                                                          RestTypes&&... rest) {
+      typename std::enable_if<
+          std::is_move_constructible<FirstType>::value,
+          void>::type inline pushBack_(FirstType&& first, RestTypes&&... rest) {
         new (&data_[this->size_]) FT(std::move(first));
         SoaBase<RTs...>& base = *this;
-        base.pushBack(rest...);
+        base.pushBack_(rest...);
       }
 
       // emplace_back using a single argument to copy-construct the object.
       template <typename FirstType, typename... RestTypes>
       typename std::enable_if<
           std::is_copy_constructible<FirstType>::value,
-          void>::type inline emplaceBack(const FirstType& first,
-                                         RestTypes&&... rest) {
+          void>::type inline emplaceBack_(const FirstType& first,
+                                          RestTypes&&... rest) {
         new (&data_[this->size_]) FT(first);
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(rest...);
+        base.emplaceBack_(rest...);
       }
 
       // emplace_back using a single argument to move-construct the object.
       template <typename FirstType, typename... RestTypes>
       typename std::enable_if<
           std::is_move_constructible<FirstType>::value,
-          void>::type inline emplaceBack(FirstType&& first,
-                                         RestTypes&&... rest) {
+          void>::type inline emplaceBack_(FirstType&& first,
+                                          RestTypes&&... rest) {
         new (&data_[this->size_]) FT(std::move(first));
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(rest...);
+        base.emplaceBack_(rest...);
       }
 
       // emplace_back using no arguments to construct the object.
       template <typename... RestTypes>
-      inline void emplaceBack(decltype(std::ignore), const RestTypes&... rest) {
+      inline void
+          emplaceBack_(decltype(std::ignore), const RestTypes&... rest) {
         new (&data_[this->size_]) FT();
         SoaBase<RTs...>& base = *this;
         base.emplaceBack(rest...);
@@ -464,94 +372,95 @@ namespace hvh {
 
       // emplace_back using multiple arguments to construct the object.
       template <typename... FirstTypes, typename... RestTypes>
-      inline void emplaceBack(const std::tuple<FirstTypes...>& first,
-                              const RestTypes&... rest) {
+      inline void emplaceBack_(const std::tuple<FirstTypes...>& first,
+                               const RestTypes&... rest) {
         std::apply(
             [this](const FirstTypes&... args) {
               new (&data_[this->size_]) FT(args...);
             },
             first);
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(rest...);
+        base.emplaceBack_(rest...);
       }
 
       // emplace_back using all default constructors.
-      inline void emplaceBackDefault() {
+      inline void emplaceBackDefault_() {
         new (&data_[this->size_]) FT();
         SoaBase<RTs...>& base = *this;
-        base.emplaceBackDefault();
+        base.emplaceBackDefault_();
       }
 
       // inserts (copies) a row at the specified index, moving later entries
       // back by one.
       template <typename FirstType = FT, typename... RestTypes>
       typename std::enable_if<std::is_copy_constructible<FirstType>::value,
-                              void>::type inline insert(size_t location,
-                                                        const FirstType& first,
-                                                        RestTypes&&... rest) {
-        memmove(data_ + (location + 1), data_ + location,
-                sizeof(FT) * (this->size_ - location));
-        new (&data_[location]) FT(first);
-        SoaBase<RTs...>& base = *this;
-        base.insert(location, rest...);
-      }
-
-      // inserts (moves) a row at the specified index, moving later entries back
-      // by one.
-      template <typename FirstType = FT, typename... RestTypes>
-      typename std::enable_if<std::is_move_constructible<FirstType>::value,
-                              void>::type inline insert(size_t      location,
-                                                        FirstType&& first,
-                                                        RestTypes&&... rest) {
-        memmove(data_ + (location + 1), data_ + location,
-                sizeof(FT) * (this->size_ - location));
-        new (&data_[location]) FT(std::move(first));
-        SoaBase<RTs...>& base = *this;
-        base.insert(location, rest...);
-      }
-
-      // emplace using a single argument to copy-construct the object.
-      template <typename FirstType, typename... RestTypes>
-      typename std::enable_if<std::is_copy_constructible<FirstType>::value,
-                              void>::type inline emplace(size_t location,
+                              void>::type inline insert_(size_t location,
                                                          const FirstType& first,
                                                          RestTypes&&... rest) {
         memmove(data_ + (location + 1), data_ + location,
                 sizeof(FT) * (this->size_ - location));
         new (&data_[location]) FT(first);
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(location, rest...);
+        base.insert_(location, rest...);
+      }
+
+      // inserts (moves) a row at the specified index, moving later entries back
+      // by one.
+      template <typename FirstType = FT, typename... RestTypes>
+      typename std::enable_if<std::is_move_constructible<FirstType>::value,
+                              void>::type inline insert_(size_t      location,
+                                                         FirstType&& first,
+                                                         RestTypes&&... rest) {
+        memmove(data_ + (location + 1), data_ + location,
+                sizeof(FT) * (this->size_ - location));
+        new (&data_[location]) FT(std::move(first));
+        SoaBase<RTs...>& base = *this;
+        base.insert_(location, rest...);
+      }
+
+      // emplace using a single argument to copy-construct the object.
+      template <typename FirstType, typename... RestTypes>
+      typename std::enable_if<std::is_copy_constructible<FirstType>::value,
+                              void>::type inline emplace_(size_t location,
+                                                          const FirstType&
+                                                              first,
+                                                          RestTypes&&... rest) {
+        memmove(data_ + (location + 1), data_ + location,
+                sizeof(FT) * (this->size_ - location));
+        new (&data_[location]) FT(first);
+        SoaBase<RTs...>& base = *this;
+        base.emplaceBack_(location, rest...);
       }
 
       // emplace using a single argument to move-construct the object.
       template <typename FirstType, typename... RestTypes>
       typename std::enable_if<std::is_move_constructible<FirstType>::value,
-                              void>::type inline emplace(size_t      location,
-                                                         FirstType&& first,
-                                                         RestTypes&&... rest) {
+                              void>::type inline emplace_(size_t      location,
+                                                          FirstType&& first,
+                                                          RestTypes&&... rest) {
         memmove(data_ + (location + 1), data_ + location,
                 sizeof(FT) * (this->size_ - location));
         new (&data_[location]) FT(first);
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(location, rest...);
+        base.emplaceBack_(location, rest...);
       }
 
       // emplace using no arguments to construct the object.
       template <typename... RestTypes>
-      inline void emplace(size_t location, decltype(std::ignore),
-                          RestTypes&&... rest) {
+      inline void emplace_(size_t location, decltype(std::ignore),
+                           RestTypes&&... rest) {
         memmove(data_ + (location + 1), data_ + location,
                 sizeof(FT) * (this->size_ - location));
         new (&data_[location]) FT();
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(location, rest...);
+        base.emplaceBack_(location, rest...);
       }
 
       // emplace using multiple arguments to construct the object.
       template <typename... FirstTypes, typename... RestTypes>
-      inline void emplace(size_t                           location,
-                          const std::tuple<FirstTypes...>& first,
-                          RestTypes&&... rest) {
+      inline void
+          emplace_(size_t location, const std::tuple<FirstTypes...>& first,
+                   RestTypes&&... rest) {
         memmove(data_ + (location + 1), data_ + location,
                 sizeof(FT) * (this->size_ - location));
         std::apply(
@@ -560,11 +469,11 @@ namespace hvh {
             },
             first);
         SoaBase<RTs...>& base = *this;
-        base.emplaceBack(location, rest...);
+        base.emplaceBack_(location, rest...);
       }
 
       // emplace using all default constructors.
-      inline void emplaceDefault(size_t location) {
+      inline void emplaceDefault_(size_t location) {
         memmove(data_ + (location + 1), data_ + location,
                 sizeof(FT) * (this->size_ - location));
         new (&data_[location]) FT();
@@ -573,73 +482,108 @@ namespace hvh {
       }
 
       // pop_back removes the last row in the container.
-      inline void popBack() {
+      inline void popBack_() {
         data_[this->size_ - 1].~FT();
         SoaBase<RTs...>& base = *this;
-        base.popBack();
+        base.popBack_();
       }
 
       // erase_swap swaps the given row with the back of the container, then
       // removes the last row.
-      inline void eraseSwap(size_t location) {
+      inline void eraseSwap_(size_t location) {
         using std::swap;
         swap(data_[location], data_[this->size_ - 1]);
         data_[this->size_ - 1].~FT();
         SoaBase<RTs...>& base = *this;
-        base.eraseSwap(location);
+        base.eraseSwap_(location);
       }
 
       // erase_shift removes the given row, and move all further rows forward by
       // one.
-      inline void eraseShift(size_t location) {
+      inline void eraseShift_(size_t location) {
         data_[location].~FT();
         memmove(data_ + location, data_ + (location + 1),
                 sizeof(FT) * (this->size_ - location));
         SoaBase<RTs...>& base = *this;
-        base.eraseShift(location);
+        base.eraseShift_(location);
       }
 
       // swaps two containers.
-      friend inline void swap(SoaBase<FT, RTs...>& lhs,
-                              SoaBase<FT, RTs...>& rhs) {
+      friend inline void
+          swap_(SoaBase<FT, RTs...>& lhs, SoaBase<FT, RTs...>& rhs) {
         using std::swap;
         swap(lhs.data_, rhs.data_);
         SoaBase<RTs...>& lhsbase = lhs;
         SoaBase<RTs...>& rhsbase = rhs;
-        swap(lhsbase, rhsbase);
+        swap_(lhsbase, rhsbase);
       }
 
       // performs a deep copy.
-      inline void copy(const SoaBase<FT, RTs...>& other) {
+      inline void copy_(const SoaBase<FT, RTs...>& other) {
         memcpy(data_, other.data_, sizeof(FT) * other.size_);
         SoaBase<RTs...>&       lhs = *this;
         const SoaBase<RTs...>& rhs = other;
-        lhs.copy(rhs);
+        lhs.copy_(rhs);
       }
 
       // swaps the position of two indicated rows.
-      inline void swapEntries(size_t first, size_t second) {
+      inline void swapEntries_(size_t first, size_t second) {
         using std::swap;
         swap(data_[first], data_[second]);
         SoaBase<RTs...>& base = *this;
-        base.swapEntries(first, second);
+        base.swapEntries_(first, second);
       }
 
       // Creates a tuple of references representing a whole row.
-      inline std::tuple<FT&, RTs&...> makeRowTuple(size_t row) {
+      inline auto makeRowTuple_(size_t row) {
         SoaBase<RTs...>& base = *this;
         return std::tuple_cat(
             std::make_tuple(std::reference_wrapper<FT>(data_[row])),
-            base.makeRowTuple(row));
+            base.makeRowTuple_(row));
       }
 
       // Creates tuple of const references representing a whole row.
-      inline std::tuple<const FT&, const RTs&...>
-          makeRowTuple(size_t row) const {
+      inline auto makeRowTuple_(size_t row) const {
         const SoaBase<RTs...>& base = *this;
         return std::tuple_cat(
             std::make_tuple(std::reference_wrapper<FT>(data_[row])),
-            base.makeRowTuple(row));
+            base.makeRowTuple_(row));
+      }
+
+      // Base case for when our selected row tuple ends before the last column.
+      template <size_t>
+      inline auto makeSelectedRowTuple_(size_t) const {
+        return std::tuple<>();
+      }
+
+      // Creates a tuple of references representing some of a row.
+      template <size_t Col, size_t FirstCol, size_t... RestCols>
+      inline auto makeSelectedRowTuple_(size_t row) {
+        SoaBase<RTs...>& base = *this;
+        if constexpr (Col == FirstCol) {
+          return std::tuple_cat(
+              std::make_tuple(std::reference_wrapper<FT>(data_[row])),
+              base.template makeSelectedRowTuple_<Col + 1, RestCols...>(row));
+        } else {
+          return base
+              .template makeSelectedRowTuple_<Col + 1, FirstCol, RestCols...>(
+                  row);
+        }
+      }
+
+      // Creates a tuple of const references representing some of a row.
+      template <size_t Col, size_t FirstCol, size_t... RestCols>
+      inline auto makeSelectedRowTuple_(size_t row) const {
+        const SoaBase<RTs...>& base = *this;
+        if constexpr (Col == FirstCol) {
+          return std::tuple_cat(
+              std::make_tuple(std::reference_wrapper<FT>(data_[row])),
+              base.template makeSelectedRowTuple_<Col + 1, RestCols...>(row));
+        } else {
+          return base
+              .template makeSelectedRowTuple_<Col + 1, FirstCol, RestCols...>(
+                  row);
+        }
       }
 
     protected:
@@ -697,7 +641,7 @@ namespace hvh {
       reserve(other.size());
       impl::SoaBase<Ts...>& base      = *this;
       impl::SoaBase<Ts...>& otherBase = other;
-      base.copy(otherBase);
+      base.copy_(otherBase);
     }
     // operator = (&& rhs)
     // Move-assignment operator for Struct-Of-Arrays.
@@ -721,9 +665,10 @@ namespace hvh {
     // Complexity: O(n).
     ~Soa() {
       impl::SoaBase<Ts...>& base = *this;
-      base.destructRange(0, this->size_);
+      base.destructRange_(0, this->size_);
       void* oldmem = this->template data<0>();
-      if (oldmem) SoaAlignedFree(oldmem);
+      if (oldmem)
+        SoaAlignedFree(oldmem);
     }
 
     // swap(& rhs)
@@ -732,7 +677,7 @@ namespace hvh {
     friend inline void swap(Soa<Ts...>& lhs, Soa<Ts...>& rhs) {
       impl::SoaBase<Ts...>& lhsBase = lhs;
       impl::SoaBase<Ts...>& rhsBase = rhs;
-      swap(lhsBase, rhsBase);
+      swap_(lhsBase, rhsBase);
     }
 
     // clear()
@@ -741,7 +686,7 @@ namespace hvh {
     // Complexity: O(n).
     inline void clear() {
       impl::SoaBase<Ts...>& base = *this;
-      base.destructRange(0, this->size_);
+      base.destructRange_(0, this->size_);
       this->size_ = 0;
     }
 
@@ -752,28 +697,33 @@ namespace hvh {
     // otherwise. Complexity: O(n).
     bool reserve(size_t newSize) {
       // For alignment, we must have a multiple of 16 items.
-      if (newSize % 16 != 0) newSize += 16 - (newSize % 16);
+      if (newSize % 16 != 0)
+        newSize += 16 - (newSize % 16);
 
       // We need at least 16 elements.
-      if (newSize == 0) newSize = 16;
+      if (newSize == 0)
+        newSize = 16;
 
       // We can't shrink the actual memory.
-      if (newSize <= this->capacity_) return true;
+      if (newSize <= this->capacity_)
+        return true;
 
       // Remember the old memory so we can free it.
       impl::SoaBase<Ts...>& base   = *this;
       void*                 oldmem = this->template data<0>();
 
       // Allocate new memory.
-      void* alloc_result = SoaAlignedMalloc(16, base.sizePerEntry() * newSize);
-      if (!alloc_result) return false;
+      void* alloc_result = SoaAlignedMalloc(16, base.sizePerEntry_() * newSize);
+      if (!alloc_result)
+        return false;
 
       // Copy the old data into the new memory.
       this->capacity_ = newSize;
-      base.divyBuffer(alloc_result);
+      base.divyBuffer_(alloc_result);
 
       // Free the old memory.
-      if (oldmem) SoaAlignedFree(oldmem);
+      if (oldmem)
+        SoaAlignedFree(oldmem);
       return true;
     }
 
@@ -785,10 +735,12 @@ namespace hvh {
     bool shrinkToFit() {
       // For alignment, we must have a multiple of 16 items.
       size_t newSize = this->size_;
-      if (newSize % 16 != 0) newSize += 16 - (newSize % 16);
+      if (newSize % 16 != 0)
+        newSize += 16 - (newSize % 16);
 
       // If the container is already as small as it can be, bail out now.
-      if (newSize == this->capacity_) return true;
+      if (newSize == this->capacity_)
+        return true;
 
       // Remember the old memory so we can free it.
       impl::SoaBase<Ts...>& base   = *this;
@@ -797,19 +749,21 @@ namespace hvh {
       if (newSize > 0) {
         // Allocate new memory.
         void* alloc_result =
-            SoaAlignedMalloc(16, base.sizePerEntry() * newSize);
-        if (!alloc_result) return false;
+            SoaAlignedMalloc(16, base.sizePerEntry_() * newSize);
+        if (!alloc_result)
+          return false;
 
         // Copy the old data into the new memory.
         this->capacity_ = newSize;
-        base.divyBuffer(alloc_result);
+        base.divyBuffer_(alloc_result);
       } else {
-        base.nullify();
+        base.nullify_();
         this->capacity_ = 0;
       }
 
       // Free the old memory.
-      if (oldmem) SoaAlignedFree(oldmem);
+      if (oldmem)
+        SoaAlignedFree(oldmem);
       return true;
     }
 
@@ -824,12 +778,13 @@ namespace hvh {
       impl::SoaBase<Ts...>& base = *this;
       if (newsize > this->size_) {
         if (newsize > this->capacity_) {
-          if (!reserve(newsize)) return false;
+          if (!reserve(newsize))
+            return false;
         }
-        base.constructRange(this->size_, newsize);
+        base.constructRange_(this->size_, newsize);
         this->size_ = newsize;
       } else if (newsize < this->size_) {
-        base.destructRange(newsize, this->size_);
+        base.destructRange_(newsize, this->size_);
         this->size_ = newsize;
       }
       return true;
@@ -846,11 +801,12 @@ namespace hvh {
       impl::SoaBase<Ts...>& base = *this;
       if (newsize > this->size_) {
         if (newsize > this->capacity_) {
-          if (!reserve(newsize)) return false;
+          if (!reserve(newsize))
+            return false;
         }
-        base.constructRange(this->size_, newsize, initvals...);
+        base.constructRange_(this->size_, newsize, initvals...);
       } else if (newsize < this->size_) {
-        base.destructRange(newsize, this->size_);
+        base.destructRange_(newsize, this->size_);
         this->size_ = newsize;
       }
       return true;
@@ -865,10 +821,11 @@ namespace hvh {
     template <typename... EntryTypes>
     inline bool pushBack(EntryTypes&&... args) {
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
       impl::SoaBase<Ts...>& base = *this;
-      base.pushBack(args...);
+      base.pushBack_(args...);
       ++this->size_;
       return true;
     }
@@ -884,10 +841,11 @@ namespace hvh {
     template <typename... CTypes>
     inline bool emplaceBack(CTypes&&... args) {
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
       impl::SoaBase<Ts...>& base = *this;
-      base.emplaceBack(args...);
+      base.emplaceBack_(args...);
       ++this->size_;
       return true;
     }
@@ -900,10 +858,11 @@ namespace hvh {
     // unless reserve is called, then O(n).
     inline bool emplaceBack() {
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
       impl::SoaBase<Ts...>& base = *this;
-      base.emplaceBackDefault();
+      base.emplaceBackDefault_();
       ++this->size_;
       return true;
     }
@@ -917,11 +876,13 @@ namespace hvh {
     template <typename... Args>
     inline bool insert(size_t where, Args&&... args) {
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
-      if (where > this->size_) return false;
+      if (where > this->size_)
+        return false;
       impl::SoaBase<Ts...>& base = *this;
-      base.insert(where, args...);
+      base.insert_(where, args...);
       ++this->size_;
       return true;
     }
@@ -938,11 +899,13 @@ namespace hvh {
     template <typename... CTypes>
     inline bool emplace(size_t where, CTypes&&... args) {
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
-      if (where > this->size_) return false;
+      if (where > this->size_)
+        return false;
       impl::SoaBase<Ts...>& base = *this;
-      base.emplace(where, args...);
+      base.emplace_(where, args...);
       ++this->size_;
       return true;
     }
@@ -955,11 +918,13 @@ namespace hvh {
     // if 'where' is out of bounds, true otherwise. Complexity: O(n).
     inline bool emplace(size_t where) {
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
-      if (where > this->size_) return false;
+      if (where > this->size_)
+        return false;
       impl::SoaBase<Ts...>& base = *this;
-      base.emplaceDefault(where);
+      base.emplaceDefault_(where);
       ++this->size_;
       return true;
     }
@@ -968,9 +933,10 @@ namespace hvh {
     // Reduces the size of the container by 1 and destructs the items at the
     // back of the arrays. Complexity: O(1).
     inline void popBack() {
-      if (this->size_ == 0) return;
+      if (this->size_ == 0)
+        return;
       impl::SoaBase<Ts...>& base = *this;
-      base.popBack();
+      base.popBack_();
       --this->size_;
     }
 
@@ -979,9 +945,10 @@ namespace hvh {
     // then destructs the rear of the container and recuces the size by 1.
     // Complexity: O(1).
     inline void eraseSwap(size_t where) {
-      if (where >= this->size_) return;
+      if (where >= this->size_)
+        return;
       impl::SoaBase<Ts...>& base = *this;
-      base.eraseSwap(where);
+      base.eraseSwap_(where);
       --this->size_;
     }
 
@@ -990,9 +957,10 @@ namespace hvh {
     // it 1 space forward. Maintains the ordering of a sorted container.
     // Complexity: O(n).
     inline void eraseShift(size_t where) {
-      if (where >= this->size_) return;
+      if (where >= this->size_)
+        return;
       impl::SoaBase<Ts...>& base = *this;
-      base.eraseShift(where);
+      base.eraseShift_(where);
       --this->size_;
     }
 
@@ -1000,9 +968,10 @@ namespace hvh {
     // Swaps the 'first' and 'second' entries in each array.
     // Complexity: O(1).
     inline void swapEntries(size_t first, size_t second) {
-      if (first >= this->size_ || second >= this->size_) return;
+      if (first >= this->size_ || second >= this->size_)
+        return;
       impl::SoaBase<Ts...>& base = *this;
-      base.swapEntries(first, second);
+      base.swapEntries_(first, second);
     }
 
     // empty()
@@ -1152,15 +1121,86 @@ namespace hvh {
     ConstIterator begin() const { return ConstIterator(*this, 0); }
     ConstIterator end() const { return ConstIterator(*this, this->size_); }
 
+    // Column Selection
+    // Allows a range-based for loop to iterate over only certain columns.
+    template <size_t... Cols>
+    struct SelectedColumns {
+      SelectedColumns(Soa& container): container_(container) {}
+      struct Iterator {
+        Iterator(SelectedColumns& selection, size_t row):
+            selection_(selection), row_(row) {}
+
+        auto operator*() {
+          return selection_.container_
+              .template makeSelectedRowTuple_<0, Cols...>(row_);
+        }
+        Iterator& operator++() {
+          ++row_;
+          return *this;
+        }
+        friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
+          return (lhs.row_ == rhs.row_);
+        }
+
+      private:
+        SelectedColumns& selection_;
+        size_t           row_;
+      };
+      auto begin() { return Iterator(*this, 0); }
+      auto end() { return Iterator(*this, container_.size()); }
+
+    private:
+      Soa& container_;
+    };
+
+    template <size_t... Cols>
+    struct ConstSelectedColumns {
+      ConstSelectedColumns(const Soa& container): container_(container) {}
+      struct Iterator {
+        Iterator(ConstSelectedColumns& selection, size_t row):
+            selection_(selection), row_(row) {}
+
+        auto operator*() {
+          return selection_.container_
+              .template makeSelectedRowTuple_<0, Cols...>(row_);
+        }
+        Iterator& operator++() {
+          ++row_;
+          return *this;
+        }
+        friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
+          return (lhs.row_ == rhs.row_);
+        }
+
+      private:
+        ConstSelectedColumns& selection_;
+        size_t                row_;
+      };
+      auto begin() { return Iterator(*this, 0); }
+      auto end() { return Iterator(*this, container_.size()); }
+
+    private:
+      const Soa& container_;
+    };
+
+    template <size_t... Cols>
+    auto selectColumns() {
+      return SelectedColumns<Cols...>(*this);
+    }
+    template <size_t... Cols>
+    auto selectColumns() const {
+      return ConstSelectedColumns<Cols...>(*this);
+    }
+
   protected:
     // Ban access to certain parent methods.
-    using impl::SoaBase<Ts...>::nullify;
-    using impl::SoaBase<Ts...>::divyBuffer;
-    using impl::SoaBase<Ts...>::constructRange;
-    using impl::SoaBase<Ts...>::destructRange;
-    using impl::SoaBase<Ts...>::copy;
-    using impl::SoaBase<Ts...>::emplaceBackDefault;
-    using impl::SoaBase<Ts...>::emplaceDefault;
+    using impl::SoaBase<Ts...>::nullify_;
+    using impl::SoaBase<Ts...>::divyBuffer_;
+    using impl::SoaBase<Ts...>::constructRange_;
+    using impl::SoaBase<Ts...>::destructRange_;
+    using impl::SoaBase<Ts...>::copy_;
+    using impl::SoaBase<Ts...>::emplaceBackDefault_;
+    using impl::SoaBase<Ts...>::emplaceDefault_;
 
     template <typename T>
     size_t quicksort(T* arr, size_t low, size_t high) {

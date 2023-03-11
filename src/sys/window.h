@@ -14,7 +14,7 @@
 #include "settings.h"
 
 #ifdef PLATFORM_SDL
-  #include "SDL.h"
+#include "SDL.h"
 #endif
 
 namespace wc {
@@ -29,12 +29,12 @@ namespace wc {
     void getWindowSize(int& w, int& h);
     void getDrawableSize(int& w, int& h);
 
+#ifdef PLATFORM_SDL
+    SDL_Window* getHandle() { return window_; }
+#endif  // PLATFORM_SDL
+
   private:
     wc::SettingsFile& settingsFile_;
-
-#ifdef PLATFORM_SDL
-    SDL_Window* window_;
-#endif
 
     // This struct holds everything that can be read and saved via
     // settings.json.
@@ -54,15 +54,11 @@ namespace wc {
 
     Window::Settings initialSettings_;
     Window::Settings settings_;
+
+#ifdef PLATFORM_SDL
+    SDL_Window* window_;
+#endif
   };
-
-  bool init();
-  void shutdown();
-
-  bool handleMessages();
-
-  void getWindowSize(int& w, int& h);
-  void getDrawableSize(int& w, int& h);
 
 }  // namespace wc
 

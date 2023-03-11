@@ -78,18 +78,19 @@ namespace hvh {
     // memory. Complexity: O(n).
     ~Table() {
       impl::SoaBase<KeyT, ItemTs...>& base = *this;
-      base.destructRange(0, this->size_);
-      base.nullify();
+      base.destructRange_(0, this->size_);
+      base.nullify_();
       this->size_     = 0;
       this->capacity_ = 0;
-      if (hashMap_) SoaAlignedFree(hashMap_);
+      if (hashMap_)
+        SoaAlignedFree(hashMap_);
     }
 
     // swap(lhs, rhs)
     // swaps the contents of two htables.
     // Complexity: O(1).
-    friend inline void swap(Table<KeyT, ItemTs...>& lhs,
-                            Table<KeyT, ItemTs...>& rhs) {
+    friend inline void
+        swap(Table<KeyT, ItemTs...>& lhs, Table<KeyT, ItemTs...>& rhs) {
       std::swap(lhs.hashMap_, rhs.hashMap_);
       std::swap(lhs.hashCapacity_, rhs.hashCapacity_);
       Soa<KeyT, ItemTs...>& lhsbase = lhs;
@@ -138,13 +139,16 @@ namespace hvh {
     // Complexity: O(n).
     bool reserve(size_t newsize) {
       // For alignment, we must have a multiple of 16 items.
-      if (newsize % 16 != 0) newsize += 16 - (newsize % 16);
+      if (newsize % 16 != 0)
+        newsize += 16 - (newsize % 16);
 
       // We need at least 16 elements.
-      if (newsize == 0) newsize = 16;
+      if (newsize == 0)
+        newsize = 16;
 
       // We can't shrink the actual memory.
-      if (newsize <= this->capacity_) return true;
+      if (newsize <= this->capacity_)
+        return true;
 
       // Hash capacity needs to be odd and just greater than double the list
       // capacity, but it also needs to conform to 16-byte alignment.
@@ -158,17 +162,19 @@ namespace hvh {
       // Allocate new memory.
       impl::SoaBase<KeyT, ItemTs...>& base = *this;
       void*                           alloc_result =
-          SoaAlignedMalloc(16, (base.sizePerEntry() * newsize) + htable_size);
-      if (!alloc_result) return false;
+          SoaAlignedMalloc(16, (base.sizePerEntry_() * newsize) + htable_size);
+      if (!alloc_result)
+        return false;
 
       hashMap_ = (uint32_t*)alloc_result;
 
       // Copy the old data into the new memory.
       this->capacity_ = newsize;
-      base.divyBuffer(((char*)alloc_result) + htable_size);
+      base.divyBuffer_(((char*)alloc_result) + htable_size);
 
       // Free the old memory.
-      if (oldmem) SoaAlignedFree(oldmem);
+      if (oldmem)
+        SoaAlignedFree(oldmem);
       rehash();
       return true;
     }
@@ -180,10 +186,12 @@ namespace hvh {
     bool shrinkToFit() {
       // For alignment, we must have a multiple of 16 items.
       size_t newsize = this->size_;
-      if (newsize % 16 != 0) newsize += 16 - (newsize % 16);
+      if (newsize % 16 != 0)
+        newsize += 16 - (newsize % 16);
 
       // If the container is already as small as it can be, bail out now.
-      if (newsize == this->capacity_) return true;
+      if (newsize == this->capacity_)
+        return true;
 
       // Remember the old memory so we can free it.
       impl::SoaBase<KeyT, ItemTs...>& base   = *this;
@@ -197,24 +205,26 @@ namespace hvh {
         --hashCapacity_;
 
         // Allocate new memory.
-        void* alloc_result =
-            SoaAlignedMalloc(16, (base.sizePerEntry() * newsize) + htable_size);
-        if (!alloc_result) return false;
+        void* alloc_result = SoaAlignedMalloc(
+            16, (base.sizePerEntry_() * newsize) + htable_size);
+        if (!alloc_result)
+          return false;
 
         hashMap_ = (uint32_t*)alloc_result;
 
         // Copy the old data into the new memory.
         this->capacity_ = newsize;
-        base.divyBuffer(((char*)alloc_result) + htable_size);
+        base.divyBuffer_(((char*)alloc_result) + htable_size);
       } else {
-        base.nullify();
+        base.nullify_();
         this->capacity_ = 0;
         hashCapacity_   = 0;
         hashMap_        = nullptr;
       }
 
       // Free the old memory.
-      if (oldmem) SoaAlignedFree(oldmem);
+      if (oldmem)
+        SoaAlignedFree(oldmem);
       rehash();
       return true;
     }
@@ -226,9 +236,11 @@ namespace hvh {
     // otherwise. Complexity: O(1) amortized.
     template <typename... Ts>
     bool insert(const KeyT& key, Ts&&... items) {
-      if (this->size_ == maxSize()) return false;
+      if (this->size_ == maxSize())
+        return false;
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
       // Get the hash for the key.
       size_t hash = std::hash<KeyT> {}(key) % hashCapacity_;
@@ -254,9 +266,11 @@ namespace hvh {
     // otherwise. Complexity: O(1) amortized.
     template <typename... CTypes>
     bool emplace(const KeyT& key, CTypes&&... cargs) {
-      if (this->size_ == maxSize()) return false;
+      if (this->size_ == maxSize())
+        return false;
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
       // Get the hash for the key.
       size_t hash = std::hash<KeyT> {}(key) % hashCapacity_;
@@ -282,9 +296,11 @@ namespace hvh {
     // in reserve(), true otherwise. Complexity: O(n).
     template <size_t K>
     bool insertSorted(const KeyT& key, const ItemTs&... items) {
-      if (this->size_ == maxSize()) return false;
+      if (this->size_ == maxSize())
+        return false;
       if (this->size_ == this->capacity_) {
-        if (!reserve(this->capacity_ * 2)) return false;
+        if (!reserve(this->capacity_ * 2))
+          return false;
       }
       Soa<KeyT, ItemTs...>& base = *this;
       size_t where = base.template lowerBoundRow<K>(key, items...);
@@ -305,7 +321,9 @@ namespace hvh {
     // Complexity: O(1) amortized.
     inline size_t count(const KeyT& key) const {
       size_t result = 0;
-      for (auto& i : find(key)) { ++result; }
+      for (auto& i : find(key)) {
+        ++result;
+      }
       return result;
     }
 
@@ -369,7 +387,9 @@ namespace hvh {
     // Complexity: O(1) amortized.
     inline size_t eraseAll(const KeyT& key) {
       size_t result = 0;
-      for (auto it : find(key)) { result += it.erase(); }
+      for (auto it : find(key)) {
+        result += it.erase();
+      }
       return result;
     }
 
@@ -393,7 +413,7 @@ namespace hvh {
     // and load a container to disk.
     void* serialize(size_t& num_bytes) {
       shrinkToFit();
-      num_bytes = (this->sizePerEntry() * this->capacity_) +
+      num_bytes = (this->sizePerEntry_() * this->capacity_) +
                   (sizeof(uint32_t) * hashCapacity_);
       return hashMap_;
     }
@@ -408,7 +428,7 @@ namespace hvh {
     // a container to disk.
     void* deserialize(size_t num_elements, size_t& num_bytes) {
       reserve(num_elements);
-      num_bytes = (this->sizePerEntry() * this->capacity_) +
+      num_bytes = (this->sizePerEntry_() * this->capacity_) +
                   (sizeof(uint32_t) * hashCapacity_);
       this->size_ = num_elements;
       return hashMap_;
@@ -524,7 +544,8 @@ namespace hvh {
         size_t     index_;
 
         void hashInc(size_t& h) {
-          if (h == SIZE_MAX) return;
+          if (h == SIZE_MAX)
+            return;
           h = ((h + 2) % fh_.tbl_.hashCapacity_);
         }
 
@@ -618,7 +639,8 @@ namespace hvh {
         size_t          index_;
 
         void hashInc(size_t& h) {
-          if (h == SIZE_MAX) return;
+          if (h == SIZE_MAX)
+            return;
           h = ((h + 2) % fh_.tbl_.hashCapacity_);
         }
 

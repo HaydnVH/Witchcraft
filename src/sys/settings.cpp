@@ -206,8 +206,8 @@ void wc::SettingsFile::write<float>(const std::string_view path,
 }
 
 template <>
-void wc::SettingsFile::write<std::string_view>(const std::string_view  path,
-                                               const std::string_view& val) {
+void wc::SettingsFile::write<std::string>(const std::string_view path,
+                                          const std::string&     val) {
   std::string_view tailless, tail;
   chopTail(path, tailless, tail);
   rj::Value* object = followPath(tailless, true);

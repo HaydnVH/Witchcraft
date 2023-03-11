@@ -18,7 +18,7 @@
 #include <variant>
 
 namespace wc::Result {
-  enum class Status { unknown, success, warning, error };
+  enum class Status { Unknown, Success, Warning, Error };
 
   using Source =
       std::variant<std::source_location, std::string, std::nullopt_t>;
@@ -32,9 +32,9 @@ namespace wc::Result {
         status_(status),
         msg_(msg), context_(context) {}
 
-    inline bool isSuccess() const { return status_ == Status::success; }
-    inline bool isWarning() const { return status_ == Status::warning; }
-    inline bool isError() const { return status_ == Status::error; }
+    inline bool isSuccess() const { return status_ == Status::Success; }
+    inline bool isWarning() const { return status_ == Status::Warning; }
+    inline bool isError() const { return status_ == Status::Error; }
     inline bool hasMsg() const { return msg_ != ""; }
     inline const std::string& msg() const { return msg_; }
     inline bool               hasContext() {
@@ -43,17 +43,17 @@ namespace wc::Result {
     inline const Source& context() const { return context_; }
 
     const Empty&
-        setContext(std::source_location src = std::source_location::current()) {
+        addContext(std::source_location src = std::source_location::current()) {
       context_ = src;
       return *this;
     }
-    const Empty& setContext(const std::string_view src) {
+    const Empty& addContext(const std::string_view src) {
       context_ = std::string(src);
       return *this;
     }
 
   protected:
-    Status      status_  = Status::unknown;
+    Status      status_  = Status::Unknown;
     std::string msg_     = "";
     Source      context_ = "";
   };
@@ -86,34 +86,34 @@ namespace wc::Result {
   /// @return a successful result with a value.
   template <typename T>
   inline Value<T> success(T& val) {
-    return Value<T>(Status::success, "", std::move(val));
+    return Value<T>(Status::Success, "", std::move(val));
   }
   /// @return a successful result with a value.
   template <typename T>
   inline Value<T> success(T&& val) {
-    return Value<T>(Status::success, "", std::move(val));
+    return Value<T>(Status::Success, "", std::move(val));
   }
   /// @return a successful result with no value.
-  inline Empty success() { return Empty(Status::success, ""); }
+  inline Empty success() { return Empty(Status::Success, ""); }
 
   /// @return a warning result with a value and a message.
   template <typename T>
   inline Value<T> warning(const std::string_view msg, T& val) {
-    return Value<T>(Status::warning, msg, std::move(val));
+    return Value<T>(Status::Warning, msg, std::move(val));
   }
   /// @return a warning result with a value and a message.
   template <typename T>
   inline Value<T> warning(const std::string_view msg, T&& val) {
-    return Value<T>(Status::warning, msg, std::move(val));
+    return Value<T>(Status::Warning, msg, std::move(val));
   }
   /// @return a warning result with only a message.
   inline Empty warning(const std::string_view msg = "") {
-    return Empty(Status::warning, msg);
+    return Empty(Status::Warning, msg);
   }
 
   /// @return an error result with a message.
   inline Empty error(const std::string_view msg = "") {
-    return Empty(Status::error, msg);
+    return Empty(Status::Error, msg);
   }
 
 }  // namespace wc::Result

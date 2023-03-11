@@ -10,5 +10,7 @@
 target_sources(Witchcraft PRIVATE "main.cpp")
 add_subdirectory("dbg")
 add_subdirectory("filesys")
+add_subdirectory("gfx")
 add_subdirectory("lua")
 add_subdirectory("sys")
+add_subdirectory("tools")
