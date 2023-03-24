@@ -1,6 +1,7 @@
 #include "base64.h"
 
 #include <array>
+#include <unordered_map>
 
 namespace {
 
@@ -11,6 +12,14 @@ namespace {
       "0123456789-_";
 
   constexpr char PAD_CHAR = '=';
+
+  std::unordered_map<char, uint8_t> B64_CHARMAP = []() {
+    std::unordered_map<char, uint8_t> result;
+    for (int i = 0; i < B64_CHARS.size(); ++i)
+      result[B64_CHARS[i]] = i;
+    result[PAD_CHAR] = 0;
+    return result;
+  }();
 
   constexpr bool isBase64(char c) {
     return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
@@ -30,7 +39,7 @@ namespace {
     std::array<char, 3> out;
     out[0] = (in[0] << 2) + ((in[1] & 0b00110000) >> 4);
     out[1] = ((in[1] & 0b00001111) << 4) + ((in[2] & 0b00111100) >> 2);
-    out[3] = ((in[2] & 0b00000011) << 6) + in[3];
+    out[2] = ((in[2] & 0b00000011) << 6) + in[3];
     return out;
   }
 }  // namespace
@@ -44,17 +53,15 @@ constexpr bool wc::base64::isBase64(const std::string_view str) {
   return true;
 }
 
-constexpr std::string wc::base64::encode(void* data, size_t len) {
+std::string wc::base64::encode(const char* data, size_t len) {
   std::string result;
   result.reserve(encodeSize(len));
   int                 i = 0, j = 0;
   std::array<char, 3> ca3;
   std::array<char, 4> ca4;
 
-  char* chars = (char*)data;
-
   while (len--) {
-    ca3[i++] = *(chars++);
+    ca3[i++] = *(data++);
     if (i == 3) {
       ca4 = split3to4(ca3);
 
@@ -70,14 +77,12 @@ constexpr std::string wc::base64::encode(void* data, size_t len) {
     ca4 = split3to4(ca3);
     for (j = 0; j < i + 1; ++j)
       result += B64_CHARS[ca4[j]];
-    while (i++ < 3)
-      result += PAD_CHAR;
   }
 
   return result;
 }
 
-constexpr std::vector<char> wc::base64::decode(const std::string_view str) {
+std::vector<char> wc::base64::decode(const std::string_view str) {
   int                 len = str.size();
   int                 i = 0, j = 0;
   int                 in = 0;
@@ -90,7 +95,7 @@ constexpr std::vector<char> wc::base64::decode(const std::string_view str) {
     ca4[i++] = str[in++];
     if (i == 4) {
       for (i = 0; i < 4; ++i)
-        ca4[i] = B64_CHARS.find(ca4[i]);
+        ca4[i] = B64_CHARMAP[ca4[i]];
       ca3 = mash4to3(ca4);
       for (i = 0; i < 3; ++i)
         result.push_back(ca3[i]);
@@ -101,7 +106,7 @@ constexpr std::vector<char> wc::base64::decode(const std::string_view str) {
     for (j = i; j < 4; ++j)
       ca4[j] = 0;
     for (j = 0; j < 4; ++j)
-      ca4[j] = B64_CHARS.find(ca4[j]);
+      ca4[j] = B64_CHARMAP[ca4[j]];
     ca3 = mash4to3(ca4);
     for (j = 0; j < i - 1; ++j)
       result.push_back(ca3[j]);

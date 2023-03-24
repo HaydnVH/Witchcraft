@@ -8,7 +8,9 @@
 # Defines the source files that go into the main executable.
 ###############################################################################
 target_sources(Witchcraft PRIVATE "main.cpp")
+target_sources(WcUnitTest PRIVATE "test.cpp")
 add_subdirectory("dbg")
+add_subdirectory("ecs")
 add_subdirectory("filesys")
 add_subdirectory("gfx")
 add_subdirectory("lua")

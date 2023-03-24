@@ -7,7 +7,10 @@
 # ----------------------------------------------------------------------------
 # Defines the source files for the "filesys" subdirectory.
 ###############################################################################
-target_sources(Witchcraft PRIVATE
+set (srclist
   "archive.cpp"
   "module.cpp"
   "vfs.cpp")
+  
+target_sources(Witchcraft PRIVATE ${srclist})
+target_sources(WcUnitTest PRIVATE ${srclist})

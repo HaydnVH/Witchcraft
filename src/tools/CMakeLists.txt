@@ -7,7 +7,15 @@
 # ----------------------------------------------------------------------------
 # Defines the source files for the "tools" subdirectory.
 ###############################################################################
-target_sources(Witchcraft PRIVATE
+set (srclist
   "base64.cpp"
   "rng.cpp"
   "uuid.cpp")
+
+set (testsrc
+  "base64_test.cpp"
+  "sha1_test.cpp"
+  "uuid_test.cpp")
+
+target_sources(Witchcraft PRIVATE ${srclist})
+target_sources(WcUnitTest PRIVATE ${srclist} ${testsrc})

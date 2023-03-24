@@ -40,15 +40,6 @@ int main(int /*argc*/, char** /*argv*/) {
                     wc::APP_NAME, wc::APP_VERSION, wc::ENGINE_NAME,
                     wc::ENGINE_VERSION, 42));
 
-    for (int i = 0; i < 10; ++i) {
-      auto id  = wc::Uuid::makeV4Secure();
-      auto b64 = id.toStrBase64();
-      dbg::infomore(b64);
-      if (id != wc::Uuid::fromStrBase64(b64)) {
-        dbg::errmore("id doesn't match!");
-      }
-    }
-
     wc::SettingsFile  settings("settings.json");
     wc::Filesystem    vfs;
     wc::Lua           lua(vfs);

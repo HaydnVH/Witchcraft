@@ -8,10 +8,6 @@
 # Manages and links all dependencies.
 ###############################################################################
 
-## --- blake3 --- ##
-add_subdirectory(blake3)
-target_link_libraries(Witchcraft PRIVATE blake3)
-
 ## --- fmt --- ##
 add_library(fmt STATIC IMPORTED)
 find_library(FMT_LIB NAMES fmt fmtd HINTS "fmt/lib/$ENV{PRESET_NAME}")
@@ -19,12 +15,14 @@ set_target_properties(fmt PROPERTIES IMPORTED_LOCATION "${FMT_LIB}")
 target_include_directories(fmt INTERFACE "fmt/include")
 target_link_libraries(fmt INTERFACE "${FMT_LIB}")
 target_link_libraries(Witchcraft PRIVATE fmt)
+target_link_libraries(WcUnitTest PRIVATE fmt)
 
 ## --- glm --- ##
 add_definitions(-DGLM_FORCE_RADIANS, -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
 add_library(glm INTERFACE)
 target_include_directories(glm INTERFACE "glm/include")
 target_link_libraries(Witchcraft PRIVATE glm)
+target_link_libraries(WcUnitTest PRIVATE glm)
 
 ## --- lua --- ##
 add_library(lua STATIC IMPORTED)
@@ -33,17 +31,20 @@ set_target_properties(lua PROPERTIES IMPORTED_LOCATION "${LUA_LIB}")
 target_include_directories(lua INTERFACE "lua/include")
 target_link_libraries(lua INTERFACE "${LUA_LIB}")
 target_link_libraries(Witchcraft PRIVATE lua)
+target_link_libraries(WcUnitTest PRIVATE lua)
 
 ## --- lz4 --- ##
 add_library(lz4 STATIC)
 target_include_directories(lz4 PUBLIC "lz4/lib")
 target_sources(lz4 PRIVATE "lz4/lib/lz4.c" "lz4/lib/lz4hc.c")
 target_link_libraries(Witchcraft PRIVATE lz4)
+target_link_libraries(WcUnitTest PRIVATE lz4)
 
 ## --- RapidJson --- ## 
 add_library(rapidjson INTERFACE)
 target_include_directories(rapidjson INTERFACE "rapidjson/include")
 target_link_libraries(Witchcraft PRIVATE rapidjson)
+target_link_libraries(WcUnitTest PRIVATE rapidjson)
 
 ## --- scn --- ##
 add_library(scn STATIC IMPORTED)
@@ -52,6 +53,7 @@ set_target_properties(scn PROPERTIES IMPORTED_LOCATION "${SCN_LIB}")
 target_include_directories(scn INTERFACE "scn/include")
 target_link_libraries(scn INTERFACE "${SCN_LIB}")
 target_link_libraries(Witchcraft PRIVATE scn)
+target_link_libraries(WcUnitTest PRIVATE scn)
 
 ## --- sdl --- ##
 add_library(sdl STATIC IMPORTED)
@@ -61,6 +63,7 @@ set_target_properties(sdl PROPERTIES IMPORTED_LOCATION "${SDL_LIB}")
 target_include_directories(sdl INTERFACE "sdl/include")
 target_link_libraries(sdl INTERFACE "${SDL_LIB}" "${SDLMAIN_LIB}")
 target_link_libraries(Witchcraft PRIVATE sdl)
+target_link_libraries(WcUnitTest PRIVATE sdl)
 
 # Move sdl2.dll over to where we need it.
 if (WIN32)
@@ -77,7 +80,12 @@ target_include_directories(Witchcraft PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_compile_definitions(Witchcraft PRIVATE VULKAN_HPP_NO_CONSTRUCTORS VULKAN_HPP_NO_EXCEPTIONS)
 target_link_libraries(Witchcraft PRIVATE Vulkan::Vulkan)
 
+target_include_directories(WcUnitTest PRIVATE ${Vulkan_INCLUDE_DIRS})
+target_compile_definitions(WcUnitTest PRIVATE VULKAN_HPP_NO_CONSTRUCTORS VULKAN_HPP_NO_EXCEPTIONS)
+target_link_libraries(WcUnitTest PRIVATE Vulkan::Vulkan)
+
 ## --- Other --- ##
 if (WIN32)
   target_link_libraries(Witchcraft PRIVATE Bcrypt)
+  target_link_libraries(WcUnitTest PRIVATE Bcrypt)
 endif ()

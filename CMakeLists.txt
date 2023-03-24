@@ -30,8 +30,14 @@ set_target_properties(Witchcraft PROPERTIES CXX_STANDARD 20
 											CXX_STANDARD_REQUIRED true
 											CXX_EXTENSIONS false)
 
+add_executable(WcUnitTest)
+set_target_properties(WcUnitTest PROPERTIES CXX_STANDARD 20
+											CXX_STANDARD_REQUIRED true
+											CXX_EXTENSIONS false)
+
 # Add our source files
 target_include_directories(Witchcraft PRIVATE "src")
+target_include_directories(WcUnitTest PRIVATE "src")
 add_subdirectory("src")
 
 # Add our dependencies

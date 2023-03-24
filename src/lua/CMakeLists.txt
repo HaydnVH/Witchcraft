@@ -7,8 +7,10 @@
 # ----------------------------------------------------------------------------
 # Defines the source files for the "lua" subdirectory.
 ###############################################################################
-target_sources(Witchcraft PRIVATE
-  "luasystem.cpp")
+set (srclist "luasystem.cpp")
+
+target_sources(Witchcraft PRIVATE ${srclist})
+target_sources(WcUnitTest PRIVATE ${srclist})
 
 # Compile the lua scripts to binary, and then transform those files into headers
 # which can be included directly into the executable.
@@ -50,3 +52,4 @@ add_custom_target(
 	DEPENDS ${LUA_BINARY_FILES}
 )
 add_dependencies(Witchcraft LuaScripts)
+add_dependencies(WcUnitTest LuaScripts)

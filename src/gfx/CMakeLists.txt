@@ -7,4 +7,8 @@
 # ----------------------------------------------------------------------------
 # Defines the source files for the "gfx" subdirectory.
 ###############################################################################
-target_sources(Witchcraft PRIVATE "renderer_vk.cpp")
+set (srclist
+  "renderer_vk.cpp")
+
+target_sources(Witchcraft PRIVATE ${srclist})
+target_sources(WcUnitTest PRIVATE ${srclist})

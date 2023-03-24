@@ -6,15 +6,7 @@
  * Last modified March 2023
  * ---------------------------------------------------------------------------
  * Provides access to random values for use by the Witchcraft engine.
- * Two different kinds of generators are provided: "secure" and "fast".
  *
- * A "secure" random number is generated using a cryptographically-secure
- * algorithm, and has all the properties of crytographic security.
- * "secure" random numbers have no seed input or trackable state.
- *
- * A "fast" random number is generated as fast as possible, quality be damned.
- * "fast" random numbers can be seeded and can have their state tracked
- * to generate deterministic but random-looking sequences.
  *****************************************************************************/
 #ifndef WC_TOOLS_RNG_H
 #define WC_TOOLS_RNG_H
@@ -22,46 +14,48 @@
 #include <climits>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 
-namespace wc::rng {
+namespace wc {
 
-  /// Generates 'numBytes' bytes of secure random data and stores them in 'ptr'.
-  void secureBytes(void* ptr, size_t numBytes);
+  class Rng {
+  public:
+    /// Default constructor for Rng fills the state with random entropy.
+    /// This is technically not the same as using `getEntropy()` for the seed.
+    Rng() { getEntropy(this, sizeof(Rng)); }
+    /// Construct an `Rng` object and initializes it with the given seed.
+    Rng(uint64_t seed);
+    Rng(std::string_view seed):
+        Rng((uint64_t)std::hash<std::string_view> {}(seed)) {}
 
-  /// Generates a secure random 'T'.  Behavior depends on the properties of 'T'.
-  /// If 'T' is an integer, the result will be between *_MIN and *_MAX.
-  /// If 'T' is floating-point, the result will be between 0 and 1.
-  template <typename T>
-  inline T secure() {
-    static_assert(std::is_integral<T>::value ||
-                  std::is_floating_point<T>::value);
-
-    if constexpr (std::is_integral<T>::value) {
-      T result;
-      secureBytes(&result, sizeof(T));
-      return result;
-    } else if constexpr (std::is_floating_point<T>::value) {
-      uint32_t result;
-      secureBytes(&result, sizeof(uint32_t));
-      return (T)((double)result / (double)UINT_MAX);
-    } else
-      return {};
-  }
-
-  void blake3(void* ptr, size_t numBytes);
-
-  struct Fast {
-    constexpr Fast(uint64_t seed = secure<uint64_t>());
-
+    /// Get the next random number for this generator.
+    /// @return 8 bytes of random data.
     uint64_t next();
 
-    uint64_t    a, b, c, d;
-    static Fast fastState_s;
+    /// Get the next random number from a global seedless generator.
+    /// @return 8 bytes of random data.
+    inline static uint64_t staticNext() {
+      static Rng rng_s;
+      return rng_s.next();
+    }
+
+    /// Obtains truly random data from an OS-provided source of entropy.
+    /// @param ptr: Where the random bytes should be stored.
+    /// @param size: The number of random bytes to obtain.
+    static void getEntropy(void* ptr, size_t size);
+    /// Obtains truly random data from an OS-provided source of entropy.
+    /// @return 8 bytes of random data.
+    inline static uint64_t getEntropy() {
+      uint64_t result;
+      getEntropy(&result, sizeof(uint64_t));
+      return result;
+    }
+
+  private:
+    uint64_t a_, b_, c_, d_;
   };
 
-  inline uint64_t fast() { return Fast::fastState_s.next(); }
-
-}  // namespace wc::rng
+}  // namespace wc
 
 #endif  // WC_TOOLS_RNG_H

@@ -7,8 +7,12 @@
 # ----------------------------------------------------------------------------
 # Defines the source files for the "sys" subdirectory.
 ###############################################################################
-target_sources(Witchcraft PRIVATE
+set (srclist
   "mainloop.cpp"
   "paths.cpp"
   "settings.cpp"
   "window_sdl.cpp")
+
+target_sources(Witchcraft PRIVATE ${srclist})
+target_sources(WcUnitTest PRIVATE ${srclist})
+  
