@@ -78,11 +78,12 @@ Functions should be written in camel case and should describe its intended purpo
 
 ## Namespaces
 
-Namespaces should be written in snake case, and should be as concise as possible.  Nested namespaces can be nested directly using `::`.
+Namespaces should be written in snake case, and should be as concise as possible.  Although nesting namespaces using `::` is valid as of C++17, this should not be used as it doesn't play nicely with intellisense.
 ```
-namespace parent_namespace::child_namespace {
+namespace parent_namespace {
+namespace child_namespace {
 	...
-}
+}} // namespace parent_namespace::child_namespace
 ```
 
 In headers, a namespace can scope all of the included definitions.  In translation units, namespace should scope only to the function being defined.

@@ -15,6 +15,10 @@
 #include "tools/sha1.hpp"
 #include "tools/uuid.h"
 
+
+#include "etc/result.h"
+#include "dbg/unittest.h"
+
 #include <iostream>
 
 int main(int, char**) {
@@ -31,6 +35,8 @@ int main(int, char**) {
       result += wc::base64::test::runBase64UnitTests();
       result += wc::hash::test::runSha1UnitTests();
       result += wc::test::runUuidUnitTests();
+
+      EXPECT_TRUE(false);
 
     } catch (const dbg::Exception& e) {
       dbg::fatal(e);
