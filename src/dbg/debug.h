@@ -15,7 +15,6 @@
 #include "tools/enumbits.h"
 
 #include <filesystem>
-#include <fmt/core.h>
 #include <mutex>
 #include <optional>
 #include <source_location>

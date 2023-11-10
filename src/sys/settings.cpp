@@ -14,7 +14,6 @@
 #include "tools/strtoken.h"
 
 #include <filesystem>
-#include <fmt/core.h>
 #include <fstream>
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>

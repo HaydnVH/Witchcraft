@@ -13,7 +13,7 @@
 #include "vfs.h"
 
 #include <filesystem>
-#include <fmt/core.h>
+#include <format>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -50,7 +50,7 @@ wc::Filesystem::Filesystem() {
       // Add it to the list of available modules.
       auto mod = Module::open(it->path());
       if (mod.isError() || !mod) {
-        dbg::error(fmt::format("'{}' is not a valid package,\n{}",
+        dbg::error(std::format("'{}' is not a valid package,\n{}",
                                trimPathStr(it->path()), mod.msg()));
         continue;
       }
@@ -62,7 +62,7 @@ wc::Filesystem::Filesystem() {
         modules_.insert(mod->getName().c_str(), std::move(*mod));
     } else
       dbg::error(
-          fmt::format("'{}' is not a valid package.", trimPathStr(it->path())));
+          std::format("'{}' is not a valid package.", trimPathStr(it->path())));
   }
 
   // Scan through the install data directory.
@@ -77,7 +77,7 @@ wc::Filesystem::Filesystem() {
         // Add it to the list of available modules.
         auto mod = Module::open(it->path());
         if (mod.isError() || !mod) {
-          dbg::error(fmt::format("'{}' is not a valid package,\n{}",
+          dbg::error(std::format("'{}' is not a valid package,\n{}",
                                  trimPathStr(it->path()), mod.msg()));
           continue;
         }
@@ -88,7 +88,7 @@ wc::Filesystem::Filesystem() {
         else
           modules_.insert(mod->getName().c_str(), std::move(*mod));
       } else
-        dbg::error(fmt::format("'{}' is not a valid package.",
+        dbg::error(std::format("'{}' is not a valid package.",
                                trimPathStr(it->path())));
     }
   }
@@ -105,7 +105,7 @@ wc::Filesystem::Filesystem() {
   for (size_t modindex = 0; modindex < modules_.size(); ++modindex) {
 
     size_t numFilesLoaded = loadModule(modindex);
-    dbg::infomore(fmt::format("Loaded package '{}' with {} files(s).",
+    dbg::infomore(std::format("Loaded package '{}' with {} files(s).",
                               modules_.at<0>(modindex).c_str, numFilesLoaded));
   }
 }

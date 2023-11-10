@@ -12,7 +12,7 @@
 #define WC_TOOLS_EXCEPTIONS_H
 
 #include <filesystem>
-#include <fmt/core.h>
+#include <format>
 #include <source_location>
 #include <stdexcept>
 #include <string>
@@ -50,7 +50,7 @@ namespace dbg {
 
     // Adds a new message to the list.
     Exception& addMsg(const std::string_view msg, std::source_location src) {
-      messages_.push_back(fmt::format(
+      messages_.push_back(std::format(
           "[{}:{} \"{}\"]:\x1b[0m {}",
           std::filesystem::path(src.file_name()).filename().string(),
           src.line(), src.function_name(), msg));

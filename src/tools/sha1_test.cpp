@@ -44,14 +44,14 @@
 int compare(std::string_view result, std::string_view expected) {
   if (result != expected) {
     dbg::errmore(
-        fmt::format("Result:   {}\nExpected: {} (FAILURE)", result, expected));
+        std::format("Result:   {}\nExpected: {} (FAILURE)", result, expected));
     return 1;
   }
   return 0;
 }
 
 int compare(wc::hash::Sha1::Digest result, std::string_view expected) {
-  auto resultstr = fmt::format("{:08x}{:08x}{:08x}{:08x}{:08x}", result[0],
+  auto resultstr = std::format("{:08x}{:08x}{:08x}{:08x}{:08x}", result[0],
                                result[1], result[2], result[3], result[4]);
   return compare(resultstr, expected);
 }

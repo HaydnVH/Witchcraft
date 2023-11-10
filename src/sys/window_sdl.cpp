@@ -56,10 +56,10 @@ wc::Window::Window(wc::SettingsFile& settingsFile):
                              settings_.iHeight, flags);
   if (!window_) {
     throw dbg::Exception(
-        fmt::format("Failed to create window. {}", SDL_GetError()));
+        std::format("Failed to create window. {}", SDL_GetError()));
   }
 
-  dbg::info(fmt::format("Window opened; dimensions {} x {}.", settings_.iWidth,
+  dbg::info(std::format("Window opened; dimensions {} x {}.", settings_.iWidth,
                         settings_.iHeight));
 }
 
@@ -94,7 +94,7 @@ bool wc::Window::handleMessages() {
           settings_.iWidth  = e.window.data1;
           settings_.iHeight = e.window.data2;
         }
-        dbg::infomore(fmt::format("Window resized to {} x {}", e.window.data1,
+        dbg::infomore(std::format("Window resized to {} x {}", e.window.data1,
                                   e.window.data2));
         break;
       }

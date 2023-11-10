@@ -9,7 +9,7 @@
  *****************************************************************************/
 #include "luasystem.h"
 
-#include <fmt/core.h>
+#include <format>
 #include <string>
 #include <vector>
 using namespace std;
@@ -59,7 +59,7 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
       if (lua_isnumber(L, -1))
         currentLine = lua_tointeger(L, -1);
       lua_pop(L, 1);
-      dbg::luamsg("", fmt::format("{}:{}", shortSrc, currentLine));
+      dbg::luamsg("", std::format("{}:{}", shortSrc, currentLine));
     } else {
       dbg::luamsg("", "");
     }
@@ -112,7 +112,7 @@ wc::Lua::Lua(wc::Filesystem& vfs): vfs_(vfs) {
 
   lua_getglobal(L_, "_VERSION");
   dbg::info(
-      fmt::format("Finished initalizing lua system: {}", lua_tostring(L_, -1)));
+      std::format("Finished initalizing lua system: {}", lua_tostring(L_, -1)));
   lua_pop(L_, 1);
 
   // Run core scripts here.
@@ -233,7 +233,7 @@ wc::Result::Empty wc::Lua::runString(const char* str, const char* env,
   if (env) {
     int pushes = getToTable(env, false, false);
     if (pushes == -1) {
-      std::string errMsg = fmt::format("Attempting to run Lua string in an "
+      std::string errMsg = std::format("Attempting to run Lua string in an "
                                        "environment '{}' which does not exist.",
                                        env);
       lua_pop(L_, 1);
@@ -254,13 +254,13 @@ wc::Result::Empty wc::Lua::runString(const char* str, const char* env,
 }
 
 wc::Result::Empty wc::Lua::doFile(const char* filename) {
-  string path = fmt::format("{}{}{}", SCRIPT_DIR, filename, SCRIPT_EXT);
+  string path = std::format("{}{}{}", SCRIPT_DIR, filename, SCRIPT_EXT);
 
   // Open and load the script file.
   auto loadResult = vfs_.getFile(path.c_str()).loadHighest();
   if (loadResult.isError() || !loadResult) {
     return Result::error(
-        fmt::format("Failed to load '{}.lua'; {}", filename, loadResult.msg()));
+        std::format("Failed to load '{}.lua'; {}", filename, loadResult.msg()));
   }
   auto&                      fdata   = *loadResult;
   std::optional<std::string> warnMsg = std::nullopt;
@@ -270,12 +270,12 @@ wc::Result::Empty wc::Lua::doFile(const char* filename) {
   }
 
   // Adjust the source name for debugging.
-  path = fmt::format("@{}", path);
+  path = std::format("@{}", path);
 
   // Load the script into lua.
   if (luaL_loadbuffer(L_, (const char*)fdata.data(), fdata.size(),
                       path.c_str())) {
-    std::string errMsg = fmt::format("Failed to load '{}.lua'; {}", filename,
+    std::string errMsg = std::format("Failed to load '{}.lua'; {}", filename,
                                      lua_tostring(L_, -1));
     lua_pop(L_, 1);
     return Result::error(std::move(errMsg));
@@ -286,7 +286,7 @@ wc::Result::Empty wc::Lua::doFile(const char* filename) {
   lua_pushstring(L_, filename);
   if (lua_pcall(L_, 1, 0, 0)) {
     std::string errMsg =
-        fmt::format("Failed to set up environment for script '{}.lua'; {}",
+        std::format("Failed to set up environment for script '{}.lua'; {}",
                     filename, lua_tostring(L_, -1));
     lua_pop(L_, 2);  // pop the error and the loaded script function
     return Result::error(std::move(errMsg));
@@ -353,6 +353,6 @@ void wc::Lua::printLuaError(int errindex) {
     errstr.erase(0, pos + 2);
     dbg::error(errstr, errsrc);
   } else {
-    dbg::error(fmt::format("{}", errstr));
+    dbg::error(std::format("{}", errstr));
   }
 }

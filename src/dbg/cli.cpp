@@ -13,7 +13,7 @@
 #include "tools/utf.h"
 
 #include <atomic>
-#include <fmt/core.h>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -211,13 +211,13 @@ namespace {
         // Clear the console after that position.
         // Print the user input.
         auto formattedEchoString =
-            fmt::format("{}{}{}\x1b[0m{}", DECSR, ED, cli::USERPROMPT, echostr);
+            std::format("{}{}{}\x1b[0m{}", DECSR, ED, cli::USERPROMPT, echostr);
         WRITE(formattedEchoString.c_str(), formattedEchoString.size());
 
         // Move the cursor so it appears where our input is.
         int cursorDif = (int)inputBuffer->size() - inputCursor;
         if (cursorDif > 0) {
-          auto code = fmt::format("\x1b[{}D", cursorDif);
+          auto code = std::format("\x1b[{}D", cursorDif);
           WRITE(code.c_str(), code.size());
         }
       }
@@ -292,7 +292,7 @@ void cli::init() {
   if (!logFile_s.is_open()) {
     dbg::errmore("Failed to open debug log file for writing.");
   } else {
-    dbg::infomore(fmt::format("Output messages will be saved to \"{}\".",
+    dbg::infomore(std::format("Output messages will be saved to \"{}\".",
                               logpath.string()));
   }
 
@@ -340,7 +340,7 @@ void cli::print(dbg::Severity severity, std::string_view message, bool endl) {
     // Print the message.
     // Save the cursor position.
     // Alert the input thread to update its display.
-    auto outString = fmt::format("{}{}{}{}{}{}", DECSR, ED, message,
+    auto outString = std::format("{}{}{}{}{}{}", DECSR, ED, message,
                                  (endl) ? "\n" : "", DECSC, WAKEUP);
     WRITE(outString.c_str(), outString.size());
   }

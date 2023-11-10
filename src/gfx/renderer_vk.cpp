@@ -125,7 +125,7 @@ wc::gfx::Renderer::Renderer(wc::SettingsFile& settingsFile, wc::Window& window):
         SDL_Vulkan_CreateSurface(window_.getHandle(), instance_, &surface);
     windowSurface_ = surface;
     if (!result)
-      throw dbg::Exception(fmt::format(
+      throw dbg::Exception(std::format(
           "Failed to create SDL window surface.\n{}", SDL_GetError()));
 #endif  // PLATFORM_SDL
   }
@@ -201,7 +201,7 @@ wc::gfx::Renderer::Renderer(wc::SettingsFile& settingsFile, wc::Window& window):
       for (const auto& heap : memory.memoryHeaps) {
         if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal) {
           // Report how much VRAM this device has.
-          deviceReport += fmt::format(" ({} bytes of local memory)", heap.size);
+          deviceReport += std::format(" ({} bytes of local memory)", heap.size);
           // Save this device in a table for sorting.
           deviceTable.insert(pdevice.getProperties().deviceName.data(), pdevice,
                              heap.size);
@@ -225,10 +225,10 @@ wc::gfx::Renderer::Renderer(wc::SettingsFile& settingsFile, wc::Window& window):
       physicalDevice_ = deviceTable.back<1>();
       if (settings_.sPreferredGPU.size() > 0) {
         dbg::warning(
-            fmt::format("Preferred GPU '{}' not found.\n"
+            std::format("Preferred GPU '{}' not found.\n"
                         "Using '{}' instead.",
                         settings_.sPreferredGPU,
-                        physicalDevice_.getProperties().deviceName));
+                        (std::string_view)physicalDevice_.getProperties().deviceName));
       }
       settings_.sPreferredGPU =
           physicalDevice_.getProperties().deviceName.data();

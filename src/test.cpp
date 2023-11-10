@@ -15,9 +15,10 @@
 #include "tools/sha1.hpp"
 #include "tools/uuid.h"
 
-
 #include "etc/result.h"
 #include "dbg/unittest.h"
+
+#include <range/v3/functional.hpp>
 
 #include <iostream>
 
@@ -28,7 +29,7 @@ int main(int, char**) {
     try {
       dbg::info("Now running unit tests for Witchcraft Engine.");
       dbg::infomore(
-          fmt::format("{}\n{}\n{}\n", wc::ecs::WC_ECS_PARENT_ID.toStrCanon(),
+          std::format("{}\n{}\n{}\n", wc::ecs::WC_ECS_PARENT_ID.toStrCanon(),
                       wc::ecs::ComponentId::WC_ECS_COMPONENT_ID.toStrCanon(),
                       wc::ecs::ArchetypeId::WC_ECS_ARCHETYPE_ID.toStrCanon()));
 

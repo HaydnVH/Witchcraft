@@ -43,6 +43,9 @@ add_subdirectory("src")
 # Add our dependencies
 add_subdirectory(dependencies)
 
+# Add third party dependencies
+add_subdirectory(thirdparty)
+
 # Create symlinks so the "$INSTALL/data" directory can be found.
 add_custom_command(TARGET Witchcraft POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E create_symlink

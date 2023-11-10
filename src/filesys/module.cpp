@@ -10,7 +10,7 @@
 #include "module.h"
 
 #include <filesystem>
-#include <fmt/core.h>
+#include <format>
 #include <fstream>
 namespace sfs = std::filesystem;
 
@@ -37,7 +37,7 @@ wc::Result::Value<wc::Module>
   // Make sure something exists there.
   if (!sfs::exists(myPath)) {
     return Result::error(
-        fmt::format("'{}' does not exist.", trimPathStr(myPath)));
+        std::format("'{}' does not exist.", trimPathStr(myPath)));
   }
 
   Module                     result;
@@ -70,14 +70,14 @@ wc::Result::Value<wc::Module>
   result.name_ = myPath.filename().string();
 
   if (modinfo.empty()) {
-    warnMsg = fmt::format("Failed to open '{}/{}'.", trimPathStr(myPath),
+    warnMsg = std::format("Failed to open '{}/{}'.", trimPathStr(myPath),
                           MODINFO_FILENAME);
   } else {
     // Parse the file contents as json.
     Document doc;
     doc.Parse((char*)modinfo.data(), modinfo.size());
     if (doc.HasParseError() || !doc.IsObject()) {
-      warnMsg = fmt::format("Failed to parse '{}/{}'.", trimPathStr(myPath),
+      warnMsg = std::format("Failed to parse '{}/{}'.", trimPathStr(myPath),
                             MODINFO_FILENAME);
     } else {
       // We've found and correctly parsed module.json,
@@ -219,7 +219,7 @@ wc::Result::Value<std::vector<char>>
     file.read(fileData.data(), fileData.size());
     if (!file) {
       return Result::error(
-          fmt::format("Only read {} bytes out of {}.", file.gcount(), len));
+          std::format("Only read {} bytes out of {}.", file.gcount(), len));
     }
   }
 

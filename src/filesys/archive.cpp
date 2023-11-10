@@ -37,7 +37,7 @@ bool wc::Archive::open(const char* archiveName) {
       std::filesystem::create_directories(archivePath.parent_path(), ec);
       if (ec) {
         dbg::error(
-            fmt::format("Failed to open '{}'\n"
+            std::format("Failed to open '{}'\n"
                         "Filesystem error: {}",
                         archiveName, ec.message()));
         return false;
@@ -62,7 +62,7 @@ bool wc::Archive::open(const char* archiveName) {
   // contents.
   file_.open(archivePath, std::ios::binary | std::ios::in | std::ios::out);
   if (!file_.is_open()) {
-    dbg::error(fmt::format("Archive '{}' could not be opened.", archiveName));
+    dbg::error(std::format("Archive '{}' could not be opened.", archiveName));
     return false;
   }
 
@@ -72,7 +72,7 @@ bool wc::Archive::open(const char* archiveName) {
   // Check the header to make sure the file format is valid.
   if (strncmp(header_.magic, Archive::MAGIC, 8) != 0) {
     dbg::error(
-        fmt::format("Archive '{}' is not a valid archive.", archiveName));
+        std::format("Archive '{}' is not a valid archive.", archiveName));
     file_.close();
     return false;
   }
@@ -95,7 +95,7 @@ bool wc::Archive::open(const char* archiveName) {
     size_t bytesread = file_.gcount();
     if (bytesread != dictbytes) {
       dbg::error(
-          fmt::format("Failed to load archive dictionary data.\n"
+          std::format("Failed to load archive dictionary data.\n"
                       "Expected {} bytes, read {}.",
                       dictbytes, bytesread));
 
@@ -138,7 +138,7 @@ void wc::Archive::close() {
       // size_t byteswritten = file_.gcount();
       // if (byteswritten != dictbytes) {
       //   dbg::error({"Failed to save archive dictionary data.",
-      //               fmt::format("Expected {} bytes, wrote {}.", dictbytes,
+      //               std::format("Expected {} bytes, wrote {}.", dictbytes,
       //                           byteswritten)});
       // }
     }
@@ -256,7 +256,7 @@ bool wc::Archive::extractData(const char* path, std::vector<char>& buffer,
   FixedString<Archive::FILEPATH_FIXEDLEN> fixedpath(path);
   size_t index = dictionary_.find(fixedpath)->index();
   if (index == SIZE_MAX) {
-    dbg::errmore(fmt::format("Failed to find file '{}'.", path));
+    dbg::errmore(std::format("Failed to find file '{}'.", path));
     return false;
   }
 
@@ -268,7 +268,7 @@ bool wc::Archive::extractData(const char* path, std::vector<char>& buffer,
   // Seek to the file data's location in the archive.
   file_.seekg(info.offset);
   if (file_.eof()) {
-    dbg::errmore(fmt::format("Bad offset for file '{}'.", path));
+    dbg::errmore(std::format("Bad offset for file '{}'.", path));
     return false;
   }
 
@@ -288,7 +288,7 @@ bool wc::Archive::extractData(const char* path, std::vector<char>& buffer,
                             info.sizeCompressed, info.sizeUncompressed);
     if (result < 0) {
       dbg::error(
-          fmt::format("Failed to decompress data for '{}',\n"
+          std::format("Failed to decompress data for '{}',\n"
                       "source stream is malformed.",
                       path));
       return false;
@@ -314,7 +314,7 @@ void wc::Archive::extractFile(const char* path, const char* dstfilename) {
   std::filesystem::create_directories(dstPath.parent_path(), ec);
   if (ec) {
     dbg::error(
-        fmt::format("Error extracting file '{}',\n"
+        std::format("Error extracting file '{}',\n"
                     "Filesystem error: {}.",
                     path, ec.message()));
     return;
@@ -331,7 +331,7 @@ void wc::Archive::extractFile(const char* path, const char* dstfilename) {
     std::filesystem::last_write_time(dstPath, (timestamp), ec);
     if (ec) {
       dbg::error(
-          fmt::format("Error extracting file '{}',\n"
+          std::format("Error extracting file '{}',\n"
                       "Failed to correct timestamp: {}.",
                       path, ec.message()));
     }
@@ -376,7 +376,7 @@ bool wc::Archive::insertData(const char* path, void* buffer, int32_t size,
     // Compression failed
     if (newinfo.sizeCompressed <= 0) {
       dbg::warning(
-          fmt::format("Failed to compress file '{}',\n"
+          std::format("Failed to compress file '{}',\n"
                       "Will store uncompressed.",
                       path));
       newinfo.sizeCompressed = size;
@@ -430,7 +430,7 @@ bool wc::Archive::insertFile(const char* path, const char* srcfilename,
   // Make sure the path isn't too long.
   if (strlen(path) > (Archive::FILEPATH_FIXEDLEN - 1)) {
     dbg::error(
-        fmt::format("Failed to insert '{}',\n"
+        std::format("Failed to insert '{}',\n"
                     "Path too long (max {} bytes)",
                     path, Archive::FILEPATH_FIXEDLEN - 1));
     return false;
@@ -445,7 +445,7 @@ bool wc::Archive::insertFile(const char* path, const char* srcfilename,
   std::ifstream srcfile(srcpath, std::ios::binary);
   if (!srcfile.is_open()) {
     dbg::error(
-        fmt::format("Failed to insert '{}',\n"
+        std::format("Failed to insert '{}',\n"
                     "Failed to open file.",
                     path));
     return false;
@@ -459,7 +459,7 @@ bool wc::Archive::insertFile(const char* path, const char* srcfilename,
   srcfile.read(buffer.data(), buffer.size());
   if (!srcfile) {
     dbg::error(
-        fmt::format("Failed to insert '{}',\n"
+        std::format("Failed to insert '{}',\n"
                     "Only read {} bytes out of {}.",
                     path, srcfile.gcount(), len));
     return false;
@@ -500,11 +500,11 @@ void wc::Archive::pack(const char* srcfolder, ReplaceEnum replace,
 
   std::filesystem::path srcpath = std::filesystem::u8path(srcfolder);
   if (!std::filesystem::exists(srcpath)) {
-    dbg::error(fmt::format("'{}' does not exist.", srcfolder));
+    dbg::error(std::format("'{}' does not exist.", srcfolder));
     return;
   }
   if (!std::filesystem::is_directory(srcpath)) {
-    dbg::error(fmt::format("'{}' is not a directory.", srcfolder));
+    dbg::error(std::format("'{}' is not a directory.", srcfolder));
     return;
   }
 
@@ -522,7 +522,7 @@ void wc::Archive::unpack(const char* dstfolder) {
 
   if (!std::filesystem::is_directory(dstpath)) {
     dbg::error(
-        fmt::format("'{}' already exists and is not a directory.", dstfolder));
+        std::format("'{}' already exists and is not a directory.", dstfolder));
     return;
   }
 

@@ -1,7 +1,7 @@
 #include "base64.h"
 #include "dbg/debug.h"
 
-#include <fmt/core.h>
+#include <format>
 
 int wc::base64::test::runBase64UnitTests() {
   int numFails = 0;
@@ -14,14 +14,14 @@ int wc::base64::test::runBase64UnitTests() {
     auto converted1 = encode(input.data(), input.size());
     if (converted1 != output) {
       dbg::errmore(
-          fmt::format("encode: {} should equal {}.", converted1, output));
+          std::format("encode: {} should equal {}.", converted1, output));
       ++numFails;
     }
     auto converted2  = decode(converted1);
     auto converted2s = std::string(converted2.begin(), converted2.end());
     if (converted2s != input) {
       dbg::errmore(
-          fmt::format("decode: {} should equal {}.", converted2s, input));
+          std::format("decode: {} should equal {}.", converted2s, input));
       ++numFails;
     }
     return numFails;
@@ -64,13 +64,13 @@ int wc::base64::test::runBase64UnitTests() {
     auto s = encode(binchunk, i);
     // Make sure the expected encode size is the actual encode size.
     if (encodeSize(i) != s.size()) {
-      dbg::errmore(fmt::format("encodeSize: {} should equal {}.", encodeSize(i),
+      dbg::errmore(std::format("encodeSize: {} should equal {}.", encodeSize(i),
                                s.size()));
       ++numFails;
     }
     // Make sure the expected decode size is the actual debug size.
     if (decodeSize(s.size()) != i) {
-      dbg::errmore(fmt::format("decodeSize: {} should equal {}.",
+      dbg::errmore(std::format("decodeSize: {} should equal {}.",
                                decodeSize(s.size()), i));
       ++numFails;
     }
@@ -78,7 +78,7 @@ int wc::base64::test::runBase64UnitTests() {
     // Make sure the input and output chunks are the same size.
     if (d.size() != i) {
       dbg::errmore(
-          fmt::format("decode size: {} should equal {}.", d.size(), i));
+          std::format("decode size: {} should equal {}.", d.size(), i));
       ++numFails;
     }
   }

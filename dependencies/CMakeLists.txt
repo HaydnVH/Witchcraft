@@ -9,13 +9,13 @@
 ###############################################################################
 
 ## --- fmt --- ##
-add_library(fmt STATIC IMPORTED)
-find_library(FMT_LIB NAMES fmt fmtd HINTS "fmt/lib/$ENV{PRESET_NAME}")
-set_target_properties(fmt PROPERTIES IMPORTED_LOCATION "${FMT_LIB}")
-target_include_directories(fmt INTERFACE "fmt/include")
-target_link_libraries(fmt INTERFACE "${FMT_LIB}")
-target_link_libraries(Witchcraft PRIVATE fmt)
-target_link_libraries(WcUnitTest PRIVATE fmt)
+#add_library(fmt STATIC IMPORTED)
+#find_library(FMT_LIB NAMES fmt fmtd HINTS "fmt/lib/$ENV{PRESET_NAME}")
+#set_target_properties(fmt PROPERTIES IMPORTED_LOCATION "${FMT_LIB}")
+#target_include_directories(fmt INTERFACE "fmt/include")
+#target_link_libraries(fmt INTERFACE "${FMT_LIB}")
+#target_link_libraries(Witchcraft PRIVATE fmt)
+#target_link_libraries(WcUnitTest PRIVATE fmt)
 
 ## --- glm --- ##
 add_definitions(-DGLM_FORCE_RADIANS, -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
@@ -34,26 +34,26 @@ target_link_libraries(Witchcraft PRIVATE lua)
 target_link_libraries(WcUnitTest PRIVATE lua)
 
 ## --- lz4 --- ##
-add_library(lz4 STATIC)
-target_include_directories(lz4 PUBLIC "lz4/lib")
-target_sources(lz4 PRIVATE "lz4/lib/lz4.c" "lz4/lib/lz4hc.c")
-target_link_libraries(Witchcraft PRIVATE lz4)
-target_link_libraries(WcUnitTest PRIVATE lz4)
+#add_library(lz4 STATIC)
+#target_include_directories(lz4 PUBLIC "lz4/lib")
+#target_sources(lz4 PRIVATE "lz4/lib/lz4.c" "lz4/lib/lz4hc.c")
+#target_link_libraries(Witchcraft PRIVATE lz4)
+#target_link_libraries(WcUnitTest PRIVATE lz4)
 
 ## --- RapidJson --- ## 
-add_library(rapidjson INTERFACE)
-target_include_directories(rapidjson INTERFACE "rapidjson/include")
-target_link_libraries(Witchcraft PRIVATE rapidjson)
-target_link_libraries(WcUnitTest PRIVATE rapidjson)
+#add_library(rapidjson INTERFACE)
+#target_include_directories(rapidjson INTERFACE "rapidjson/include")
+#target_link_libraries(Witchcraft PRIVATE rapidjson)
+#target_link_libraries(WcUnitTest PRIVATE rapidjson)
 
 ## --- scn --- ##
-add_library(scn STATIC IMPORTED)
-find_library(SCN_LIB NAMES scn HINTS "scn/lib/$ENV{PRESET_NAME}")
-set_target_properties(scn PROPERTIES IMPORTED_LOCATION "${SCN_LIB}")
-target_include_directories(scn INTERFACE "scn/include")
-target_link_libraries(scn INTERFACE "${SCN_LIB}")
-target_link_libraries(Witchcraft PRIVATE scn)
-target_link_libraries(WcUnitTest PRIVATE scn)
+#add_library(scn STATIC IMPORTED)
+#find_library(SCN_LIB NAMES scn HINTS "scn/lib/$ENV{PRESET_NAME}")
+#set_target_properties(scn PROPERTIES IMPORTED_LOCATION "${SCN_LIB}")
+#target_include_directories(scn INTERFACE "scn/include")
+#target_link_libraries(scn INTERFACE "${SCN_LIB}")
+#target_link_libraries(Witchcraft PRIVATE scn)
+#target_link_libraries(WcUnitTest PRIVATE scn)
 
 ## --- sdl --- ##
 add_library(sdl STATIC IMPORTED)

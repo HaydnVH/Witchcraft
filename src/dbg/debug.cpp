@@ -14,8 +14,7 @@
 
 #include <chrono>
 #include <filesystem>
-#include <fmt/chrono.h>
-#include <fmt/core.h>
+#include <format>
 #include <iostream>
 #include <regex>
 
@@ -42,17 +41,17 @@ void dbg::printHeader(dbg::Severity severity, std::string_view headMark,
   // We want the date and time to be according to the local timezone.
   datestr << std::put_time(std::localtime(&nowt), "%Y-%m-%d %H:%M:");
   // We want to display seconds, but without any decimals.
-  dbg::printRaw(severity, fmt::format(" [{}{}]", datestr.str(),
-                                      fmt::format("{:%S}", now).substr(0, 2)));
+  dbg::printRaw(severity, std::format(" [{}{}]", datestr.str(),
+                                      std::format("{:%S}", now).substr(0, 2)));
 
   // If 'srcStr' was provided, print that instead of the formatted source
   // location.
   if (srcStr) {
-    dbg::printRaw(severity, fmt::format(" [{}]:{}\n", *srcStr, dbg::CLEAR));
+    dbg::printRaw(severity, std::format(" [{}]:{}\n", *srcStr, dbg::CLEAR));
   } else {
     dbg::printRaw(
         severity,
-        fmt::format(
+        std::format(
             " [{}:{} \"{}\"]:{}\n",
             std::filesystem::path(srcLoc.file_name()).filename().string(),
             srcLoc.line(), srcLoc.function_name(), dbg::CLEAR));
@@ -64,14 +63,14 @@ void dbg::printHeader(dbg::Severity severity, std::string_view headMark,
 void dbg::printLines(Severity severity, const std::string_view listMark,
                      const std::string_view messages) {
   for (auto msg : Tokenizer(messages, "", "\n")) {
-    printLine(severity, fmt::format(" {}\x1b[0m {}", listMark, msg));
+    printLine(severity, std::format(" {}\x1b[0m {}", listMark, msg));
   }
 }
 void dbg::printLines(Severity severity, const std::string_view listMark,
                      const dbg::Exception& messages) {
   for (auto& message : messages) {
     for (auto msg : Tokenizer(message, "", "\n")) {
-      printLine(severity, fmt::format(" {}\x1b[0m {}", listMark, msg));
+      printLine(severity, std::format(" {}\x1b[0m {}", listMark, msg));
     }
   }
 }
