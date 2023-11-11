@@ -25,13 +25,13 @@ target_link_libraries(Witchcraft PRIVATE glm)
 target_link_libraries(WcUnitTest PRIVATE glm)
 
 ## --- lua --- ##
-add_library(lua STATIC IMPORTED)
-find_library(LUA_LIB NAMES lua_static HINTS "lua/lib/$ENV{PRESET_NAME}")
-set_target_properties(lua PROPERTIES IMPORTED_LOCATION "${LUA_LIB}")
-target_include_directories(lua INTERFACE "lua/include")
-target_link_libraries(lua INTERFACE "${LUA_LIB}")
-target_link_libraries(Witchcraft PRIVATE lua)
-target_link_libraries(WcUnitTest PRIVATE lua)
+#add_library(lua STATIC IMPORTED)
+#find_library(LUA_LIB NAMES lua_static HINTS "lua/lib/$ENV{PRESET_NAME}")
+#set_target_properties(lua PROPERTIES IMPORTED_LOCATION "${LUA_LIB}")
+#target_include_directories(lua INTERFACE "lua/include")
+#target_link_libraries(lua INTERFACE "${LUA_LIB}")
+#target_link_libraries(Witchcraft PRIVATE lua)
+#target_link_libraries(WcUnitTest PRIVATE lua)
 
 ## --- lz4 --- ##
 #add_library(lz4 STATIC)

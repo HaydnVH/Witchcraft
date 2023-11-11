@@ -10,3 +10,6 @@
 [submodule "thirdparty/lz4"]
 	path = thirdparty/lz4
 	url = https://github.com/lz4/lz4
+[submodule "thirdparty/Lua"]
+	path = thirdparty/Lua
+	url = https://github.com/walterschell/Lua

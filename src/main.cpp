@@ -34,7 +34,7 @@ int main(int /*argc*/, char** /*argv*/) {
   cli::init();
   try {
     dbg::info(
-        fmt::format("Now starting '{}' {}\n"
+        std::format("Now starting '{}' {}\n"
                     "Created using '{}' {}\n"
                     "Unicode handling test: ¯\\_(ツ)_/¯ 🌮 {:x}\n",
                     wc::APP_NAME, wc::APP_VERSION, wc::ENGINE_NAME,

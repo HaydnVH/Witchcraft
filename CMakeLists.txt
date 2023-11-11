@@ -47,11 +47,11 @@ add_subdirectory(dependencies)
 add_subdirectory(thirdparty)
 
 # Create symlinks so the "$INSTALL/data" directory can be found.
-add_custom_command(TARGET Witchcraft POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-  "${PROJECT_SOURCE_DIR}/data"
-  "$<TARGET_FILE_DIR:Witchcraft>/data"
-)
+#add_custom_command(TARGET Witchcraft POST_BUILD
+#  COMMAND ${CMAKE_COMMAND} -E create_symlink
+#  "${PROJECT_SOURCE_DIR}/data"
+#  "$<TARGET_FILE_DIR:Witchcraft>/data"
+#)
 
 # Compile GLSL shaders
 #file (GLOB_RECURSE GLSL_SHADERS ${PROJECT_SOURCE_DIR}/src/graphics/shaders/*.glsl)
