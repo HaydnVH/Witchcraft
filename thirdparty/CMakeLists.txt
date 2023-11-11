@@ -8,6 +8,11 @@
 # Manages and links third party dependencies.
 ###############################################################################
 
+## -- FileToHeader -- ##
+add_subdirectory(FileToHeader)
+add_dependencies(Witchcraft FileToHeader)
+add_dependencies(Witchcraft FileToHeader)
+
 ## -- lua -- ##
 add_subdirectory(Lua)
 target_link_libraries(Witchcraft PRIVATE lua_static)

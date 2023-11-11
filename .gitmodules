@@ -13,3 +13,6 @@
 [submodule "thirdparty/Lua"]
 	path = thirdparty/Lua
 	url = https://github.com/walterschell/Lua
+[submodule "thirdparty/FileToHeader"]
+	path = thirdparty/FileToHeader
+	url = https://github.com/HaydnVH/FileToHeader

@@ -18,10 +18,10 @@ target_sources(WcUnitTest PRIVATE ${srclist})
 # Grab the executables that'll help us compile the lua scripts.
 if (WIN32)
   set (LUAC_EXE "$<TARGET_FILE_DIR:luac>/luac.exe")
-  set (F2H_EXE "dependencies/f2h/apps/windows/FileToHeader.exe")
+  set (F2H_EXE "$<TARGET_FILE_DIR:FileToHeader>/FileToHeader.exe")
 elseif (UNIX)
   set (LUAC_EXE "$<TARGET_FILE_DIR:luac>/luac")
-  set (F2H_EXE "dependencies/f2h/apps/linux/FileToHeader")
+  set (F2H_EXE "$<TARGET_FILE_DIR:FileToHeader>/FileToHeader")
 endif ()
 
 # Find all the script files in the scripts folder
