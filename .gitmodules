@@ -16,3 +16,7 @@
 [submodule "thirdparty/FileToHeader"]
 	path = thirdparty/FileToHeader
 	url = https://github.com/HaydnVH/FileToHeader
+[submodule "thirdparty/SDL"]
+	path = thirdparty/SDL
+	url = https://github.com/libsdl-org/SDL
+	branch = SDL2

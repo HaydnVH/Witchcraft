@@ -14,9 +14,9 @@
 #include "settings.h"
 #include "window.h"
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #ifdef RENDERER_VULKAN
-#include <SDL_vulkan.h>
+#include <SDL2/SDL_vulkan.h>
 #endif
 
 namespace {

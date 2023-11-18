@@ -6,7 +6,7 @@
 #include "tools/htable.hpp"
 
 #ifdef PLATFORM_SDL
-#include "SDL_vulkan.h"
+#include "SDL2/SDL_vulkan.h"
 #endif
 
 namespace {

@@ -14,7 +14,7 @@
 #include "settings.h"
 
 #ifdef PLATFORM_SDL
-#include "SDL.h"
+#include "SDL2/SDL.h"
 #endif
 
 namespace wc {

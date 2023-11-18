@@ -40,9 +40,6 @@ target_include_directories(Witchcraft PRIVATE "src")
 target_include_directories(WcUnitTest PRIVATE "src")
 add_subdirectory("src")
 
-# Add our dependencies
-add_subdirectory(dependencies)
-
 # Add third party dependencies
 add_subdirectory(thirdparty)
 

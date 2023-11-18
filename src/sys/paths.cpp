@@ -11,7 +11,7 @@
 #include "paths.h"
 
 #ifdef PLATFORM_SDL
-  #include <SDL.h>
+  #include <SDL2/SDL.h>
 #elif PLATFORM_WIN32
   #include <Shlobj.h>
   #include <Windows.h>
