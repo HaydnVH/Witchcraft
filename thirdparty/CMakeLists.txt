@@ -46,18 +46,8 @@ list(APPEND INCLUDE_DIRS "scnlib/include")
 
 ## --- SDL --- ##
 add_subdirectory(SDL)
-list(APPEND LINK_LIBS "SDL2" "SDL2main")
+list(APPEND LINK_LIBS "SDL2-static" "SDL2main")
 list(APPEND INCLUDE_DIRS "SDL/include")
-
-# Move sdl2.dll over to where we need it.
-#if (WIN32)
-#  if (CMAKE_BUILD_TYPE MATCHES Debug)
-#	configure_file("${PROJECT_SOURCE_DIR}/dependencies/sdl/lib/$ENV{PRESET_NAME}/SDL2d.dll" "$ENV{BUILD_LOCATION}/" COPYONLY)
-#  else ()
-#    configure_file("${PROJECT_SOURCE_DIR}/dependencies/sdl/lib/$ENV{PRESET_NAME}/SDL2.dll" "$ENV{BUILD_LOCATION}/" COPYONLY)
-#  endif ()
-#endif ()
-
 
 ## --- Vulkan --- ##
 find_package(Vulkan REQUIRED)
