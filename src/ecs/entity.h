@@ -3,6 +3,8 @@
 
 #include "component.h"
 
-namespace wc::ecs {}  // namespace wc::ecs
+namespace wc::ecs {
+  
+}  // namespace wc::ecs
 
 #endif  // WC_ESC_ENTITY_H
