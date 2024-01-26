@@ -7,9 +7,9 @@
 # ----------------------------------------------------------------------------
 # Defines the source files for the "ecs" subdirectory.
 ###############################################################################
-set (srclist
-  "archetype.cpp"
-  "registry.cpp")
+#set (srclist
+#  "archetype.cpp"
+#  "registry.cpp")
 
-target_sources(Witchcraft PRIVATE ${srclist})
-target_sources(WcUnitTest PRIVATE ${srclist})
+#target_sources(Witchcraft PRIVATE ${srclist})
+#target_sources(WcUnitTest PRIVATE ${srclist})

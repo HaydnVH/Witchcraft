@@ -20,6 +20,7 @@
 #include <functional>
 #include <tuple>
 #include <vector>
+#include <ranges>
 
 /******************************************************************************
  * Aligned Malloc/Free
@@ -47,6 +48,9 @@ namespace hvh {
     template <typename... Ts>
     class SoaBase {
     public:
+      template <typename T>
+      inline constexpr bool hasColumnType() const { return false; }
+
       inline size_t constexpr sizePerEntry_() const { return 0; }
       inline void        nullify_() {}
       inline void        constructRange_(size_t, size_t) {}
@@ -82,6 +86,19 @@ namespace hvh {
     template <typename FT, typename... RTs>
     class SoaBase<FT, RTs...>: public SoaBase<RTs...> {
     public:
+
+      // hasColumnType<T>()
+      // Returns true if the table contains at least one column of type T, false otherwise.
+      template <typename T>
+      inline constexpr bool hasColumnType() const {
+        if constexpr (std::is_same_v<T, FT>)
+          return true;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template hasColumnType<T>();
+        }
+      }
+
       // data<K>()
       // Gets a constant reference to the pointer to the Kth array.
       // Elements of the array may be modified, but the array itself cannot.
@@ -112,6 +129,36 @@ namespace hvh {
         }
       }
 
+      // data<T>
+      // Gets a constant reference to the pointer to the first array of type T.
+      // Elements of the array may be modified, but the array itself cannot.
+      // As a reference to the internal array, the result will remain valid even
+      // after a reallocation.
+      template <typename T>
+      inline auto const& data() {
+        if constexpr (std::is_same_v<T, FT>)
+          return data_;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template data<T>();
+        }
+      }
+
+      // data<T>() const
+      // Gets a constant reference to a constant pointer to the first array of type T.
+      // Neither the array nor its elements can be modified.
+      // As a reference to the internal array, the result will remain valid even
+      // after a reallocation.
+      template <typename T>
+      inline auto const& data() const {
+        if constexpr (std::is_same_v<T, FT>)
+          return data_;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template data<T>();
+        }
+      }
+
       // at<K>(i)
       // Gets a reference to the ith item of the Kth array.
       // Does not perform bounds checking; do not use with an out-of-bounds
@@ -137,6 +184,34 @@ namespace hvh {
         else {
           SoaBase<RTs...>& base = *this;
           return base.template at<K - 1>(index);
+        }
+      }
+
+      // at<T>(i)
+      // Gets a reference to the ith item of the first array of type T.
+      // Does not perform bounds checking; do not use with an out-of-bounds
+      // index!
+      template <typename T>
+      inline auto& at(size_t index) {
+        if constexpr (std::is_same_v<T, FT>)
+          return data_[index];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template at<T>(index);
+        }
+      }
+
+      // at<T>(i) const
+      // Gets a constant reference to the ith item of the Kth array.
+      // Does not perform bounds checking; do not use with an out-of-bounds
+      // index!
+      template <typename T>
+      inline const auto& at(size_t index) const {
+        if constexpr (std::is_same_v<T, FT>)
+          return data_[index];
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.template at<T>(index);
         }
       }
 
@@ -255,6 +330,56 @@ namespace hvh {
         } else {
           SoaBase<RTs...>& base = *this;
           return base.template upperBound<K - 1>(goal);
+        }
+      }
+
+      // begin()
+      // Allows this column of the SOA to behave like a range.
+      FT* begin() { return data_; }
+      const FT* begin() const { return data_; }
+
+      // end()
+      // Allows this column of the SOA to behave like a range.
+      FT* end() { return data_ + this->size_; }
+      const FT* end() const { return data_ + this->size_; }
+
+      template <size_t K>
+      auto& viewColumn() {
+        if constexpr (K == 0)
+          return *this;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.viewColumn<K-1>();
+        }
+      }
+
+      template <size_t K>
+      const auto& viewColumn() const {
+        if constexpr (K == 0)
+          return *this;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.viewColumn<K-1>();
+        }
+      }
+
+      template <typename T>
+      auto& viewColumn() {
+        if constexpr (std::is_same_v<T, FT>)
+          return *this;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.viewColumn<T>();
+        }
+      }
+
+      template <typename T>
+      const auto& viewColumn() const {
+        if constexpr (std::is_same_v<T, FT>)
+          return *this;
+        else {
+          SoaBase<RTs...>& base = *this;
+          return base.viewColumn<T>();
         }
       }
 
@@ -532,58 +657,6 @@ namespace hvh {
         swap(data_[first], data_[second]);
         SoaBase<RTs...>& base = *this;
         base.swapEntries_(first, second);
-      }
-
-      // Creates a tuple of references representing a whole row.
-      inline auto makeRowTuple_(size_t row) {
-        SoaBase<RTs...>& base = *this;
-        return std::tuple_cat(
-            std::make_tuple(std::reference_wrapper<FT>(data_[row])),
-            base.makeRowTuple_(row));
-      }
-
-      // Creates tuple of const references representing a whole row.
-      inline auto makeRowTuple_(size_t row) const {
-        const SoaBase<RTs...>& base = *this;
-        return std::tuple_cat(
-            std::make_tuple(std::reference_wrapper<FT>(data_[row])),
-            base.makeRowTuple_(row));
-      }
-
-      // Base case for when our selected row tuple ends before the last column.
-      template <size_t>
-      inline auto makeSelectedRowTuple_(size_t) const {
-        return std::tuple<>();
-      }
-
-      // Creates a tuple of references representing some of a row.
-      template <size_t Col, size_t FirstCol, size_t... RestCols>
-      inline auto makeSelectedRowTuple_(size_t row) {
-        SoaBase<RTs...>& base = *this;
-        if constexpr (Col == FirstCol) {
-          return std::tuple_cat(
-              std::make_tuple(std::reference_wrapper<FT>(data_[row])),
-              base.template makeSelectedRowTuple_<Col + 1, RestCols...>(row));
-        } else {
-          return base
-              .template makeSelectedRowTuple_<Col + 1, FirstCol, RestCols...>(
-                  row);
-        }
-      }
-
-      // Creates a tuple of const references representing some of a row.
-      template <size_t Col, size_t FirstCol, size_t... RestCols>
-      inline auto makeSelectedRowTuple_(size_t row) const {
-        const SoaBase<RTs...>& base = *this;
-        if constexpr (Col == FirstCol) {
-          return std::tuple_cat(
-              std::make_tuple(std::reference_wrapper<FT>(data_[row])),
-              base.template makeSelectedRowTuple_<Col + 1, RestCols...>(row));
-        } else {
-          return base
-              .template makeSelectedRowTuple_<Col + 1, FirstCol, RestCols...>(
-                  row);
-        }
       }
 
     protected:
@@ -1025,172 +1098,31 @@ namespace hvh {
       return quicksort(this->template data<K>(), 0, this->size_ - 1);
     }
 
-    // Iterators
-    // These iterators allow you to iterate over each row of the container.
-    // As this is as struct-of-arrays and not an array-of-structs, you should
-    // generally not do this. It can be useful for debugging I guess.
-
-    struct Iterator {
-      using iterator_category = std::forward_iterator_tag;
-      using difference_type   = std::ptrdiff_t;
-      using value_type        = std::tuple<Ts&...>;
-
-      Iterator(Soa& container, size_t row): container_(container), row_(row) {}
-
-      Iterator& operator*() { return *this; }
-      Iterator* operator->() { return this; }
-
-      Iterator& operator++() {
-        row_++;
-        return *this;
-      }
-      Iterator operator++(int) {
-        Iterator tmp = *this;
-        ++(*this);
-        return tmp;
-      }
-
-      friend bool operator==(const Iterator& a, const Iterator& b) {
-        return a.row_ == b.row_;
-      }
-      friend bool operator!=(const Iterator& a, const Iterator& b) {
-        return a.row_ != b.row_;
-      }
-
-      /// Gets the row index that this iterator points to.
-      size_t index() const { return row_; }
-      /// Gets a tuple containing the row that this iterator points to.
-      value_type row() const { return container_.makeRowTuple(row_); }
-      /// Gets the item at the Kth column of the row this iterator points to.
-      template <size_t K>
-      auto& get() {
-        return container_.template at<K>(row_);
-      }
-
-    private:
-      Soa&   container_;
-      size_t row_;
-    };
-
-    Iterator begin() { return Iterator(*this, 0); }
-    Iterator end() { return Iterator(*this, this->size_); }
-
-    struct ConstIterator {
-      using iterator_category = std::forward_iterator_tag;
-      using difference_type   = std::ptrdiff_t;
-      using value_type        = std::tuple<const Ts&...>;
-
-      ConstIterator(const Soa& container, size_t row):
-          container_(container), row_(row) {}
-
-      const ConstIterator& operator*() const { return *this; }
-      const ConstIterator* operator->() const { return this; }
-
-      ConstIterator& operator++() {
-        row_++;
-        return *this;
-      }
-      ConstIterator operator++(int) {
-        ConstIterator tmp = *this;
-        ++(*this);
-        return tmp;
-      }
-
-      friend bool operator==(const ConstIterator& a, const ConstIterator& b) {
-        return a.row_ == b.row_;
-      }
-      friend bool operator!=(const ConstIterator& a, const ConstIterator& b) {
-        return a.row_ != b.row_;
-      }
-
-      /// Gets the row index that this iterator points to.
-      size_t index() const { return row_; }
-      /// Gets a tuple containing the row that this iterator points to.
-      value_type row() const { return container_.makeRowTuple(row_); }
-      /// Gets the item at the Kth column of the row this iterator points to.
-      template <size_t K>
-      const auto& get() const {
-        return container_.template at<K>(row_);
-      }
-
-    private:
-      const Soa& container_;
-      size_t     row_;
-    };
-
-    ConstIterator begin() const { return ConstIterator(*this, 0); }
-    ConstIterator end() const { return ConstIterator(*this, this->size_); }
-
-    // Column Selection
-    // Allows a range-based for loop to iterate over only certain columns.
     template <size_t... Cols>
-    struct SelectedColumns {
-      SelectedColumns(Soa& container): container_(container) {}
-      struct Iterator {
-        Iterator(SelectedColumns& selection, size_t row):
-            selection_(selection), row_(row) {}
-
-        auto operator*() {
-          return selection_.container_
-              .template makeSelectedRowTuple_<0, Cols...>(row_);
-        }
-        Iterator& operator++() {
-          ++row_;
-          return *this;
-        }
-        friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
-          return (lhs.row_ == rhs.row_);
-        }
-
-      private:
-        SelectedColumns& selection_;
-        size_t           row_;
-      };
-      auto begin() { return Iterator(*this, 0); }
-      auto end() { return Iterator(*this, container_.size()); }
-
-    private:
-      Soa& container_;
-    };
-
-    template <size_t... Cols>
-    struct ConstSelectedColumns {
-      ConstSelectedColumns(const Soa& container): container_(container) {}
-      struct Iterator {
-        Iterator(ConstSelectedColumns& selection, size_t row):
-            selection_(selection), row_(row) {}
-
-        auto operator*() {
-          return selection_.container_
-              .template makeSelectedRowTuple_<0, Cols...>(row_);
-        }
-        Iterator& operator++() {
-          ++row_;
-          return *this;
-        }
-        friend bool operator==(const Iterator& lhs, const Iterator& rhs) {
-          return (lhs.row_ == rhs.row_);
-        }
-
-      private:
-        ConstSelectedColumns& selection_;
-        size_t                row_;
-      };
-      auto begin() { return Iterator(*this, 0); }
-      auto end() { return Iterator(*this, container_.size()); }
-
-    private:
-      const Soa& container_;
-    };
-
-    template <size_t... Cols>
-    auto selectColumns() {
-      return SelectedColumns<Cols...>(*this);
+    auto viewColumns() {
+      return std::ranges::zip_view(this->template viewColumn<Cols>() ...);
     }
+
     template <size_t... Cols>
-    auto selectColumns() const {
-      return ConstSelectedColumns<Cols...>(*this);
+    auto viewColumns() const {
+      return std::ranges::zip_view(this->template viewColumn<Cols>() ...);
     }
+
+    template <typename... Types>
+    auto viewColumns() {
+      return std::ranges::zip_view(this->template viewColumn<Types>() ...);
+    }
+
+    template <typename... Types>
+    auto viewColumns() const {
+      return std::ranges::zip_view(this->template viewColumn<Types>() ...);
+    }
+
+    auto begin() { return this->template viewColumns<Ts...>().begin(); }
+    auto begin() const { return this->template viewColumns<Ts...>().begin(); }
+    
+    auto end() { return this->template viewColumns<Ts...>().end(); }
+    auto end() const { return this->template viewColumns<Ts...>().end(); }
 
   protected:
     // Ban access to certain parent methods.
@@ -1248,6 +1180,8 @@ namespace hvh {
       return i;
     }
   };
+
+  int runSoaUnitTest();
 
 }  // namespace hvh
 

@@ -15,6 +15,7 @@ set (srclist
 set (testsrc
   "base64_test.cpp"
   "sha1_test.cpp"
+  "soa_test.cpp"
   "uuid_test.cpp")
 
 target_sources(Witchcraft PRIVATE ${srclist})

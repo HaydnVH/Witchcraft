@@ -186,8 +186,8 @@ wc::Result::Empty wc::Module::loadFileList() {
   if (archive_.isOpen()) {
     fileTable_.reserve(archive_.numFiles());
 
-    for (auto& it : archive_) {
-      fileTable_.insert(it.get<0>());
+    for (auto it : archive_) {
+      fileTable_.insert(std::get<0>(it));
     }
   } else {
     loadFileListRecursive(fileTable_, path_, "");

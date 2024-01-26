@@ -10,43 +10,40 @@
 
 #include "dbg/cli.h"
 #include "dbg/debug.h"
-#include "ecs/idtypes.h"
+//#include "ecs/idtypes.h"
 #include "tools/base64.h"
 #include "tools/sha1.hpp"
 #include "tools/uuid.h"
+#include "tools/soa.hpp"
+#include "etc/soa.h"
+#include "etc/table.h"
 
 #include "etc/result.h"
 #include "dbg/unittest.h"
 
-#include <range/v3/functional.hpp>
-
 #include <iostream>
 
 int main(int, char**) {
-  int result = 0;
+  int failcount {0};
   try {
-    cli::init();
-    try {
-      dbg::info("Now running unit tests for Witchcraft Engine.");
-      dbg::infomore(
-          std::format("{}\n{}\n{}\n", wc::ecs::WC_ECS_PARENT_ID.toStrCanon(),
-                      wc::ecs::ComponentId::WC_ECS_COMPONENT_ID.toStrCanon(),
-                      wc::ecs::ArchetypeId::WC_ECS_ARCHETYPE_ID.toStrCanon()));
+    
+    std::cout << "\x1b[92mRunning unit tests for Witchcraft Engine.\x1b[0m" << std::endl;
 
-      result += wc::base64::test::runBase64UnitTests();
-      result += wc::hash::test::runSha1UnitTests();
-      result += wc::test::runUuidUnitTests();
+    failcount += hvh::runSoaUnitTest();
+    failcount += wc::base64::test::runBase64UnitTests();
+    failcount += wc::hash::test::runSha1UnitTests();
+    failcount += wc::test::runUuidUnitTests();
+    failcount += wc::etc::test::SoaUnitTest();
+    failcount += wc::etc::test::TableUnitTest();
 
-      EXPECT_TRUE(false);
-
-    } catch (const dbg::Exception& e) {
-      dbg::fatal(e);
-      result = -1;
+    if (failcount == 0) {
+      std::cout << "\x1b[92mAll tests passed successfully.\x1b[0m" << std::endl;
+    } else {
+      std::cout << "\x1b[91mSome tests failed.  Total failures: " << failcount << "\x1b[0m" << std::endl;
     }
-    cli::shutdown();
   } catch (const std::exception& e) {
-    std::cerr << "\n" << e.what() << std::endl;
-    result = -2;
+    std::cerr << "\x1b[91mUnexpected exception: " << e.what() << "\x1b[0m" << std::endl;
+    failcount = -1;
   }
-  return result;
+  return failcount;
 }

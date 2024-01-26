@@ -1,22 +1,22 @@
-[submodule "thirdparty/range-v3"]
-	path = thirdparty/range-v3
+[submodule "submodules/range-v3"]
+	path = submodules/range-v3
 	url = https://github.com/ericniebler/range-v3
-[submodule "thirdparty/scnlib"]
-	path = thirdparty/scnlib
+[submodule "submodules/scnlib"]
+	path = submodules/scnlib
 	url = https://github.com/eliaskosunen/scnlib
-[submodule "thirdparty/rapidjson"]
-	path = thirdparty/rapidjson
+[submodule "submodules/rapidjson"]
+	path = submodules/rapidjson
 	url = https://github.com/Tencent/rapidjson
-[submodule "thirdparty/lz4"]
-	path = thirdparty/lz4
+[submodule "submodules/lz4"]
+	path = submodules/lz4
 	url = https://github.com/lz4/lz4
-[submodule "thirdparty/Lua"]
-	path = thirdparty/Lua
+[submodule "submodules/Lua"]
+	path = submodules/Lua
 	url = https://github.com/walterschell/Lua
-[submodule "thirdparty/FileToHeader"]
-	path = thirdparty/FileToHeader
+[submodule "submodules/FileToHeader"]
+	path = submodules/FileToHeader
 	url = https://github.com/HaydnVH/FileToHeader
-[submodule "thirdparty/SDL"]
-	path = thirdparty/SDL
+[submodule "submodules/SDL"]
+	path = submodules/SDL
 	url = https://github.com/libsdl-org/SDL
 	branch = SDL2

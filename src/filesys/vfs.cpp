@@ -112,8 +112,9 @@ wc::Filesystem::Filesystem() {
 
 wc::Filesystem::~Filesystem() {
 
-  for (auto& it : modules_) {
-    it.get<1>().close();
+  for (auto it : modules_) {
+    std::get<1>(it).close();
+//    it.get<1>().close();
   }
   modules_.clear();
   files_.clear();
@@ -158,8 +159,8 @@ wc::FileResult wc::Filesystem::FileProxy::Iterator::load() {
 size_t wc::Filesystem::loadModule(size_t moduleIndex) {
   wc::Module& pkg = modules_.at<1>(moduleIndex);
   pkg.loadFileList();
-  for (auto& it : pkg.getFileTable()) {
-    files_.insert(it.get<0>(), moduleIndex);
+  for (auto filename : pkg.getFileTable().viewColumn<0>()) {
+    files_.insert(filename, moduleIndex);
   }
   return pkg.getFileTable().size();
 }

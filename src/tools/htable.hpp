@@ -15,6 +15,7 @@
 #define HVH_TOOLS_HASHTABLESOA_H
 
 #include "soa.hpp"
+#include <optional>
 
 namespace hvh {
 
@@ -327,6 +328,13 @@ namespace hvh {
       return result;
     }
 
+    // contains(key)
+    // Returns true if there is at least one entry in the table with the indicated key.
+    inline bool contains(const KeyT& key) const {
+      auto found = find(key);
+      return found->exists();
+    }
+
     // swap_entries(first, second)
     // Swaps the position of two entries and repairs the hashes for each.
     // Complexity: O(1) amortized.
@@ -446,6 +454,23 @@ namespace hvh {
       rehash();
       return result;
     }
+
+    /// find()
+    /// Searches for the given key and returns the index of the first matching entry.
+    /// If no entry with the given key could be found, SIZE_MAX is returned
+    /*
+    size_t find(const KeyT& key) {
+      auto hashCursor = std::hash<KeyT> {}(key) % hashCapacity_;
+      while (1) {
+        uint32_t index = hashMap_[hashCursor];
+        if (index == INDEXNUL)
+          return SIZE_MAX;
+        if (index != INDEXDEL && this->template at<0>(index) == key)
+          return index;
+        hashInc_(hashCursor);
+      }
+    }
+    */
 
     /// FindProxy
     /// This object is returned by find() and provides iterator access to

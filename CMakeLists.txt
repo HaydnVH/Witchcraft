@@ -26,12 +26,12 @@ endif ()
 
 # Create our executible and define some properties
 add_executable(Witchcraft)
-set_target_properties(Witchcraft PROPERTIES CXX_STANDARD 20
+set_target_properties(Witchcraft PROPERTIES CXX_STANDARD 23
 											CXX_STANDARD_REQUIRED true
 											CXX_EXTENSIONS false)
 
 add_executable(WcUnitTest)
-set_target_properties(WcUnitTest PROPERTIES CXX_STANDARD 20
+set_target_properties(WcUnitTest PROPERTIES CXX_STANDARD 23
 											CXX_STANDARD_REQUIRED true
 											CXX_EXTENSIONS false)
 
@@ -41,7 +41,7 @@ target_include_directories(WcUnitTest PRIVATE "src")
 add_subdirectory("src")
 
 # Add third party dependencies
-add_subdirectory(thirdparty)
+add_subdirectory(submodules)
 
 # Create symlinks so the "$INSTALL/data" directory can be found.
 #add_custom_command(TARGET Witchcraft POST_BUILD

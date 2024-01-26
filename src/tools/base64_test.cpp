@@ -1,38 +1,30 @@
 #include "base64.h"
 #include "dbg/debug.h"
+#include "dbg/unittest.h"
 
 #include <format>
 
+// Performs a test to convert a string into an expected base64 output and then
+// back again.
+auto singleTest(std::string_view input, std::string_view output) {
+  int  FAIL_COUNTER {0};
+  auto converted1 = wc::base64::encode(input.data(), input.size());
+  EXPECT_EQUAL(converted1, output);
+  auto converted2  = wc::base64::decode(converted1);
+  auto converted2s = std::string(converted2.begin(), converted2.end());
+  EXPECT_EQUAL(converted2s, input);
+  return FAIL_COUNTER;
+}
+
 int wc::base64::test::runBase64UnitTests() {
-  int numFails = 0;
-  dbg::info("Running Base64 unit tests.");
+  int FAIL_COUNTER {0};
 
-  // Performs a test to convert a string into an expected base64 output and then
-  // back again.
-  auto singleTest = [](std::string_view input, std::string_view output) {
-    int  numFails   = 0;
-    auto converted1 = encode(input.data(), input.size());
-    if (converted1 != output) {
-      dbg::errmore(
-          std::format("encode: {} should equal {}.", converted1, output));
-      ++numFails;
-    }
-    auto converted2  = decode(converted1);
-    auto converted2s = std::string(converted2.begin(), converted2.end());
-    if (converted2s != input) {
-      dbg::errmore(
-          std::format("decode: {} should equal {}.", converted2s, input));
-      ++numFails;
-    }
-    return numFails;
-  };
-
-  numFails +=
+  FAIL_COUNTER +=
       singleTest("This is a test string.", "VGhpcyBpcyBhIHRlc3Qgc3RyaW5nLg");
-  numFails +=
+  FAIL_COUNTER +=
       singleTest("This is a test string!", "VGhpcyBpcyBhIHRlc3Qgc3RyaW5nIQ");
-  numFails += singleTest("Another Test String", "QW5vdGhlciBUZXN0IFN0cmluZw");
-  numFails += singleTest(
+  FAIL_COUNTER += singleTest("Another Test String", "QW5vdGhlciBUZXN0IFN0cmluZw");
+  FAIL_COUNTER += singleTest(
       "Lorem Ipsum is simply dummy text of the printing and typesetting "
       "industry. Lorem Ipsum has been the industry's standard dummy text "
       "ever since the 1500s, when an unknown printer took a galley of type "
@@ -63,27 +55,13 @@ int wc::base64::test::runBase64UnitTests() {
   for (int i = 0; i < BINCHUNK_SIZE; ++i) {
     auto s = encode(binchunk, i);
     // Make sure the expected encode size is the actual encode size.
-    if (encodeSize(i) != s.size()) {
-      dbg::errmore(std::format("encodeSize: {} should equal {}.", encodeSize(i),
-                               s.size()));
-      ++numFails;
-    }
+    EXPECT_EQUAL(encodeSize(i), s.size());
     // Make sure the expected decode size is the actual debug size.
-    if (decodeSize(s.size()) != i) {
-      dbg::errmore(std::format("decodeSize: {} should equal {}.",
-                               decodeSize(s.size()), i));
-      ++numFails;
-    }
+    EXPECT_EQUAL(decodeSize(s.size()), i);
     auto d = decode(s);
     // Make sure the input and output chunks are the same size.
-    if (d.size() != i) {
-      dbg::errmore(
-          std::format("decode size: {} should equal {}.", d.size(), i));
-      ++numFails;
-    }
+    EXPECT_EQUAL(d.size(), i);
   }
 
-  if (numFails == 0)
-    dbg::infomore("All clear!");
-  return numFails;
+  return FAIL_COUNTER;
 }

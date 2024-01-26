@@ -31,6 +31,7 @@
 */
 
 #include "dbg/debug.h"
+#include "dbg/unittest.h"
 #include "sha1.hpp"
 #include "sha1.hpp"  // Intentionally included twice for testing purposes
 
@@ -41,19 +42,13 @@
  */
 // void test_file(const string& filename);
 
-int compare(std::string_view result, std::string_view expected) {
-  if (result != expected) {
-    dbg::errmore(
-        std::format("Result:   {}\nExpected: {} (FAILURE)", result, expected));
-    return 1;
-  }
-  return 0;
-}
 
 int compare(wc::hash::Sha1::Digest result, std::string_view expected) {
   auto resultstr = std::format("{:08x}{:08x}{:08x}{:08x}{:08x}", result[0],
                                result[1], result[2], result[3], result[4]);
-  return compare(resultstr, expected);
+  int  FAIL_COUNTER {0};
+  EXPECT_EQUAL(resultstr, expected);
+  return FAIL_COUNTER;
 }
 
 // The 3 test vectors from FIPS PUB 180-1
@@ -160,11 +155,8 @@ int runSha1OtherUnitTests() {
 
 int wc::hash::test::runSha1UnitTests() {
   int numFails = 0;
-  dbg::info("Running SHA1 unit tests.");
   numFails += runSha1StandardUnitTests();
   numFails += runSha1OtherUnitTests();
   //  numFails += runSha1SlowUnitTests();
-  if (numFails == 0)
-    dbg::infomore("All clear!");
   return numFails;
 }
