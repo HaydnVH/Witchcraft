@@ -5,100 +5,58 @@
 #include <string>
 
 int wc::etc::test::TableUnitTest() {
-  int FAIL_COUNTER {0};
+  BEGIN_UNIT_TEST;
 
-  MultiTable<std::string, int> stringhash;
+  MultiTable<std::string, int> tbl;
 
-  stringhash.insert("apple", 61);
-  stringhash.insert("banana", 12);
-  stringhash.insert("carrot", 33);
-  stringhash.insert("donut", 94);
-  stringhash.insert("eggplant", 55);
-  stringhash.insert("flowers", 36);
-  stringhash.insert("ginger", 17);
-  stringhash.insert("hashbrowns", 28);
-  stringhash.insert("ice cream", 99);
-  stringhash.insert("jello", 10);
-  stringhash.insert("kale", 711);
-  stringhash.insert("lemon", 112);
-  stringhash.insert("melon", 313);
-  stringhash.insert("nougat", 614);
-  stringhash.insert("onion", 615);
-  stringhash.insert("parfait", 716);
-  stringhash.insert("quiche", 217);
-  stringhash.insert("rice", 318);
-  stringhash.insert("steak", 919);
-  stringhash.insert("taco", 220);
-  stringhash.insert("udon", 21);
-  stringhash.insert("vinegar", 222);
-  stringhash.insert("water", 323);
-  stringhash.insert("xoi", 824);
-  stringhash.insert("yogurt", 725);
-  stringhash.insert("zucchini", 626);
+  tbl.insert("apple", 61);
+  tbl.insert("banana", 12);
+  tbl.insert("carrot", 33);
+  tbl.insert("donut", 94);
+  tbl.insert("eggplant", 55);
+  tbl.insert("flowers", 36);
+  tbl.insert("ginger", 17);
+  tbl.insert("hashbrowns", 28);
+  tbl.insert("ice cream", 99);
+  tbl.insert("jello", 10);
+  tbl.insert("kale", 711);
+  tbl.insert("lemon", 112);
+  tbl.insert("melon", 313);
+  tbl.insert("nougat", 614);
+  tbl.insert("onion", 615);
+  tbl.insert("parfait", 716);
+  tbl.insert("quiche", 217);
+  tbl.insert("rice", 318);
+  tbl.insert("steak", 919);
+  tbl.insert("taco", 220);
+  tbl.insert("udon", 21);
+  tbl.insert("vinegar", 222);
+  tbl.insert("water", 323);
+  tbl.insert("xoi", 824);
+  tbl.insert("yogurt", 725);
+  tbl.insert("zucchini", 626);
 
-  stringhash.insert("banana", 42);
-  stringhash.insert("banana", 9001);
+  tbl.insert("banana", 42);
+  tbl.insert("banana", 9001);
   
-  EXPECT_EQUAL(stringhash.count("banana"), 3);
+  EXPECT_EQUAL(tbl.count("banana"), 3);
 
-  /*
-
-  auto found = stringhash.find("banana");
+  auto found = tbl.find("banana");
   EXPECT_TRUE(found);
+  EXPECT_EQUAL(found.get<1>(), 12);
+  auto [k, v] = *found;
+  EXPECT_EQUAL(k, "banana");
+  EXPECT_EQUAL(v, 12);
 
-  size_t index = stringhash.find("banana", true);
-  if (stringhash.at<1>(index) != 12) {
-    printf("Failed to find 'banana' in the hash table.\n");
-    success = false;
+  int bananas[] = {12, 42, 9001};
+  int i {0};
+  for (auto [k, v] : tbl.findEach("banana")) {
+    EXPECT_EQUAL(v, bananas[i++]);
   }
 
-  index = stringhash.find("banana", false);
-  if (stringhash.at<1>(index) != 42) {
-    printf("Failed to find a second banana.\n");
-    success = false;
-  }
+  EXPECT_EQUAL(tbl.find("jello").get<1>(), 10);
+  EXPECT_EQUAL(tbl.find("donut").get<1>(), 94);
+  EXPECT_EQUAL(tbl.find("parfait").get<1>(), 716);
 
-  index = stringhash.find("banana", false);
-  if (stringhash.at<1>(index) != 9001) {
-    printf("Failed to find a third banana.\n");
-    success = false;
-  }
-
-  index = stringhash.find("banana", false);
-  if (index != SIZE_MAX) {
-    printf("Failed to fail to find a fourth banana.\n");
-    success = false;
-  }
-
-  stringhash.erase_all("banana");
-  index = stringhash.find("banana", true);
-  if (index != SIZE_MAX) {
-    printf("Failed to fail to find a deleted banana.\n");
-    success = false;
-  }*/
-  /*
-  const uint32_t* hashmap;
-  size_t          hashcap;
-  hashmap = stringhash.see_map(hashcap);
-  for (int i = 0; i < hashcap; ++i) {
-    if (hashmap[i] == (UINT32_MAX))
-      printf("[%i]:\t-\n", i);
-    else if (hashmap[i] == (UINT32_MAX - 1))
-      printf("[%i]:\tx\n", i);
-    else
-      printf("[%i]:\t%i\n", i, hashmap[i]);
-  }
-
-  for (int i = 0; i < stringhash.size(); ++i) {
-    printf("[%s]:[%i]\n", stringhash.at<0>(i).c_str(), stringhash.at<1>(i));
-  }
-
-  size_t swaps = stringhash.sort<1>();
-  printf("Sort performed %zi swaps.\n", swaps);
-
-  for (int i = 0; i < stringhash.size(); ++i) {
-    printf("[%i]:[%s]\n", stringhash.at<1>(i), stringhash.at<0>(i).c_str());
-  }
-  */
-  return FAIL_COUNTER;
+  END_UNIT_TEST;
 }

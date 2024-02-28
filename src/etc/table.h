@@ -40,7 +40,7 @@ class BasicTable : public Soa<KeyT, ItemTs...> {
 public:
 
   BasicTable() = default; // Default constructor.
-  ~BasicTable() { realloc(0); } // Destructor.
+  ~BasicTable() { tblRealloc(0); } // Destructor.
   BasicTable(const ThisT& rhs) { // Copy constructor.
     reserve(rhs.size());
     BaseT& lhsBase = *this;
@@ -49,17 +49,25 @@ public:
     rehash();
   }
   BasicTable(ThisT&& rhs) { swap(*this, rhs); }  // Move constructor.
-  BasicTable(const std::initializer_list<std::tuple<KeyT, ItemTs...>>& ilist) { // Initializer list constructor.
+  BasicTable(std::initializer_list<std::tuple<KeyT, ItemTs...>>&& ilist) { // Initializer list constructor.
     reserve(ilist.size());
     for (auto& entry : ilist) {
-      std::apply([this](const KeyT& key, const ItemTs&... items) { this->insert(key, items...);}, entry);
+      std::apply([this](const KeyT& key, const ItemTs&... items) { insert(key, items...);}, entry);
 		} 
 	}
 	template <std::ranges::range R>
 	BasicTable(R&& range) { // Range constructor.
-    reserve(range.size());
-		for (auto& entry : range) {
-      std::apply([this](const KeyT& key, const ItemTs&... items) { this->insert(key, items...);}, entry);
+    if constexpr (std::ranges::sized_range<R> || std::ranges::forward_range<R>)
+	    reserve(range.size());
+		// If this is a range of tuples (such as returned by viewColumns)...
+    if constexpr (std::is_same_v<decltype(*range.begin()), std::tuple<KeyT&, ItemTs&...>>) {
+			for (auto& entry : range) {
+				std::apply([this](const KeyT& key, const ItemTs&... items) { insert(key, items...);}, entry);
+			}
+    } else {
+      static_assert(sizeof...(ItemTs) == 0);
+      static_assert(std::is_nothrow_convertible_v<std::ranges::range_value_t<R>, KeyT>);
+      for (auto& item : range) { insert(item); }
 		}
 	}
   
@@ -87,9 +95,9 @@ public:
 		Found(TableT& table, size_t index): tbl(table), idx(index) {}
 		
 		bool hasValue() const { return idx < tbl.size(); }
-		operator bool() const { hasValue(); }
+		operator bool() const { return hasValue(); }
 		
-		auto value() { return tbl[idx]; }
+		auto value() { return *tbl[idx]; }
 		auto operator*() { return value(); }
 		
 		template <size_t N> auto get() { return tbl.at<N>(idx); }
@@ -119,8 +127,8 @@ public:
 			bool hasValue() { return idx < view.tbl.size(); }
 			operator bool() { return hasValue(); }
 			
-			auto value() { return view.tbl[idx]; }
-			auto operator*() { return Found<TableT>(view.tbl, idx); }
+			auto value() { return *view.tbl[idx]; }
+			auto operator*() { return *Found<TableT>(view.tbl, idx); }
 			
 			template <size_t N> auto get() { return view.tbl.at<N>(idx); }
 			template <class T>  auto get() { return view.tbl.at<T>(idx); }
@@ -133,9 +141,9 @@ public:
 	};
 	
   // Finds each entry with the given key.  Returns a view that can be iterated over.
-	template <typename = typename std::enable_if<AllowMulti>::type> FindEachView<ThisT>       findEach(const KeyT& key)       { return {*this, key}; }
+	FindEachView<ThisT>       findEach(const KeyT& key)       requires (AllowMulti) { return {*this, key}; }
   // Finds each entry with the given key.  Returns a view that can be iterated over.
-	template <typename = typename std::enable_if<AllowMulti>::type> FindEachView<const ThisT> findEach(const KeyT& key) const { return {*this, key}; }
+	FindEachView<const ThisT> findEach(const KeyT& key) const requires (AllowMulti) { return {*this, key}; }
 	
   // Returns true if the table contains at least one entry with the given key, false otherwise.
 	bool   contains(const KeyT& key) const { size_t cur{hashCurInit(key)}; return (findGoal<>(key, cur) != SIZE_MAX); }
@@ -147,46 +155,49 @@ public:
   size_t maxSize() { return (size_t)INDEXMAX; }
 	
   // Ensures there's enough space for at least 'newCapacity' entries.
-	void reserve(size_t newCapacity) { if (newCapacity > this->capacity_) realloc(newCapacity); }
+	void reserve(size_t newCapacity) { if (newCapacity > this->capacity_) tblRealloc(newCapacity); }
 
   // Frees excess space if capacity is greater than size.
-	void shrinkToFit() { realloc(this->size_); }
+	void shrinkToFit() { tblRealloc(this->size_); }
 	
   // Insert an entry into the table.
   // O(n) if the table is sorted, O(1) otherwise.
-	template <class... Ts> void insert(const KeyT& key, Ts&&... items) {
+	template <class... Ts> size_t insert(const KeyT& key, Ts&&... items) {
 		expandIfNeeded();
 		if constexpr (SortColumn == SIZE_MAX) {
 			size_t cursor{hashCurInit(key)}; size_t index{findNextEmpty(key, cursor)};
 			if (index != SIZE_MAX) {
-				this->pushBack(key, items...);
+        this->pushBack(key, std::forward<Ts...>(items...));
 				hashMap_[cursor] = index;
 			}
+			return index;
 		} else {
 			if constexpr (!AllowMulti) { if (contains(key)) return; }
-			size_t index = this->lower_bound<SortColumn>(std::get<SortColumn>(std::forward_as_tuple(key, items...)));
-			this->insert(index, key, items...);
+			size_t index = this->lower_bound<SortColumn>(std::get<SortColumn>(std::forward_as_tuple(key, std::forward<Ts...>(items...))));
+      this->insert(index, key, std::forward<Ts...>(items...));
 			rehash();
+			return index;
 		}
 	}
 	
   // Erase the entry with the given key.  If multiple entries have this key, the first is erased.
   // O(n) if the table is sorted, O(1) otherwise.
-	void erase(const KeyT& key) {
+	size_t erase(const KeyT& key) {
 		size_t cursor {hashCurInit(key)}; size_t index{findGoal<>(key, cursor)};
 		if (index != SIZE_MAX) { eraseFound(cursor, index); }
+		return index;
 	}
 
 	// Erase the entry with the given key and maintains ordering. O(n).
-	void eraseShift(const KeyT& key) {
+	size_t eraseShift(const KeyT& key) {
     size_t cursor {hashCurInit(key)}; size_t index{findGoal<>(key, cursor)};
     if (index != SIZE_MAX) { eraseFoundShift(index); }
+		return index;
 	}
 	
   // Erase each entry with the given key.
   // O(n) if the table is sorted, O(1) otherwise.
-	template <typename = typename std::enable_if<AllowMulti>::type>
-  void eraseEach(const KeyT& key) {
+  void eraseEach(const KeyT& key) requires (AllowMulti) {
 		size_t cursor{hashCurInit(key)}; size_t index{findGoal<>(key, cursor)};
 		while (index != SIZE_MAX) {
 			eraseFound(cursor, index);
@@ -197,8 +208,7 @@ public:
 
   // Swaps two entries.
 	// O(1).
-  template <typename = typename std::enable_if<SortColumn == SIZE_MAX>::type>
-  void swapEntries(size_t first, size_t second) {
+  void swapEntries(size_t first, size_t second) requires (SortColumn==SIZE_MAX) {
     // Swap the rows.
     BaseT& base {*this}; this->swapEntries(first, second);
     // Search for the hashmap entry for what is now in 'first' position.
@@ -229,8 +239,7 @@ public:
   // rehash. Potentially useful if the data needs to be sorted for some reason
   // other than searching. Returns the exact number of swaps performed while
   // sorting the data. Complexity: O(nlogn).
-  //template <size_t K, typename = typename std::enable_if<SortColumn == SIZE_MAX>::type>
-  //void sort() {
+  //void sort() requires (SortColumn == SIZE_MAX) {
   //  BaseT& base {*this}; base.sort<K>();
   //  rehash();
   //}
@@ -251,7 +260,7 @@ public:
   // Uses information returned by serialize to reconstruct the table.
   // Data pointed to by dataPtr is copied into the container.
   void deserialize(size_t containerSize, size_t numBytes, void* dataPtr) {
-    clear(); realloc(containerSize);
+    clear(); tblRealloc(containerSize);
     memcpy(this->data_, dataPtr, numBytes);
   }
   // deserialize(t)
@@ -284,7 +293,7 @@ private:
   // If the container can't fit one more entry, expand it.
 	void expandIfNeeded() {
 		if (this->size_ == this->capacity_) {
-			realloc(std::max<size_t>(this->capacity_ * 2, 16));
+			tblRealloc(std::max<size_t>(this->capacity_ * 2, 16));
 		}
 	}
 	
@@ -384,18 +393,18 @@ private:
 	}
 	
 	// Do the memory thing.
-  void realloc(size_t newCapacity) {
-    // Round up to nearest 16 for alignment.
-    newCapacity += ((newCapacity % 16) ? 16 - (newCapacity % 16) : 0);
+  void tblRealloc(size_t newCapacity) {
+    // Round up to nearest N for alignment.
+		newCapacity = impl::roundUpTo(newCapacity, BaseT::align_c);
     if (newCapacity == this->capacity_) return;
     if (newCapacity > INDEXMAX) throw std::length_error("Table max size exceeded.");
     // We want our hashmap to be twice as big as the container, plus a little
     // extra. +4 is enough extra, plus it satisfies alignment requirements.
-    size_t newHashCapacity = newCapacity + newCapacity + 4;
+    size_t newHashCapacity = newCapacity + newCapacity + (BaseT::align_c / sizeof(IndexT));
     size_t newHashmapSize  = newHashCapacity * sizeof(uint32_t);
 
-    // Soa<...>::realloc does all the work for us.  We request extra bytes in which to store the hashmap.
-    hashMap_ = static_cast<IndexT*>(BaseT::Helper(*this, BaseT::seq).realloc(newCapacity, newHashmapSize));
+    // Soa<...>::soaRealloc does all the work for us.  We request extra bytes in which to store the hashmap.
+		hashMap_ = static_cast<IndexT*>(this->soaRealloc(newCapacity, newHashmapSize));
     
     if (newCapacity > 0) {
       // hashCapacity needs to be odd for better hash clustering performance.
@@ -404,6 +413,12 @@ private:
     }
     else hashCap_ = 0;
   }
+
+
+	// Methods from Soa that we don't want users to access here.
+	using BaseT::soaRealloc;
+	using BaseT::eraseShift;
+	using BaseT::eraseSwap;
 };
 
 template <class KeyT, class... ItemTs>                 using Table =            BasicTable<uint32_t, false, SIZE_MAX, KeyT, ItemTs...>;

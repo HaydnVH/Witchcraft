@@ -16,29 +16,23 @@ namespace etc {
 namespace impl {
 
   // Operator for the "manager" function.
-  enum class AnyOp {
+  enum class TypeEraseManagerOp {
     TypeInfo,
     SizeOf,
+    Divisor,
     Destruct,
     ConstructDefault,
     ConstructCopy,
     Copy,
+    CopySingle,
     Move,
     Swap,
+    SwapSingle,
     Hash
   };
 
-  // Argument for the "manager" function.
-  union AnyArg {
-    void*                 obj;
-    const std::type_info* typeInfo;
-    void*                 data;
-    size_t                size;
-    uint64_t              hash;
-  };
-
   // Result from the "manager" function.
-  union AnyResult {
+  union TypeEraseManagerResult {
     const std::type_info* typeinfo;
     size_t size;
   };
@@ -49,169 +43,210 @@ namespace impl {
   // col2: The second column we're operating on, for binary operations.
   // count: The number of entries we're operating on.
   template <typename T>
-  AnyResult anyManager(AnyOp op, const void* col1 = nullptr, const void* col2 = nullptr, size_t begin = 0, size_t end = 0) {
+  TypeEraseManagerResult typeEraseManager(TypeEraseManagerOp op, void* col1, void* col2, size_t begin, size_t end) {
+    using Op = TypeEraseManagerOp;
     switch (op) {
-    case AnyOp::TypeInfo: return &typeid(T);
-    case AnyOp::SizeOf: return sizeof(T); // TODO: empty structs should return 0.  This is easy, making it toggleable is not.
-    case AnyOp::Destruct: {
-      auto ptr = std::reinterpret_cast<T*>(col1);
+    case Op::TypeInfo: return &typeid(T);
+    case Op::SizeOf: return sizeof(T); // TODO: empty structs should return 0.  This is easy, making it toggleable is not.
+    case Op::Divisor: return impl::greatestPo2Divisor(sizeof(T));
+    case Op::Destruct: {
+      auto ptr = reinterpret_cast<T*>(col1);
       for (size_t i {begin}; i < end; ++i) { ptr[i].~T(); }
       return 0; }
-    case AnyOp::ConstructDefault: {
-      auto ptr = std::reinterpret_cast<T*>(col1);
+    case Op::ConstructDefault: {
+      auto ptr = reinterpret_cast<T*>(col1);
       for (size_t i {begin}; i < end; ++i) { new (ptr + i) T(); }
       return 0; }
-    case AnyOp::ConstructCopy: {
-      auto lhs = std::reinterpret_cast<T*>(col1);
-      auto rhs = std::reinterpret_cast<const T*>(col2);
+    case Op::ConstructCopy: {
+      auto lhs = reinterpret_cast<T*>(col1);
+      auto rhs = reinterpret_cast<const T*>(col2);
       for (size_t i {begin}; i < end; ++i) { new (lhs + i) T(rhs[i]); }
       return 0; }
-    case AnyOp::Copy: {
-      auto lhs = std::reinterpret_cast<T*>(col1);
-      auto rhs = std::reinterpret_cast<const T*>(col2);
+    case Op::Copy: {
+      auto lhs = reinterpret_cast<T*>(col1);
+      auto rhs = reinterpret_cast<const T*>(col2);
       for (size_t i {begin}; i < end; ++i) { lhs[i] = rhs[i]; }
       return 0; }
-    case AnyOp::Move: {
-      auto lhs = std::reinterpret_cast<T*>(col1);
-      auto rhs = std::reinterpret_cast<T*>(col2);
+    case Op::CopySingle: {
+      auto lhs = reinterpret_cast<T*>(col1);
+      auto rhs = reinterpret_cast<const T*>(col2);
+      *lhs = *rhs;
+      return 0; }
+    case Op::Move: {
+      auto lhs = reinterpret_cast<T*>(col1);
+      auto rhs = reinterpret_cast<T*>(col2);
       for (size_t i {begin}; i < end; ++i) { lhs[i] = std::move(rhs[i]); }
       return 0; }
-    case AnyOp::Swap: {
-      auto lhs = std::reinterpret_cast<T*>(col1);
-      auto rhs = std::reinterpret_cast<T*>(col2);
+    case Op::Swap: {
+      auto lhs = reinterpret_cast<T*>(col1);
+      auto rhs = reinterpret_cast<T*>(col2);
       for (size_t i {begin}; i < end; ++i) { std::swap(lhs[i], rhs[i]); }
       return 0; }
-    case AnyOp::Hash:
+    case Op::SwapSingle: {
+      auto lhs = reinterpret_cast<T*>(col1);
+      auto rhs = reinterpret_cast<T*>(col2);
+      using std::swap; swap(*lhs, *rhs);
+      return 0; }
+    case Op::Hash:
       // TODO: if_constexpr to see if std::hash<T> exists, and use a backup
       // (or no-op) if it doesn't.
       return std::hash<T> {}(ptr[index]);
     }
   }
-  using ManagerFunc = std::function<AnyResult(AnyOp, const void*, const void*, size_t, size_t)>;
-
-  using AnySoaSignature = BasicTable<uint8_t, false, SIZE_MAX, size_t>;
-
-  extern Table<size_t, ManagerFunc> managerFuncLookup_g;
-
-  // The AnyColumnTable defines the "signature" of an AnySoa.
-  // This determines how many columns there are, what's in those columns, and how wide each column has to be.
-  // An AnySoa's signature cannot be changed after initialization unless 'reset' is used to totally clear its contents.
-  // Currently we 'only' support up to 254 columns.  If that's not enough, idk what to say.
-  class AnySoaColumnTable : public BasicTable<uint8_t, false, SIZE_MAX, size_t, ManagerFunc, void*> {
-  public:
-    AnySoaColumnTable() = default;
-    //AnySoaColumnTable(const AnySoaSignature& sig) { for (auto hash : sig) { insert(hash, managerFuncLookup_g[sig], nullptr); }  }
-    template <typename T> void addType() { insert(typeid(T).hash_code(), anyManager<T>, nullptr); }
-    template <typename T> void removeType() { eraseShift(typeid(T).hash_code()); }
-    friend bool operator==(const AnySoaColumnTable& lhs, AnySoaColumnTable& rhs) {
-      if (lhs.size() != rhs.size()) return false;
-      for (const auto& [a, b] = std::views::zip(lhs.viewColumn<0>(), rhs.viewColumn<0>())) {
-        if (a != b) return false;
-      } return true; }
-    friend bool operator==(const AnySoaColumnTable& lhs, const AnySoaSignature& rhs) {
-      if (lhs.size() != rhs.size()) return false;
-      for (const auto& [a, b] = std::views::zip(lhs.viewColumn<0>(), rhs.viewColumn<0>())) {
-        if (a != b) return false;
-      } return true; }
-    friend bool operator==(const AnySoaSignature& lhs, const AnySoaColumnTable& rhs) {
-      if (lhs.size() != rhs.size()) return false;
-      for (const auto& [a, b] = std::views::zip(lhs.viewColumn<0>(), rhs.viewColumn<0>())) {
-        if (a != b) return false;
-      } return true; }
-  };
-
-  // This class represents one complete row of data from an AnySoa.
-  // This is used for moving entries from one table to another, or saving/loading a single entry to/from disk.
-  class AnySoaRow {
-    AnySoaSignature signature;
-    std::vector<char> data;
-
-    // Adds a "column" to this row.  Initializes it with newData.
-    template <typename T> void addColumn(const T& newData) {
-      if (signature.find(typeid(T).hash_code()))
-        throw std::logic_error("In AnySoaRow::addColumn(): Entry of type T already present.")
-      signature.addType<T>();
-      if constexpr (sizeof(T) > 0) {
-        size_t oldSize = data.size();
-        data.resize(oldSize + sizeof(T));
-        auto dst = reinterpret_cast<T*>(&data[oldSize]);
-        new (dst) T(newData);
-      }
-    }
-    // Adds a "column" to this row.  Initializes it with a default constructor.
-    template <typename T> void addColumn() { addColumn<T>({}); }
-
-    // Removes a "column" from this row.  Destructs it and shifts entries beyond it into place.
-    template <typename T>
-    void removeColumn() {
-      if (!signature.find(typeid(T).hash_code()))
-        throw std::logic_error("In AnySoaRow::removeColumn(): No entry of type T present.")
-      if constexpr (sizeof(T) > 0) {
-        // First we need to find the offset of the desired entry.
-        size_t offset {0};
-        for (auto [hash, manage] : signature.viewColumn<0, 1>()) {
-          if (typeid(T).hash_code() == hash) break;
-          else offset += manage(AnyOp::SizeOf);
-        }
-        // Destruct the desired entry.
-        auto ptr {reinterpret_cast<T*>(&data[offset])}; ptr->~T();
-        // Erase the data.
-        data.erase(offset, offset+sizeof(T));
-      }
-      signature.removeType<T>();
-    }
-  };
+  // This is the type of function pointer used for the manager function.
+  // We just need the function signature, which doesn't depend on the template parameter, so 'int' could be anything.
+  using TypeEraseManagerFunc = decltype(&typeEraseManager<int>);
 
 } // namespace impl
 
-class AnySoa {
-  using Op = impl::AnyOp;
+// The TypeErasedSoaSignature is the heart of a TypeErasedSoa.  It keeps track of pointers to the manager function for each type, as well as offsets.
+// This takes the form of a hashtable, where the key is the function pointer and the value is the offset.
+// The offset is the number of bytes where the corresponding entry would be in a table with a capacity of 1 (ie, a single row).
+// This number can be multiplied by the table's capacity in order to get the offset for the corresponding column.
+class TypeErasedSoaSignature : public BasicTable<uint8_t, false, SIZE_MAX, impl::TypeEraseManagerFunc, size_t> {
+  using Op = impl::TypeEraseManagerOp;
+public:
+  TypeErasedSoaSignature() = default;
+
+  friend bool operator==(const TypeErasedSoaSignature& lhs, const TypeErasedSoaSignture& rhs) {
+    if (lhs.size() != rhs.size()) return false;
+    for (auto [lptr, rptr] : std::ranges::zip_view(lhs.viewColumn<0>(), rhs.viewColumn<0>())) {
+      if (lptr != rptr) return false;
+    }
+    return true;
+  }
+
+  // Returns true if the signature has the indicated type, false otherwise.
+  template <typename T> bool hasType() const {
+    return (this->find(&impl::typeEraseManager<T>))
+  }
+
+  // Adds a type to this signature.
+  // Throws an exception of the signature already contains this type.
+  template <typename T> void addType() {
+    if (this->find(&impl::typeEraseManager<T>))
+      { throw std::logic_error("In TypeErasedSoaSignature::addType(): Entry of type T already present."); }
+    this->insert(&impl::typeEraseManager<T>, this->size() ? (this->template back<1>()) + (this->template back<0>()(Op::SizeOf, nullptr, nullptr, 0, 0)) : 0);
+  }
+
+  // Removes a type from this signature.
+  // Throws an exception if the signature does not contain this type.
+  template <typename T> void removeType() {
+    if (!this->find(&impl::typeEraseManager<T>))
+      { throw std::logic_error("In TypeErasedSoaSignature::removeType(): No entry of type T present."); }
+    // Correct the offset for entries after the erased type. 
+    for (size_t i {this->eraseShift(&impl::typeEraseManager<T>)}; i < this->size(); ++i) {
+      this->template at<1>(i) -= sizeof(T);
+    }
+  }
+
+  // Add multiple types to this signature.
+  template <typename... Ts> void addTypes() { (addType<T>, ...); }
+
+  // Removes multiple types from this signature.
+  template <typename... Ts> void removeTypes() { (removeType<T>, ...); }
+};
+
+// A TypeErasedSoaRow contains the data and type information for a single row of a TypeErasedSoa.
+// It's used for serialization of rows and transferring rows from one table to another.
+class TypeErasedSoaRow {
+public:
+  TypeErasedSoaRow() = default;
+  TypeErasedSoaRow(const TypeErasedSoaRow&) = default;
+  TypeErasedSoaRow(TypeErasedSoaRow&&) = default;
+  TypeErasedSoaRow& operator=(const TypeErasedSoaRow&) = default;
+  TypeErasedSoaRow& operator=(TypeErasedSoaRow&&) = default;
+  template <typename... Ts> TypeErasedSoaRow(Ts&&... args) {
+    ((addColumn(std::forward<Ts>(args))), ...);
+  }
+  template <typename... Ts> TypeErasedSoaRow(std::tuple<Ts...>&& args) {
+    std::apply([this](Ts&&... args) { TypeErasedSoaRow(args...); }, args);
+  }
+
+  TypeErasedSoaSignature signature;
+  std::vector<char> data;
+
+  // Adds a column of data to this row.
+  template <typename T> addColumn(const T& newData) {
+    signature.addType<T>();
+    if constexpr (sizeof(T) > 0) {
+      size_t oldsize {data.size()};
+      data.resize(oldsize + sizeof(T));
+      auto dst {reinterpret_cast<T*>(&data[oldsize])};
+      new (dst) T(newData);
+    }
+  }
+
+  // Adds a default-constructed column to this row.
+  template <typename T> addColumn() {
+    signature.addType<T>();
+    if constexpr (sizeof(T) > 0) {
+      size_t oldsize {data.size()};
+      data.resize(oldsize + sizeof(T));
+      auto dst = reinterpret_cast<T*>(&data[oldsize]);
+      new (dst) T();
+    }
+  }
+
+  // Removes a column of data from this row.
+  template <typename T> void removeColumn() {
+    if constexpr (sizeof(T) > 0) {
+      auto found = signature.find(&impl::typeEraseManager<T>);
+      if (found) {
+        size_t offset = found.get<1>();
+        auto ptr {reinterpret_cast<T*>(&data[offset])};
+        ptr->~T();
+        data.erase(offset, offset+sizeof(T));
+      }
+    }
+    signature.eraseShift(&impl::typeEraseManager<T>);
+  }
+};
+
+class TypeErasedSoa {
+  using Op = impl::TypeEraseManagerOp;
 public:
 
-  AnySoa() = default; // Default constructor.
-  ~AnySoa() { reset(); } // Destructor.
-  AnySoa(const AnySoa& rhs) { // Copy constructor.
+  TypeErasedSoa() = default; // Default constructor.
+  ~TypeErasedSoa() { reset(); } // Destructor.
+  TypeErasedSoa(const TypeErasedSoa& rhs) { // Copy constructor.
     reserve(rhs.size_); assignSignature(rhs.getSignature());
     for (auto [col, rptr] : std::ranges::zip_view(columns_, rhs.columns_.viewColumn<2>())) {
       manageFound(*col, Op::ConstructCopy, rptr, 0, rhs.size_);
   } }
-  AnySoa(AnySoa&& rhs) { swap(*this,rhs); } // Move constructor.
+  TypeErasedSoa(TypeErasedSoa&& rhs) { swap(*this,rhs); } // Move constructor.
 
-  AnySoa& operator=(AnySoa rhs)   { swap(*this, rhs); return *this; } // Copy assignment operator.  Uses the copy-and-swap idiom.
-  AnySoa& operator=(AnySoa&& rhs) { swap(*this, rhs); return *this; } // Move assignment operator.
+  TypeErasedSoa& operator=(TypeErasedSoa rhs)   { swap(*this, rhs); return *this; } // Copy assignment operator.  Uses the copy-and-swap idiom.
+  TypeErasedSoa& operator=(TypeErasedSoa&& rhs) { swap(*this, rhs); return *this; } // Move assignment operator.
 
-  friend void swap(AnySoa& lhs, AnySoa& rhs) {
+  friend void swap(TypeErasedSoa& lhs, TypeErasedSoa& rhs) {
     std::swap(lhs.data_, rhs.data_);
     std::swap(lhs.size_, rhs.size_);
     std::swap(lhs.capacity_, rhs.capacity_);
     swap(lhs.columns_, rhs.columns_);
   }
 
-  void assignSignature(const impl::AnySoaSignature& signature) {
-    if (columns_.size()) throw std::logic_error("Cannot assign a signature to an AnySoa while it already has one.");
+  void assignSignature(const impl::TypeErasedSoaSignature& signature) {
+    if (size_ || columns_.size()) throw std::logic_error("Cannot assign a signature to an TypeErasedSoa while it already has one.");
     columns_ = signature;
   }
 
-  impl::AnyColumnTable getSignature() {
-    auto sig {columns_};
-    // The 'pointer offset' column of the AnyColumnTable is not part of the signature.
-    // Nullify it here so we don't accidentally refer to bad memory.
-    for (auto& ptr : sig.viewColumn<2>()) { ptr = nullptr; }
-    return sig;
+  const TypeErasedSoaSignature& getSignature() {
+    return columns_;
   }
 
-  template <typename T>     bool hasType()  const { return (columns_.contains(typeid(T).hash_code())); }
+  template <typename T>     bool hasType()  const { return (columns_.contains(&anyManager<T>)); }
   template <typename... Ts> bool hasTypes() const { return (hasType<Ts>() && ...); }
 
-  template <typename T> auto data()       { auto found = findCol<T>(); if (!found) throw std::bad_any_cast(); return reinterpret_cast<T*>      (found.get<2>()); }
-  template <typename T> auto data() const { auto found = findCol<T>(); if (!found) throw std::bad_any_cast(); return reinterpret_cast<const T*>(found.get<2>()); }
+  template <typename T> auto* data()       { auto found {findCol<T>()}; if (!found) throw std::bad_any_cast(); return reinterpret_cast<T*>      (static_cast<char*>(data_)+(found.get<1>()*capacity_)); }
+  template <typename T> auto* data() const { auto found {findCol<T>()}; if (!found) throw std::bad_any_cast(); return reinterpret_cast<const T*>(static_cast<char*>(data_)+(found.get<1>()*capacity_)); }
 
   template <typename T> auto& at(size_t index)       { boundsCheck(index); return *(data<T>() + index); }
   template <typename T> auto& at(size_t index) const { boundsCheck(index); return *(data<T>() + index); }
-  template <typename T> auto  front()                { return at(0); }
-  template <typename T> auto  front()          const { return at(0); }
-  template <typename T> auto  back()                 { return at(size_-1); }
-  template <typename T> auto  back()           const { return at(size_-1); }
+  template <typename T> auto& front()                { return at(0); }
+  template <typename T> auto& front()          const { return at(0); }
+  template <typename T> auto& back()                 { return at(size_-1); }
+  template <typename T> auto& back()           const { return at(size_-1); }
 
   template <typename T>     auto viewColumn()        { auto* ptr = data<T>(); return std::ranges::subrange(ptr, ptr+size_); }
   template <typename T>     auto viewColumn()  const { auto* ptr = data<T>(); return std::ranges::subrange(ptr, ptr+size_); }
@@ -224,29 +259,75 @@ public:
     if (newSize == size_) return;
     if (newSize > size_) {
       reserve(newSize);
-      for (auto [manage, ptr] : columns_.viewColumns<1, 2>())
-        { manage(Op::ConstructDefault, ptr, nullptr, size_, newSize); }
+      for (auto [manage, offset] : columns_.viewColumns<1, 2>()) {
+        auto ptr = static_cast<char*>(data_) + (offset * capacity_);
+        manage(Op::ConstructDefault, ptr, nullptr, size_, newSize);
+      }
     }
     else if (newSize < size_) {
-      for (auto [manage, ptr] : columns_.viewColumns<1, 2>())
-        { manage(Op::Destruct, ptr, nullptr, newSize, size_); }
+      for (auto [manage, offset] : columns_.viewColumns<1, 2>()) {
+        auto ptr = static_cast<char*>(data_) + (offset * capacity_);
+        manage(Op::Destruct, ptr, nullptr, newSize, size_);
+      }
     }
     size_ = newSize;
   }
   void clear() { resize(0); }
   void reset() { realloc(0); columns_.clear(); }
 
-  /*
-  template <typename... Ts> void insert(size_t index, Ts&&... row) {
+  void insert(size_t index, const TypeErasedSoaRow& row) {
     if (index > size_) throw std::out_of_range("Index out of range.");
-    if (!hasTypes<Ts...>()) throw std::bad_any_cast();
+    if (size_ == 0) columns_ = row.signature;
+    else if (columns_ != row.signature) throw std::bad_any_cast();
     expandIfNeeded();
-    for (auto [manage, ptr] : columns_.viewColumns<1, 2>()) {
+    for (auto [manage, offset] : columns_) {
+      auto   ptr   = static_cast<char*>(data_) + (offset * column_);
       size_t tsize = manage(Op::SizeOf);
-      memmove((char*)ptr + (tsize*(index+1)), (char*)ptr + (tszie*index), size_-index);
+      // Move data forward by one spot, if needed.
+      if (index < size_) { memmove(ptr+(tsize*(index+1)), ptr+(tsize*index), (size_-index)*tsize); }
+      // Copy data from "row" into the container.
+      manage(Op::CopySingle, ptr+(tsize*index), &row.data[offset]);
     }
+    ++size_;
   }
-  */
+  void pushBack(const TypeErasedSoaRow& row) { insert(size_, row); }
+
+  void eraseShift(size_t index) {
+    boundsCheck(index);
+    for (auto [manage, offset] : columns_) {
+      auto   ptr   = static_cast<char*>(data_) + (offset * column_);
+      size_t tsize = manage(Op::SizeOf);
+      // Destruct the entry at index.
+      manage(Op::Destruct, ptr, nullptr, index, index+1);
+      // Move data backwards by one spot, if needed.
+      if (index < (size_-1)) { memmove(ptr+(tsize*index), ptr+(tsize*(index+1)), (size_-(index+1))*tsize); }
+    }
+    --size_;
+  }
+
+  void eraseSwap(size_t index) {
+    boundsCheck(index);
+    for (auto [manage, offset] : columns_) {
+      auto   ptr   = static_cast<char*>(data_) + (offset * column_);
+      size_t tsize = manage(Op::SizeOf);
+      manage(Op::SwapSingle, ptr+(tsize*index), ptr+(tsize*(size_-1)));
+      manage(Op::Destruct, ptr, nullptr, size_-1, size_);
+    }
+    --size_;
+  }
+
+  void popBack() { eraseShift(size_-1); }
+
+  TypeErasedSoaRow getRow(size_t index) {
+    boundsCheck(index);
+    TypeErasedSoaRow result; result.signature = columns_;
+    for (auto [manage, offset] : columns_) {
+      auto   ptr   = static_cast<char*>(data_) + (offset * column_);
+      size_t tsize = manage(Op::SizeOf);
+      manage(Op::CopySingle, &result.data[offset], ptr+(tsize*index));
+    }
+    return result;
+  }
 
 private:
 
@@ -262,19 +343,22 @@ private:
   // the manager function.  This function handles all type-specific actions. The
   // second item column is an offset pointer; where the data for *this* column
   // begins.
-  impl::AnyColumnTable columns_;
+  impl::TypeErasedSoaSignature columns_;
 
-  template <typename T> auto findCol() {  return column_.find(typeid(T).hash_code()); }
+  template <typename T> auto findCol() {  return column_.find(&impl::anyManager<T>); }
 
   // Gets the total number of bytes taken by one row.
   size_t rowSize() {
     size_t result {0};
-    for (auto manage : columns_.viewColumn<1>()) { result += manage(Op::SizeOf); }
+    for (auto manage : columns_.viewColumn<0>()) { result += manage(Op::SizeOf, nullptr, nullptr, 0, 0); }
     return result;
   }
 
-  void manageFound(impl::AnyColumnTable::Found found, Op op, const void* rhs = nullptr, size_t begin = 0, size_t end = 0)
-    { found.get<1>()(op, found.get<2>(), rhs, begin, end); }
+  void manageFound(impl::TypeErasedSoaSignature::Found found, Op op, const void* rhs = nullptr, size_t begin = 0, size_t end = 0) {
+    auto manage = found.get<0>();
+    auto ptr    = static_cast<char*>(data_) + (found.get<1>() * capacity_);
+    manage(op, ptr, rhs, begin, end);
+  }
 
   void boundsCheck(size_t index) { if (index >= size_) throw std::out_of_range("Index out of range."); }
 
@@ -282,49 +366,59 @@ private:
 
   void* realloc(size_t newCapacity, size_t extraBytes = 0) {
     // If there's nothing to do, bail out.
-	  if (newCapacity == capacity_ || columns_.size() == 0) return nullptr;
+    if (newCapacity == capacity_ || columns_.size() == 0) return nullptr;
 
-    // For alignment purposes, we only allocate a multiple of 16 bytes.
-    // We enforce a multiple of 16 elements instead of adding padding.
-    newCapacity += ((newCapacity % 16) ? 16 - (newCapacity % 16) : 0);
+    // Calculate alignment.
+    size_t align {16};
+    for (auto [manage] : columns_.viewColumn<0>()) {
+      size_t divisor = manage(Op::Divisor, nullptr, nullptr, 0, 0);
+      if (divisor > 0)
+        align = std::min(align, divisor);
+    }
+    align = (align >= 16) ? 1 : (16 / align);
+
+    // For alignment purposes, we only allocate a multiple of N bytes.
+    // We enforce a multiple of N elements instead of adding padding.
+    newCapacity = impl::roundUpTo(newCapacity, align);
 
     // If we're allocating memory...
     if (newCapacity) {
-      void* newData = impl::soaAlignedMalloc(16, (newCapacity * rowSize()) + extraBytes);
+      void* newData = impl::alignedMalloc(16, (newCapacity * rowSize()) + extraBytes);
       // Figure out how many rows we'll need to move.
       size_t rowsToMove = std::min(size_, newCapacity);
       if (rowsToMove) {
         // Move the data into its new position.
         void* dataCursor {newData};
-        for (auto [manage, srcPtr] : columns_.viewColumns<1, 2>()) {
-          size_t tsize = manage(Op::SizeOf);
+        for (auto [manage, offset] : columns_) {
+          size_t tsize = manage(Op::SizeOf, nullptr, nullptr, 0, 0);
           if (tsize == 0) continue;
+          auto srcptr = static_cast<const char*>(data_) + (offset * capacity_);
           memmove(dataCursor, srcPtr, tsize * rowsToMove);
-          dataCursor += (tsize * newCapacity);
+          (char*)dataCursor += (tsize * newCapacity);
         }
         // Clean up any leftover objects.
         if (newCapacity < size_) {
-          for (auto [manage, ptr] : columns_.viewColumns<1, 2>())
-            { manage(Op::Destruct, ptr, nullptr, rowsToMove, size_-rowsToMove); }
+          for (auto [manage, offset] : columns_) {
+            auto ptr = static_cast<char*>(data_) + (offset * capacity_);
+            manage(Op::Destruct, ptr, nullptr, rowsToMove, size_-rowsToMove);
+          }
         }
-        impl::soaAlignedFree(data_);
+        impl::alignedFree(data_);
       }
       data_ = newData;
       size_ = rowsToMove;
       capacity_ = newCapacity;
-      void* dataCursor {data_};
-      for (auto& [manage, ptr] : columns_.viewColumns<1, 2>())
-        { ptr = dataCursor; dataCursor += (manage(Op::SizeOf) * capacity_); }
     }
     // New capacity is zero, but we have old data to clean up.
     else if (data_) {
-      for (auto [manage, ptr] : columns_.viewColumns<1, 2>())
-        { manage(Op::Destruct, ptr, nullptr, 0, size_); }
-      impl::SoaAlignedFree(data_);
+      for (auto [manage, offset] : columns_) {
+        auto ptr = static_cast<char*>(data_) + (offset * capacity_);
+        manage(Op::Destruct, ptr, nullptr, 0, size_);
+      }
+      impl::alignedFree(data_);
       data_ = nullptr;
       size_ = 0;
       capacity_ = 0;
-      columns_.clear();
       return nullptr;
     }
     return nullptr;

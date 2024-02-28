@@ -14,14 +14,14 @@ static const string testdata1[] = {
     "eighteen", "nineteen", "twenty"};
 
 int wc::etc::test::SoaUnitTest() {
+  BEGIN_UNIT_TEST;
+
   using TestSoa = Soa<int, string, short, double>;
   TestSoa soa;
   int* const&                          ints    = soa.data<0>();
   string* const&                       strings = soa.data<1>();
   short* const&                        shorts  = soa.data<2>();
   double* const&                       doubles = soa.data<3>();
-
-  int FAIL_COUNTER {0};
 
   static_assert(TestSoa::columnSize<0>() == sizeof(int));
   static_assert(TestSoa::columnSize<1>() == sizeof(string));
@@ -40,7 +40,7 @@ int wc::etc::test::SoaUnitTest() {
   EXPECT_NULL(doubles);
   soa.pushBack(0, "zero", 0, 0.0);
   EXPECT_EQUAL(soa.size(), 1);
-  EXPECT_EQUAL(soa.capacity(), 16);
+  EXPECT_EQUAL(soa.capacity(), 8);
 
   for (int i {1}; i < 16; ++i) {
     soa.pushBack(i, testdata1[i], (short)-i, (double)i);
@@ -150,7 +150,7 @@ int wc::etc::test::SoaUnitTest() {
   }
 
   soa.reserve(1010);
-  EXPECT_EQUAL(soa.capacity(), 1024);
+  EXPECT_EQUAL(soa.capacity(), 1016);
   EXPECT_EQUAL(soa.size(), 21);
 
   size_t index = soa.lowerBound<0>(10);
@@ -200,9 +200,46 @@ int wc::etc::test::SoaUnitTest() {
     EXPECT_FEQUAL(doubles[i], (double)i);
   }
 
+  EXPECT_EXCEPTION(soa.at<0>(30) = 30, std::out_of_range);
+
+  // Check constructing a new Soa using the viewColumns of another.
+  { Soa<int, string> spliced(soa.viewColumns<0,1>());
+    EXPECT_EQUAL(soa.size(), spliced.size());
+    for (int i {0}; i < soa.size(); ++i) {
+      EXPECT_EQUAL(spliced.at<0>(i), soa.at<0>(i));
+      EXPECT_EQUAL(spliced.at<1>(i), soa.at<1>(i));
+    }
+  }
+
+  // Check constructing a new Soa using the viewColumn of another.
+  { Soa<short> spliced(soa.viewColumn<2>());
+    EXPECT_EQUAL(soa.size(), spliced.size());
+    for (int i {0}; i < soa.size(); ++i) {
+      EXPECT_EQUAL(spliced.at<0>(i), soa.at<2>(i));
+    }
+  }
+
+  // Check serialization and deserialization.
+  { Soa<int, short, double> before(soa.viewColumns<0, 2, 3>());
+    auto [numEntries, numBytes, data] = before.serialize();
+    Soa<int, short, double> after;
+    after.deserialize(numEntries, numBytes, data);
+    EXPECT_EQUAL(before.size(), after.size());
+    EXPECT_EQUAL(before.capacity(), after.capacity());
+    for (int i {0}; i < before.size(); ++i) {
+      EXPECT_EQUAL(before.at<0>(i), after.at<0>(i));
+      EXPECT_EQUAL(before.at<1>(i), after.at<1>(i));
+      EXPECT_EQUAL(before.at<2>(i), after.at<2>(i));
+    }
+  }
+
+  // Check initializer list constructor.
+  Soa<int, string> newsoa1({{0, "zero"}, {1, "one"}, {2, "two"}, {3, "three"}});
+  EXPECT_EQUAL(newsoa1.size(), 4);
+
   soa.clear();
   EXPECT_EQUAL(soa.size(), 0);
-  EXPECT_EQUAL(soa.capacity(), 1024);
+  EXPECT_EQUAL(soa.capacity(), 1016);
   soa.shrinkToFit();
   EXPECT_EQUAL(soa.capacity(), 0);
 
@@ -212,5 +249,5 @@ int wc::etc::test::SoaUnitTest() {
   EXPECT_NULL(shorts);
   EXPECT_NULL(doubles);
 
-  return FAIL_COUNTER;
+  END_UNIT_TEST;
 }

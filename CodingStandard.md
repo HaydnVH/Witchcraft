@@ -1,21 +1,20 @@
 # Language
 
-The Witchcraft project is written in Modern C++, specifically C++ 20. [This page](https://en.cppreference.com/w/cpp/compiler_support) has tables describing compiler support for various C++ core and library features.  The compilers that we care about are MSVC and GCC, so any feature that is well-supported by both may be used, which is the majority of C++ 20.  The following notable exceptions remain a challenge for cross-platform development and should be avoided (for now):
-- `std::format` isn't available on GCC until version 13, which has yet to release as of the time of this writing (2023-03-04).
+The Witchcraft project is written in Modern C++, specifically C++ 23. [This page](https://en.cppreference.com/w/cpp/compiler_support) has tables describing compiler support for various C++ core and library features.  The compilers that we care about are MSVC and GCC, so any feature that is well-supported by both may be used, which is the majority of C++ 20 and some of C++ 23.  The following notable exceptions remain a challenge for cross-platform development and should be avoided (for now):
 - Modules only have partial support on GCC and still have issues on MSVC, and so should be avoided.
 
-Features of modern C++ should be used liberally, such as `auto`, ranged-based `for` loops, lambda functions, and so on.  These features, once familiar to a programmer, make code easier to read, write, reason, and debug.
+Features of modern C++ should be used liberally, such as `auto`, ranged-based `for` loops, lambda functions, and so on.  These features (once familiar to a programmer) make code easier to read, write, reason, and debug.
 
 ## Compilers & Build System
 
 Witchcraft is built using CMake version 3.19 or newer.  This is the minimum version that supports `CMakePresets.json`, which is required for proper building.  Beyond the contents of this repository, the following installations are required:
 - On Windows, install the latest version of Visual Studio 2022 and make sure development environmnents for C++ and CMake are enabled.  If you plan to cross-compile to Linux, ensure that the relevant package is enabled as well.
-- On Linux, you'll need CMake version 3.19 or newer and GCC version 1.11 or newer.  This may be newer that what's available in your OS's standard app repository, and if so will need to be installed manually.  You may also need a standard installation of `gdb`, `ninja`, and `zip`.
+- On Linux, you'll need CMake version 3.19 or newer and GCC version 13 or newer.  This may be newer that what's available in your OS's standard app repository, and if so will need to be installed manually.  You may also need a standard installation of `gdb`, `ninja`, and `zip`.
 - [Vulkan SDK](https://vulkan.lunarg.com/) is required.
 
 ## Included Dependencies
 
-In the `dependencies` directory of this repository are a number of third-party libraries which have been built, tested, and included for usage here.  Only pre-built binary libraries and header files are present; see the [WitchcraftDependencies](https://github.com/HaydnVH/WitchcraftDependencies) repository for more information.  Each of these libraries has a license which is compatible with the Witchcraft project; see the `licenses` directrory for details.
+Git submodule are used to handle as many third-party dependencies as possible.  These can be found in the `submodules` directory.  When you clone the Witchcraft repository, make sure you include the `--recursive` flag.
 
 # Naming Conventions
 
@@ -26,34 +25,35 @@ The following naming styles are used throughout the project:
 
 ## Variables
 
-All variables, including member variables and function arguments, should be written in camel case.  Give descriptive names to variables whenever it makes sense to do so.  Private or protected member variables should be postfixed with an underscore.
+All variables, including member variables and function arguments, should be written in camelCase.  Give descriptive names to variables whenever it makes sense to do so.  Private or protected member variables should be postfixed with an underscore.
 
 ## Constants
 
-Local variables should always be declared as `const` and still written in camel case.
+Local constants should be declared as `const` or `constexpr`, named in camelCase, and given a `_c` suffix.
 
 Global constants, whether in header files or translation units, should be written with `UPPERCASE_SNAKE_CASE`, matching the traditional syntax for `#define`'d constants.  These should be declared `constexpr` whenever possible.
 
 ## Global and Static Variables
 
-Global variables should be written in camel case and given a `_g` suffix.
+Global variables should be written in camelCase and given a `_g` suffix.
 
 Static variables are global variables that either belong to a class, or are inaccessible outside of the translation unit they're defined in.  They should be declared in an anonymous namespace, and should be given a `_s` suffix.
 ```
 int myGlobal_g = 0;
 namespace {
 	int myStatic_s = 0;
+	constexpr int myConstant_c = 42;
 }
 int MyClass::myClassStatic_s = 0;
 ```
 
 ## Operator Overload Operands
 
-For binary operators, the operator should be declared `friend` and the operands should be named `lhs` and `rhs`.
+For binary operators, the operator should be declared `friend` and the operands should be named `lhs` and `rhs` when it makes sense to do so.  
 
 ## Type Names
 
-Types and alises should be written in pascal case.
+Types and alises should be written in PascalCase.  Avoid using `typedef` and instead favor `using`.
 ```
 class MyClass {};
 struct MyStruct {};
@@ -62,7 +62,7 @@ using MyAlias = MyClass;
 
 ## Enums
 
-Enumerations should always be defined in some sensible order; when in doubt, sort alphabetically.  Enums should always be class enums, with the name and enumeration in pascal case.  For enums which contain bitfield values, values should be assigned explicitly using binary notation (`0b0001`).  Enums which are used beyond runtime (saved to disc etc) should have explicit values and should be in value order if that differs from alphabetical.
+Enumerations should always be defined in some sensible order; when in doubt, sort alphabetically.  Enums should always be class enums, with the name and enumeration in pascal case.  For enums which contain bitfield values, values should be assigned explicitly using binary notation (`0b0001`).  Enums which are used beyond runtime (saved to disc etc) must have explicitly assigned values.
 ```
 enum class MyBitfield {
 	First  = 0b0001,
@@ -74,11 +74,11 @@ enum class MyBitfield {
 
 ## Function Names
 
-Functions should be written in camel case and should describe its intended purpose as well as possible.
+Functions should be written in camelCase and should describe their intended purpose as well as possible.
 
 ## Namespaces
 
-Namespaces should be written in snake case, and should be as concise as possible.  Although nesting namespaces using `::` is valid as of C++17, this should not be used as it doesn't play nicely with intellisense.
+Namespaces should be written in snake case, and should be as concise as possible.  Although nesting namespaces using `::` is valid as of C++17, this should not be used as it doesn't play nicely with Visual Studio intellisense.
 ```
 namespace parent_namespace {
 namespace child_namespace {
@@ -103,7 +103,7 @@ Single capital letters should be preferred for template parameters.  If there is
 ```
 template <typename T>
 template <typename FirstT, RestTs...>
-template <size_t I, Size>
+template <size_t N, Size>
 ```
 
 # Iterator Support
@@ -121,16 +121,16 @@ Iterators are a key means of interfacing with any sort of collection-like data, 
 
 Iterators need not be random access, or reversible, or even connected to a "container" in the traditional sense.  Ranged-based `for` loops should be supported whenever possible, and all this requires is that when the iterator is no longer valid, it is equal to `end()`.  Any iterator support beyond this is simply icing on the cake.
 
-When the data you want to iterate is not a "container" in the traditional sense, it can be useful to create a "Proxy" class which represents a query or the result of some function.  This Proxy class doesn't need to provide any functionality other than `begin()` and `end()`, but may store data related to the query that created it.  The `Tokenizer` class (in `src/tools/strtoken.h`) is a good example of a proxy which provides non-trivial iterators that act on a non-traditional "collection".
-
 Check out [this article](https://www.internalpointers.com/post/writing-custom-iterators-modern-cpp) for some tips on writing your own iterator class.
+
+Support for ranges and views should be provided whenever possible, as appropriate.  Most of this "Just Works" as long as basic iterators are provided.
 
 # Error Handling
 
 First, some definitions; There are 4 different types of results from an operation:
 - *Success* means that the operation completed as expected.
 - *Warning* means that something went wrong, but the operation still produced a usable result.
-- *Error* mens that the operation failed, but the engine as a whole can continue running.
+- *Error* means that the operation failed, but the engine as a whole can continue running.
 - A *Fatal Error* is an error so severe that the engine cannot continue running.
 
 There are two ways to properly handle errors in C++: exceptions and return values.  Witchcraft uses both, as appropriate.
